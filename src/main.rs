@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::RwLock;
@@ -56,10 +55,10 @@ struct StdString {
 static DEBUG_HANDLE: RwLock<Option<ProcessHandle>> = RwLock::new(None);
 
 impl StdString {
-    fn read(&self, handle: ProcessHandle) -> Result<Cow<str>> {
+    fn read(&self, handle: ProcessHandle) -> Result<String> {
         if self.len <= 15 {
             let data = &self.buf[..self.len as usize];
-            return Ok(Cow::Borrowed(std::str::from_utf8(data)?));
+            return Ok(String::from_utf8(data.to_owned())?);
         }
 
         let ptr = u32::from_le_bytes(self.buf[..4].try_into().unwrap());
@@ -67,7 +66,7 @@ impl StdString {
 
         handle.copy_address(ptr as usize, &mut buf)?;
 
-        Ok(Cow::Owned(String::from_utf8(buf)?))
+        Ok(String::from_utf8(buf)?)
     }
 }
 
