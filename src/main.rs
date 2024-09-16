@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::mem::size_of;
 use std::sync::RwLock;
 use std::{cmp::Ordering, fmt::Debug};
 
@@ -31,12 +32,11 @@ impl<T> RemotePtr<T> {
         }
     }
 
-    /// Read size_of::<T> bytes from the process and transmute them into T
     fn read(&self, handle: ProcessHandle) -> Result<T>
     where
         T: AnyBitPattern,
     {
-        let mut buf = vec![0; std::mem::size_of::<T>()];
+        let mut buf = vec![0; size_of::<T>()];
 
         handle.copy_address(self.addr as usize, &mut buf)?;
 
@@ -165,27 +165,26 @@ fn main() -> Result<()> {
     let handle = noita_pid.try_into_process_handle()?;
     *DEBUG_HANDLE.write().unwrap() = Some(handle);
 
-    let death_count_member = RemotePtr::new(0x01206ad8);
-    let streak_member = RemotePtr::new(0x0120694c);
-    let streak_pb_member = RemotePtr::new(0x01206a14);
-
-    let death_count = death_count_member.read(handle)?;
-    let streak = streak_member.read(handle)?;
-    let streak_pb = streak_pb_member.read(handle)?;
+    let death_count_ptr = RemotePtr::new(0x01206ad8);
+    let streak_ptr = RemotePtr::new(0x0120694c);
+    let streak_pb_ptr = RemotePtr::new(0x01206a14);
+    let world_seed_ptr = RemotePtr::new(0x01202fe4);
+    let ng_plus_count_ptr = RemotePtr::new(0x01203004);
 
     let map_ptr = RemotePtr::<RemotePtr<StringIntMapNode>>::new(0x01206938);
     let map = map_ptr.read(handle)?;
 
-    let end0 = map.get(handle, "progress_ending0")?;
-    let end1 = map.get(handle, "progress_ending1")?;
-
-    let wins = end0.unwrap_or_default() + end1.unwrap_or_default();
-
     let formatted = args.format.format(&HashMap::from([
-        ("deaths".to_owned(), death_count),
-        ("streak".to_owned(), streak),
-        ("streak-pb".to_owned(), streak_pb),
-        ("wins".to_owned(), wins),
+        ("deaths".to_owned(), death_count_ptr.read(handle)?),
+        ("streak".to_owned(), streak_ptr.read(handle)?),
+        ("streak-pb".to_owned(), streak_pb_ptr.read(handle)?),
+        (
+            "wins".to_owned(),
+            map.get(handle, "progress_ending0")?.unwrap_or_default()
+                + map.get(handle, "progress_ending1")?.unwrap_or_default(),
+        ),
+        ("seed".to_owned(), world_seed_ptr.read(handle)?),
+        ("ng-plus-count".to_owned(), ng_plus_count_ptr.read(handle)?),
     ]))?;
 
     println!("{formatted}");
