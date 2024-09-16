@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use std::sync::RwLock;
 use std::{cmp::Ordering, fmt::Debug};
 
 use anyhow::{Context, Result};
@@ -52,6 +53,8 @@ struct StdString {
     cap: u32,
 }
 
+static DEBUG_HANDLE: RwLock<Option<ProcessHandle>> = RwLock::new(None);
+
 impl StdString {
     fn read(&self, handle: ProcessHandle) -> Result<Cow<str>> {
         if self.len <= 15 {
@@ -70,6 +73,12 @@ impl StdString {
 
 impl Debug for StdString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        {
+            let debug_handle = DEBUG_HANDLE.read().unwrap();
+            if let Some(handle) = *debug_handle {
+                return self.read(handle).unwrap().fmt(f);
+            }
+        }
         if self.len <= 15 {
             let data = &self.buf[..self.len as usize];
 
@@ -155,6 +164,7 @@ fn main() -> Result<()> {
     } as Pid;
 
     let handle = noita_pid.try_into_process_handle()?;
+    *DEBUG_HANDLE.write().unwrap() = Some(handle);
 
     let death_count_member = RemotePtr::new(0x01206ad8);
     let streak_member = RemotePtr::new(0x0120694c);
