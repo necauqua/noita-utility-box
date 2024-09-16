@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-bytemuck = { version = "1", features = ["derive"] }
+bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 clap = { version = "4", features = ["derive"] }
 process-memory = "0.5"
 strfmt = "0.2"

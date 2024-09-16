@@ -3,10 +3,11 @@ use std::marker::PhantomData;
 use std::mem::size_of;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+use std::time::Duration;
 use std::{cmp::Ordering, fmt::Debug};
 
 use anyhow::{anyhow, bail, Context, Result};
-use bytemuck::AnyBitPattern;
+use bytemuck::{AnyBitPattern, NoUninit};
 use clap::Parser;
 use process_memory::{CopyAddress, Pid, ProcessHandle, TryIntoProcessHandle};
 use strfmt::{FmtError, Format};
@@ -18,6 +19,10 @@ struct RemotePtr<T> {
     addr: u32,
     _phantom: PhantomData<T>,
 }
+
+// The derive macro hates the generic, but it's typelevel only (phantom)
+// RemotePtr is just a u32
+unsafe impl<T: Copy + 'static> NoUninit for RemotePtr<T> {}
 
 impl<T> Debug for RemotePtr<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -41,11 +46,11 @@ impl<T> RemotePtr<T> {
 
         handle.copy_address(self.addr as usize, &mut buf)?;
 
-        Ok(*bytemuck::from_bytes(&buf))
+        Ok(bytemuck::pod_read_unaligned(&buf))
     }
 }
 
-#[derive(AnyBitPattern, Clone, Copy)]
+#[derive(AnyBitPattern, NoUninit, Clone, Copy)]
 #[repr(C)]
 struct StdString {
     buf: [u8; 16],
@@ -132,6 +137,50 @@ impl RemotePtr<StringIntMapNode> {
     }
 }
 
+#[derive(Debug, AnyBitPattern, Clone, Copy)]
+#[repr(C)]
+struct Entity {
+    id: u32,
+    _skip1: [u8; 16],
+    name: StdString,
+    _skip2: [u8; 4],
+    tags_bitset: [u8; 32],
+    pos_x: f32,
+    pos_y: f32,
+    // more skipped..
+    // it's ok cuz the entities are vec of pointers
+}
+
+#[derive(Debug, AnyBitPattern, Clone, Copy)]
+#[repr(C)]
+struct RemoteVec<T> {
+    start: RemotePtr<T>,
+    end: RemotePtr<T>,
+    cap: RemotePtr<T>,
+}
+
+impl<T> RemoteVec<T> {
+    fn read_all(&self, handle: ProcessHandle) -> Result<Vec<T>>
+    where
+        T: AnyBitPattern + NoUninit,
+    {
+        let byte_len = (self.end.addr - self.start.addr) as usize;
+
+        let mut buf = vec![0; byte_len];
+
+        handle.copy_address(self.start.addr as usize, &mut buf)?;
+
+        Ok(bytemuck::allocation::pod_collect_to_vec(&buf))
+    }
+}
+
+#[derive(Debug, AnyBitPattern, Clone, Copy)]
+#[repr(C)]
+struct EntityManager {
+    _ignoring1: [u8; 20],
+    entities: RemoteVec<RemotePtr<Entity>>,
+}
+
 #[derive(clap::Parser)]
 struct Args {
     /// Format of the output
@@ -139,6 +188,9 @@ struct Args {
         default_value = "Deaths: {deaths}\nWins:   {wins}\nStreak: {streak}\nRecord: {streak-pb}"
     )]
     format: String,
+    /// Show player position
+    #[arg(long, conflicts_with = "format")]
+    track_player: bool,
     /// Do not look for noita.exe process and use the given pid instead
     #[arg(long)]
     pid: Option<u32>,
@@ -149,6 +201,16 @@ struct Args {
 
 fn read_address_map(path: &Path) -> Result<toml::Table> {
     Ok(toml::from_str(&std::fs::read_to_string(path)?)?)
+}
+
+fn ptr<T>(address_map: &toml::Table, name: &str) -> Result<Option<RemotePtr<T>>> {
+    address_map
+        .get(name)
+        .map(|v| match v {
+            toml::Value::Integer(addr) => Ok(RemotePtr::<T>::new(*addr as u32)),
+            _ => Err(anyhow!("Invalid address map: `{name}` is not a number")),
+        })
+        .transpose()
 }
 
 fn main() -> Result<()> {
@@ -183,6 +245,42 @@ fn main() -> Result<()> {
     let handle = noita_pid.try_into_process_handle()?;
     *DEBUG_HANDLE.write().unwrap() = Some(handle);
 
+    if args.track_player {
+        let Some(entity_manager) = ptr::<RemotePtr<EntityManager>>(&address_map, "entity-manager")?
+        else {
+            bail!("entity-manager address location is unknown");
+        };
+
+        let entity_manager = entity_manager.read(handle)?.read(handle)?;
+        let entities = entity_manager.entities.read_all(handle)?;
+
+        let mut player_entity = None;
+        for entity_ref in entities {
+            if entity_ref.addr == 0 {
+                continue;
+            }
+            let entity = entity_ref.read(handle)?;
+            if entity.name.read(handle)? == "DEBUG_NAME:player" {
+                player_entity = Some(entity_ref);
+                break;
+            }
+        }
+
+        let Some(player) = player_entity else {
+            bail!("player entity not found")
+        };
+
+        eprintln!();
+        loop {
+            let player = player.read(handle)?;
+            eprintln!(
+                "\x1b[F\x1b[Kplayer pos: {:.02} {:.02}",
+                player.pos_x, player.pos_y
+            );
+            std::thread::sleep(Duration::from_millis(30));
+        }
+    }
+
     let u32s = match address_map.remove("u32") {
         Some(toml::Value::Table(u32s)) => u32s,
         Some(_) => bail!("Invalid address map: `u32` is not a table"),
@@ -199,18 +297,13 @@ fn main() -> Result<()> {
         data.insert(k, ptr.read(handle)?);
     }
 
-    match address_map.get("stats-map") {
-        Some(toml::Value::Integer(addr)) => {
-            let map_ptr = RemotePtr::<RemotePtr<StringIntMapNode>>::new(*addr as u32);
-            let map = map_ptr.read(handle)?;
-            data.insert(
-                "wins".to_owned(),
-                map.get(handle, "progress_ending0")?.unwrap_or_default()
-                    + map.get(handle, "progress_ending1")?.unwrap_or_default(),
-            );
-        }
-        Some(_) => bail!("Invalid address map: `stats-map` is not a number"),
-        None => {}
+    if let Some(stats) = ptr::<RemotePtr<StringIntMapNode>>(&address_map, "stats-map")? {
+        let stats = stats.read(handle)?;
+        data.insert(
+            "wins".to_owned(),
+            stats.get(handle, "progress_ending0")?.unwrap_or_default()
+                + stats.get(handle, "progress_ending1")?.unwrap_or_default(),
+        );
     }
 
     let formatted = args.format.format(&data).map_err(|e| match e {

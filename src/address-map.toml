@@ -3,6 +3,9 @@
 # which is then added to the format as a `wins` variable
 stats-map = 0x01206938
 
+# Address of the EntityManager global
+entity-manager = 0x01202b78
+
 # Read arbitrary global unsigned 4-byte integers from these locations
 # The keys are then available in the format string
 [u32]
