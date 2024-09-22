@@ -10,3 +10,4 @@ clap = { version = "4", features = ["derive"] }
 process-memory = "0.5"
 strfmt = "0.2"
 sysinfo = "0.31"
+toml = "0.8"

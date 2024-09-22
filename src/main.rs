@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::mem::size_of;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::{cmp::Ordering, fmt::Debug};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use bytemuck::AnyBitPattern;
 use clap::Parser;
 use process_memory::{CopyAddress, Pid, ProcessHandle, TryIntoProcessHandle};
-use strfmt::Format;
+use strfmt::{FmtError, Format};
 use sysinfo::ProcessesToUpdate;
 
 #[derive(AnyBitPattern, Clone, Copy)]
@@ -141,10 +142,27 @@ struct Args {
     /// Do not look for noita.exe process and use the given pid instead
     #[arg(long)]
     pid: Option<u32>,
+    /// Use a custom address map read from a given file. When no argument is given prints the default one
+    #[arg(long)]
+    address_map: Option<Option<PathBuf>>,
+}
+
+fn read_address_map(path: &Path) -> Result<toml::Table> {
+    Ok(toml::from_str(&std::fs::read_to_string(path)?)?)
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
+
+    let address_map = include_str!("address-map.toml");
+    let mut address_map = match args.address_map {
+        Some(None) => {
+            println!("{address_map}");
+            return Ok(());
+        }
+        Some(Some(custom)) => read_address_map(&custom).context("Reading custom address map")?,
+        None => toml::from_str(address_map)?,
+    };
 
     let noita_pid = match args.pid {
         Some(pid) => pid,
@@ -165,27 +183,41 @@ fn main() -> Result<()> {
     let handle = noita_pid.try_into_process_handle()?;
     *DEBUG_HANDLE.write().unwrap() = Some(handle);
 
-    let death_count_ptr = RemotePtr::new(0x01206ad8);
-    let streak_ptr = RemotePtr::new(0x0120694c);
-    let streak_pb_ptr = RemotePtr::new(0x01206a14);
-    let world_seed_ptr = RemotePtr::new(0x01202fe4);
-    let ng_plus_count_ptr = RemotePtr::new(0x01203004);
+    let u32s = match address_map.remove("u32") {
+        Some(toml::Value::Table(u32s)) => u32s,
+        Some(_) => bail!("Invalid address map: `u32` is not a table"),
+        None => toml::Table::new(),
+    };
 
-    let map_ptr = RemotePtr::<RemotePtr<StringIntMapNode>>::new(0x01206938);
-    let map = map_ptr.read(handle)?;
+    let mut data = HashMap::new();
+    for (k, v) in u32s {
+        let toml::Value::Integer(addr) = v else {
+            bail!("Invalid address map: `u32.{k}` is not a number")
+        };
+        let ptr = RemotePtr::<u32>::new(addr as u32);
 
-    let formatted = args.format.format(&HashMap::from([
-        ("deaths".to_owned(), death_count_ptr.read(handle)?),
-        ("streak".to_owned(), streak_ptr.read(handle)?),
-        ("streak-pb".to_owned(), streak_pb_ptr.read(handle)?),
-        (
-            "wins".to_owned(),
-            map.get(handle, "progress_ending0")?.unwrap_or_default()
-                + map.get(handle, "progress_ending1")?.unwrap_or_default(),
-        ),
-        ("seed".to_owned(), world_seed_ptr.read(handle)?),
-        ("ng-plus-count".to_owned(), ng_plus_count_ptr.read(handle)?),
-    ]))?;
+        data.insert(k, ptr.read(handle)?);
+    }
+
+    match address_map.get("stats-map") {
+        Some(toml::Value::Integer(addr)) => {
+            let map_ptr = RemotePtr::<RemotePtr<StringIntMapNode>>::new(*addr as u32);
+            let map = map_ptr.read(handle)?;
+            data.insert(
+                "wins".to_owned(),
+                map.get(handle, "progress_ending0")?.unwrap_or_default()
+                    + map.get(handle, "progress_ending1")?.unwrap_or_default(),
+            );
+        }
+        Some(_) => bail!("Invalid address map: `stats-map` is not a number"),
+        None => {}
+    }
+
+    let formatted = args.format.format(&data).map_err(|e| match e {
+        FmtError::Invalid(msg) | FmtError::KeyError(msg) | FmtError::TypeError(msg) => {
+            anyhow!("Result format error: {msg}")
+        }
+    })?;
 
     println!("{formatted}");
 
