@@ -1,13 +1,35 @@
 [package]
-name = "noita-counter"
+name = "noita-utility-box"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1"
-bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 clap = { version = "4", features = ["derive"] }
-process-memory = "0.5"
+color-eyre = "0.6"
+derive_more = { version = "1", default-features = false, features = [
+    "debug",
+    "deref",
+    "display",
+] }
+eframe = { version = "0.29", features = ["persistence", "ron", "wgpu"] }
+egui_extras = "0.29"
+fastrand = "2"
+futures = "0.3"
+iced-x86 = "1"
+lazy-regex = "3.3.0"
+memchr = "2"
+obws = { version = "0.13", features = ["events"] }
+rayon = "1.10.0"
+read-process-memory = "0.1"
+serde = { version = "1", features = ["derive"] }
+smart-default = "0.7"
 strfmt = "0.2"
+strum = { version = "0.26", features = ["derive"] }
 sysinfo = "0.31"
+thiserror = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
 toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+zerocopy = { version = "0.7", default-features = false, features = ["alloc"] }
