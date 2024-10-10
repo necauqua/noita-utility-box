@@ -69,6 +69,18 @@
                 nativeBuildInputs = [ pkgs.fenix.complete.rustfmt-preview ] ++ nativeBuildInputs;
               }
             );
+
+          runtimeDeps = with pkgs; lib.makeLibraryPath [
+            vulkan-loader
+            libxkbcommon
+            wayland
+
+            # not sure those are exactly what's needed on X11
+            xorg.libX11
+            xorg.libXcursor
+            xorg.libXi
+            xorg.libXrandr
+          ];
         in
         rec {
           packages = {
@@ -76,18 +88,7 @@
               # todo make sure this is less cringe
               nativeBuildInputs = [ pkgs.makeWrapper ];
               postInstall = ''
-                wrapProgram $out/bin/${name} \
-                  --prefix LD_LIBRARY_PATH : ${with pkgs; lib.makeLibraryPath [
-                    vulkan-loader
-                    libxkbcommon
-                    wayland
-
-                    # not sure those are exactly what's needed on X11
-                    xorg.libX11
-                    xorg.libXcursor
-                    xorg.libXi
-                    xorg.libXrandr
-                  ]}
+                wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
               '';
             };
             x86_64-unknown-linux-musl = buildPackage "x86_64-unknown-linux-musl" {
@@ -129,6 +130,7 @@
               wineWowPackages.staging
             ];
 
+            LD_LIBRARY_PATH = runtimeDeps;
             RUST_BACKTRACE = "full";
             RUST_LOG = "info,wgpu_core=warn,wgpu_hal=warn,zbus=warn,noita_utility_box=trace";
           };
