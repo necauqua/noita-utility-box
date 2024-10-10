@@ -324,7 +324,7 @@ fn test() -> anyhow::Result<()> {
         .init();
 
     let mut system = sysinfo::System::new();
-    system.refresh_processes(ProcessesToUpdate::All);
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
     let Some(noita_pid) = system
         .processes_by_exact_name("noita.exe".as_ref())

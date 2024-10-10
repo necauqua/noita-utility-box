@@ -4,7 +4,7 @@ use std::{
 };
 
 use read_process_memory::{CopyAddress, Pid, ProcessHandle};
-use zerocopy::{AsBytes, FromBytes};
+use zerocopy::{FromBytes, IntoBytes};
 
 /// A a bit of a nicer wrapper over `read_process_memory` crate API.
 /// Could reimplement it/swap it here.
@@ -39,14 +39,14 @@ impl ProcessRef {
     }
 
     pub fn read_multiple<T: Pod>(&self, addr: u32, len: u32) -> io::Result<Vec<T>> {
-        let mut v = T::new_vec_zeroed(len as usize);
-        self.handle.copy_address(addr as usize, v.as_bytes_mut())?;
+        let mut v = T::new_vec_zeroed(len as usize).unwrap();
+        self.handle.copy_address(addr as usize, v.as_mut_bytes())?;
         Ok(v)
     }
 
     pub fn read<T: Pod>(&self, addr: u32) -> io::Result<T> {
         let mut t = T::new_zeroed();
-        self.handle.copy_address(addr as usize, t.as_bytes_mut())?;
+        self.handle.copy_address(addr as usize, t.as_mut_bytes())?;
         Ok(t)
     }
 }
@@ -60,6 +60,6 @@ impl TryFrom<u32> for ProcessRef {
 }
 
 /// A shortcut for the zerocopy traits and sanity bounds
-pub trait Pod: AsBytes + FromBytes + Sized + 'static {}
+pub trait Pod: IntoBytes + FromBytes + Sized + 'static {}
 
-impl<T: AsBytes + FromBytes + Sized + 'static> Pod for T {}
+impl<T: IntoBytes + FromBytes + Sized + 'static> Pod for T {}

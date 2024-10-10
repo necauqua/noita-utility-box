@@ -1,13 +1,13 @@
 use core::fmt;
 use std::{fmt::Debug, io, marker::PhantomData};
 
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::debug_type;
 
 use super::{process_ref::Pod, MemoryStorage, ProcessRef};
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy, PartialEq, Eq)]
+#[derive(FromBytes, IntoBytes, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct RawPtr(u32);
 
@@ -53,7 +53,7 @@ impl From<u32> for RawPtr {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes)]
+#[derive(FromBytes, IntoBytes)]
 #[repr(transparent)]
 pub struct Ptr<T, const BASE: u32 = 0> {
     raw: RawPtr,

@@ -147,6 +147,7 @@ impl ProcessPanel {
         if response.response.clicked() {
             self.system_info.refresh_processes_specifics(
                 ProcessesToUpdate::All,
+                true,
                 ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
             );
         }
@@ -173,6 +174,7 @@ impl ProcessPanel {
         // which refresh all is required
         self.system_info.refresh_processes_specifics(
             ProcessesToUpdate::All,
+            true,
             ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
         );
 

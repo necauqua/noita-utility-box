@@ -1,10 +1,10 @@
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{CString, PadBool, RawPtr, RealignedF64, StdString, StdVec};
 
 use super::{Bitset256, Vec2, Vec2i};
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct Component {
     pub vftable: RawPtr,
@@ -22,7 +22,7 @@ pub trait ComponentName {
     const NAME: &str;
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct WalletComponent {
     pub parent: Component,
@@ -36,7 +36,7 @@ impl ComponentName for WalletComponent {
     const NAME: &str = "WalletComponent";
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ItemComponent {
     pub parent: Component,
@@ -86,7 +86,7 @@ impl ComponentName for ItemComponent {
     const NAME: &str = "ItemComponent";
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct MaterialInventoryComponent {
     pub parent: Component,

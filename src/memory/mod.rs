@@ -8,7 +8,7 @@ use std::{
 };
 
 use lazy_regex::regex_replace_all;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, IntoBytes};
 
 mod process_ref;
 mod win32ptr;
@@ -18,7 +18,7 @@ pub mod exe_image;
 pub use process_ref::{Pod, ProcessRef};
 pub use win32ptr::{Ibo, Ptr, RawPtr};
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed)]
 pub struct PadBool<const PAD: usize = 0>(u8, [u8; PAD]);
 
@@ -59,7 +59,7 @@ impl<const PAD: usize> From<PadBool<PAD>> for bool {
 }
 
 // A hack to make zerocopy shut up
-#[derive(AsBytes, FromBytes, FromZeroes)]
+#[derive(FromBytes, IntoBytes)]
 #[repr(transparent)]
 pub struct RealignedF64([u32; 2]);
 
@@ -133,7 +133,7 @@ macro_rules! primitives {
 
 primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
 pub struct StdString {
     buf: [u8; 16],
@@ -160,7 +160,7 @@ impl StdString {
         if let Some(inline) = self.buf[..15].get(..self.len as usize) {
             DecodedStdString::Inline(inline)
         } else {
-            DecodedStdString::Heap(RawPtr::of(u32::read_from_prefix(&self.buf).unwrap()))
+            DecodedStdString::Heap(RawPtr::of(u32::read_from_prefix(&self.buf).unwrap().0))
         }
     }
 }
@@ -212,7 +212,7 @@ impl MemoryStorage for StdString {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(transparent)]
 pub struct CString(RawPtr);
 
@@ -269,7 +269,7 @@ impl MemoryStorage for CString {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes)]
+#[derive(FromBytes, IntoBytes)]
 #[repr(C, packed)]
 pub struct StdVec<T> {
     start: Ptr<T>,
@@ -353,7 +353,7 @@ impl<T: Pod> MemoryStorage for StdVec<T> {
     }
 }
 
-#[derive(Debug, AsBytes, FromBytes, FromZeroes)]
+#[derive(Debug, FromBytes, IntoBytes)]
 #[repr(C, packed)]
 pub struct StdMapNode<K, V> {
     left: Ptr<StdMapNode<K, V>>,
@@ -364,7 +364,7 @@ pub struct StdMapNode<K, V> {
     value: V,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed)]
 pub struct StdMap<K, V> {
     root: Ptr<StdMapNode<K, V>>,

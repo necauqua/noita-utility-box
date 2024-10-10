@@ -4,7 +4,7 @@ use std::{
     ops::Index,
 };
 
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
     ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
@@ -12,7 +12,7 @@ use crate::memory::{
 
 pub mod components;
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
 pub struct Bitset256([u8; 32]);
 
@@ -48,7 +48,7 @@ impl Debug for Bitset256 {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
 pub struct Vec2 {
     pub x: f32,
@@ -61,7 +61,7 @@ impl Debug for Vec2 {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
 pub struct Vec2i {
     pub x: i32,
@@ -74,7 +74,7 @@ impl Debug for Vec2i {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct EntityTransform {
     pub pos: Vec2,
@@ -83,7 +83,7 @@ pub struct EntityTransform {
     pub scale: Vec2,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct Entity {
     pub id: u32,
@@ -99,7 +99,7 @@ pub struct Entity {
     pub parent: Ptr<Entity>,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct EntityManager {
     pub vftable: RawPtr,
@@ -126,7 +126,7 @@ impl EntityManager {
     }
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct TagManager {
     pub tags: StdVec<StdString>,
@@ -135,7 +135,7 @@ pub struct TagManager {
     pub name: StdString,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct CellFactory {
     field_0x0: u32,
@@ -146,7 +146,7 @@ pub struct CellFactory {
     field_0x28: u32,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct MaterialDesc {
     _skip1: [u8; 0x18],
@@ -155,7 +155,7 @@ pub struct MaterialDesc {
 }
 const _: () = assert!(std::mem::size_of::<MaterialDesc>() == 0x290);
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GameGlobal {
     pub frame_counter: u32,
@@ -163,14 +163,14 @@ pub struct GameGlobal {
     pub cell_factory: Ptr<CellFactory>,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ComponentTypeManager {
     pub next_id: u32,
     pub component_indices: StdMap<StdString, u32>,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ComponentBuffer {
     pub vftable: RawPtr,
@@ -181,7 +181,7 @@ pub struct ComponentBuffer {
     pub storage: StdVec<RawPtr>,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GlobalStats {
     pub vftable: RawPtr,
@@ -198,7 +198,7 @@ pub struct GlobalStats {
     pub prev_best: GameStats,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GameStats {
     pub vftable: RawPtr,

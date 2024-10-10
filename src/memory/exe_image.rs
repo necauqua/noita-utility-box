@@ -3,7 +3,7 @@ use std::{ffi::CStr, io, ops::Range};
 use iced_x86::{Code, Decoder, DecoderOptions, Instruction};
 use memchr::memmem;
 use thiserror::Error;
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
+use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{Ibo, MemoryStorage, ProcessRef};
 
@@ -27,7 +27,7 @@ pub enum ReadImageError {
     Io(#[from] std::io::Error),
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 struct DosHeaderData {
     magic: [u8; 2],
@@ -35,7 +35,7 @@ struct DosHeaderData {
     e_lfanew: Ibo<PeHeaderData>,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 struct PeHeaderData {
     magic: [u8; 4],
@@ -66,7 +66,7 @@ struct PeHeaderData {
     export_directory_size: u32,
 }
 
-#[derive(AsBytes, FromBytes, FromZeroes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 struct ExportDirectoryData {
     _skip: [u8; 0x0c],
