@@ -132,6 +132,7 @@
             inputsFrom = builtins.attrValues packages;
             nativeBuildInputs = with pkgs; [
               rust-analyzer-nightly
+              pkgs.fenix.default.rustfmt-preview
               cargo-udeps
               cargo-nextest
             ];
