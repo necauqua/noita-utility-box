@@ -45,7 +45,6 @@
                 "rust-src"
                 "rustc"
               ])
-              targets.x86_64-unknown-linux-musl.latest.rust-std
               targets.x86_64-pc-windows-gnu.latest.rust-std
             ];
           # Make naersk aware of the tool chain which is to be used.
@@ -90,10 +89,6 @@
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
               '';
-            };
-            x86_64-unknown-linux-musl = buildPackage "x86_64-unknown-linux-musl" {
-              nativeBuildInputs = with pkgs; [ pkgsStatic.stdenv.cc ];
-              CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = "-C target-feature=+crt-static";
             };
             x86_64-pc-windows-gnu = buildPackage "x86_64-pc-windows-gnu" {
 
