@@ -1,26 +1,26 @@
 {
   description = "Noita Utility Box - a collection of memory-reading utilities for the game Noita";
 
-  # I don't understand like a quarter of this flake, haven't slept for the last 48 hours lol
-  # Adapted from https://gitlab.com/mud-rs/milk/-/blob/56f03874c577261f2c520461aebddd47c649ea30/flake.nix
-  # But suprisingly, it worked quickly, not complaining
+  nixConfig = {
+    extra-substituters = [ "https://necauqua.cachix.org" ];
+    extra-trusted-public-keys = [ "necauqua.cachix.org-1:XG5McOG0XwQ9kayUuEiEn0cPoLAMvc2TVs3fXqv/7Uc=" ];
+  };
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    naersk = {
-      url = "github:nix-community/naersk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+
+    # I usually go with oxalica + nixpkkgs rust builder,
+    # but fenix + naersk seem to be more convenient for the
+    # windows cross-compilation
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-  };
-
-  nixConfig = {
-    extra-substituters = [ "https://necauqua.cachix.org" ];
-    extra-trusted-public-keys = [ "necauqua.cachix.org-1:XG5McOG0XwQ9kayUuEiEn0cPoLAMvc2TVs3fXqv/7Uc=" ];
+    naersk = {
+      url = "github:nix-community/naersk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, naersk, flake-utils, fenix }:
@@ -36,7 +36,6 @@
             inherit system;
             overlays = [ fenix.overlays.default ];
           };
-          lib = pkgs.lib;
           toolchain = with pkgs.fenix;
             combine [
               (complete.withComponents [
@@ -47,66 +46,63 @@
               ])
               targets.x86_64-pc-windows-gnu.latest.rust-std
             ];
-          # Make naersk aware of the tool chain which is to be used.
           naersk-lib = naersk.lib.${system}.override {
             cargo = toolchain;
             rustc = toolchain;
           };
-          buildPackage = target: { nativeBuildInputs ? [ ], ... }@args:
-            naersk-lib.buildPackage (
-              {
-                inherit name version;
-                src = ./.;
-                doCheck = false; # a test or two that I left in there are *not* unit tests lol
-                strictDeps = true;
-              }
-              // (lib.optionalAttrs (target != system) {
-                CARGO_BUILD_TARGET = target;
-              })
-              // args
-              // {
-                nativeBuildInputs = [ pkgs.fenix.complete.rustfmt-preview ] ++ nativeBuildInputs;
-              }
-            );
 
           runtimeDeps = with pkgs; lib.makeLibraryPath [
             vulkan-loader
-            libxkbcommon
-            wayland
 
-            # not sure those are exactly what's needed on X11
+            # It's annoying that you need either wayland or the xorg stuff,
+            # but never both - idk how to make this better, and having to have
+            # an LD_LIBRARY_PATH wrapper thing is cringe on its own
+            wayland
+            libxkbcommon
+
             xorg.libX11
             xorg.libXcursor
             xorg.libXi
             xorg.libXrandr
           ];
+
+          buildPackage = attrs: naersk-lib.buildPackage (
+            {
+              inherit name version;
+              src = ./.;
+              strictDeps = true;
+
+              # a test or two that I left in there are *not* unit tests lol
+              # todo fix this
+              doCheck = false;
+            } // attrs
+          );
         in
         rec {
           packages = {
-            default = buildPackage system {
-              # todo make sure this is less cringe
+            default = buildPackage {
               nativeBuildInputs = [ pkgs.makeWrapper ];
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
               '';
             };
-            x86_64-pc-windows-gnu = buildPackage "x86_64-pc-windows-gnu" {
-
-              # we can run tests with wine ig, cool
-              # this needs some fixing tho
-              # doCheck = system == "x86_64-linux";
-              # nativeBuildInputs = lib.optional doCheck pkgs.wineWowPackages.stable;
-              # CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeScript "wine-wrapper" ''
-              #   # Without this, wine will error out when attempting to create the
-              #   # prefix in the build's homeless shelter.
-              #   export WINEPREFIX="$(mktemp -d)"
-              #   exec wine64 $@
-              # '';
-
+            windows = buildPackage {
               depsBuildBuild = with pkgs.pkgsCross.mingwW64; [
                 stdenv.cc
                 windows.pthreads
               ];
+
+              CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
+
+              # # This can run the tests with wine once we have/fix them
+              #
+              # nativeBuildInputs = [ pkgs.wineWowPackages.staging ];
+              #
+              # # run the given .exe with wine in a temp prefix
+              # CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeScript "wine-wrapper" ''
+              #   export WINEPREFIX="$(mktemp -d)"
+              #   exec wine64 $@
+              # '';
             };
           };
 
@@ -130,11 +126,6 @@
             RUST_LOG = "info,wgpu_core=warn,wgpu_hal=warn,zbus=warn,noita_utility_box=trace";
           };
         }
-      ) // {
-      # huh?. we doing hydra now?
-      hydraJobs = {
-        inherit (self.packages) x86_64-linux;
-      };
-    };
+      );
 }
 
