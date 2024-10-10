@@ -38,7 +38,7 @@
           };
           toolchain = with pkgs.fenix;
             combine [
-              (complete.withComponents [
+              (stable.withComponents [
                 "cargo"
                 "clippy"
                 "rust-src"
