@@ -6,10 +6,18 @@ directly from a running instance of [Noita](https://noitagame.com).
 This is useful if you want **no** mods to be installed yet want to do some
 advanced stuff.
 
+Download from GitHub Releases [here](https://github.com/necauqua/noita-utility-box/releases).
+
 ### Tools
 #### Orb Radar
 It has an orb radar tool which completely automatically finds 34th orb GTG
 locations for the running game and tracks player coords in realtime.
+
+> [!NOTE]
+> Click the image below to see a video of it in action, GitHub doesn't allow
+> embedding mp4s and a gif of good enough quality would be too big.
+
+[![Orb Radar demo](https://necauq.ua/images/orb-radar-demo.png)](https://necauq.ua/videos/orb-radar-demo.mp4)
 
 #### Live Stats
 Automatically gets current death/win/streak/best-streak counts, formats them
