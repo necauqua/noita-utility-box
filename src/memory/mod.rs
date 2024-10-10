@@ -26,6 +26,7 @@ pub type ByteBool = PadBool<0>;
 
 impl<const PAD: usize> PadBool<PAD> {
     pub fn as_bool(&self) -> bool {
+        debug_assert!(self.0 == 0 || self.0 == 1, "Invalid boolean: {self:?}");
         self.0 != 0
     }
 }
@@ -35,7 +36,7 @@ impl<const PAD: usize> Debug for PadBool<PAD> {
         match self.0 {
             0 => write!(f, "false"),
             1 => write!(f, "true"),
-            x => write!(f, "ByteBool({x}, {:?})", { self.1 }),
+            x => write!(f, "PadBool({x:02x}, {:02x?})", { self.1 }),
         }
     }
 }

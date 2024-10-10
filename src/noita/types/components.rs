@@ -1,6 +1,6 @@
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::memory::{CString, PadBool, RawPtr, StdString, StdVec};
+use crate::memory::{ByteBool, CString, PadBool, RawPtr, StdString, StdVec};
 
 use super::{Bitset256, Vec2, Vec2i};
 
@@ -40,22 +40,22 @@ impl ComponentName for WalletComponent {
 #[repr(C)]
 pub struct ItemComponent {
     pub item_name: StdString,
-    pub is_stackable: PadBool,
-    pub is_consumable: PadBool,
-    pub stats_count_as_item_pick_up: PadBool,
-    pub auto_pickup: PadBool,
+    pub is_stackable: ByteBool,
+    pub is_consumable: ByteBool,
+    pub stats_count_as_item_pick_up: ByteBool,
+    pub auto_pickup: ByteBool,
     pub permanently_attached: PadBool<3>,
     pub uses_remaining: i32,
-    pub is_identified: PadBool,
-    pub is_frozen: PadBool,
-    pub collect_nondefault_actions: PadBool,
-    pub remove_on_death: PadBool,
-    pub remove_on_death_if_empty: PadBool,
-    pub remove_default_child_actions_on_death: PadBool,
-    pub play_hover_animation: PadBool,
-    pub play_spinning_animation: PadBool,
-    pub is_equipable_forced: PadBool,
-    pub play_pick_sound: PadBool,
+    pub is_identified: ByteBool,
+    pub is_frozen: ByteBool,
+    pub collect_nondefault_actions: ByteBool,
+    pub remove_on_death: ByteBool,
+    pub remove_on_death_if_empty: ByteBool,
+    pub remove_default_child_actions_on_death: ByteBool,
+    pub play_hover_animation: ByteBool,
+    pub play_spinning_animation: ByteBool,
+    pub is_equipable_forced: ByteBool,
+    pub play_pick_sound: ByteBool,
     pub drinkable: PadBool<1>,
     pub spawn_pos: Vec2,
     pub max_child_items: i32,
@@ -70,7 +70,7 @@ pub struct ItemComponent {
     pub inventory_slot: Vec2i,
     pub next_frame_pickable: i32,
     pub npc_next_frame_pickable: i32,
-    pub is_pickable: PadBool,
+    pub is_pickable: ByteBool,
     pub is_hittable_always: PadBool<2>,
     pub item_pickup_radius: f32,
     pub camera_max_distance: f32,
@@ -88,8 +88,8 @@ impl ComponentName for ItemComponent {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C, packed(4))]
 pub struct MaterialInventoryComponent {
-    pub drop_as_item: PadBool,
-    pub on_death_spill: PadBool,
+    pub drop_as_item: ByteBool,
+    pub on_death_spill: ByteBool,
     pub leak_gently: PadBool<1>,
     pub leak_on_damage_percent: f32,
     pub leak_pressure_min: f32,
@@ -97,10 +97,10 @@ pub struct MaterialInventoryComponent {
     pub min_damage_to_leak: f32,
     pub b2_force_on_leak: f32,
     pub death_throw_particle_velocity_coeff: f32,
-    pub kill_when_empty: PadBool,
+    pub kill_when_empty: ByteBool,
     pub halftime_materials: PadBool<2>,
     pub do_reactions: i32,
-    pub do_reactions_explosions: PadBool,
+    pub do_reactions_explosions: ByteBool,
     pub do_reactions_entities: PadBool<2>,
     pub reaction_speed: i32,
     pub reactions_shaking_speeds_up: PadBool<3>,
