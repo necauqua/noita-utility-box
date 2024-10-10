@@ -1,12 +1,12 @@
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::memory::{CString, PadBool, RawPtr, RealignedF64, StdString, StdVec};
+use crate::memory::{CString, PadBool, RawPtr, StdString, StdVec};
 
 use super::{Bitset256, Vec2, Vec2i};
 
 #[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
-pub struct Component {
+#[repr(C, packed)]
+pub struct Component<D> {
     pub vftable: RawPtr,
     _field_0x4: u32,
     pub type_name: CString,
@@ -16,6 +16,7 @@ pub struct Component {
     pub tags: Bitset256,
     some_vec: StdVec<u32>, // no idea what this is yet,
     _field_0x44: u32,
+    pub data: D,
 }
 
 pub trait ComponentName {
@@ -25,7 +26,6 @@ pub trait ComponentName {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct WalletComponent {
-    pub parent: Component,
     pub money: u64,
     pub money_spent: u64,
     pub money_prev_frame: u64,
@@ -39,7 +39,6 @@ impl ComponentName for WalletComponent {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ItemComponent {
-    pub parent: Component,
     pub item_name: StdString,
     pub is_stackable: PadBool,
     pub is_consumable: PadBool,
@@ -87,9 +86,8 @@ impl ComponentName for ItemComponent {
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
+#[repr(C, packed(4))]
 pub struct MaterialInventoryComponent {
-    pub parent: Component,
     pub drop_as_item: PadBool,
     pub on_death_spill: PadBool,
     pub leak_gently: PadBool<1>,
@@ -106,7 +104,7 @@ pub struct MaterialInventoryComponent {
     pub do_reactions_entities: PadBool<2>,
     pub reaction_speed: i32,
     pub reactions_shaking_speeds_up: PadBool<3>,
-    pub max_capacity: RealignedF64,
+    pub max_capacity: f64,
     pub count_per_material_type: StdVec<f64>,
     pub audio_collision_size_modifier_amount: f32,
     pub is_death_handled: PadBool<3>,

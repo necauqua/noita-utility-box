@@ -58,42 +58,6 @@ impl<const PAD: usize> From<PadBool<PAD>> for bool {
     }
 }
 
-// A hack to make zerocopy shut up
-#[derive(FromBytes, IntoBytes)]
-#[repr(transparent)]
-pub struct RealignedF64([u32; 2]);
-
-impl RealignedF64 {
-    pub fn as_f64(&self) -> f64 {
-        f64::from_bits(self.0[0] as u64 | (self.0[1] as u64) << 32)
-    }
-}
-
-impl Debug for RealignedF64 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Debug::fmt(&self.as_f64(), f)
-    }
-}
-
-impl Display for RealignedF64 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.as_f64(), f)
-    }
-}
-
-impl From<f64> for RealignedF64 {
-    fn from(f: f64) -> Self {
-        let bits = f.to_bits();
-        Self([bits as u32, (bits >> 32) as u32])
-    }
-}
-
-impl From<RealignedF64> for f64 {
-    fn from(f: RealignedF64) -> Self {
-        f.as_f64()
-    }
-}
-
 pub trait MemoryStorage: Pod {
     type Value;
 

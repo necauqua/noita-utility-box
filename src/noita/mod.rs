@@ -2,8 +2,9 @@ use std::{collections::HashMap, io, marker::PhantomData};
 
 use derive_more::{derive::Display, Debug};
 use types::{
-    components::ComponentName, ComponentBuffer, ComponentTypeManager, Entity, EntityManager,
-    GameGlobal, GlobalStats, TagManager,
+    components::{Component, ComponentName},
+    ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
+    TagManager,
 };
 
 use crate::memory::{MemoryStorage, Pod, ProcessRef, Ptr};
@@ -285,7 +286,7 @@ impl<T> ComponentStore<T>
 where
     T: ComponentName + Pod,
 {
-    pub fn get(&self, entity: &Entity) -> io::Result<Option<T>> {
+    pub fn get_full(&self, entity: &Entity) -> io::Result<Option<Component<T>>> {
         let buffer = self.buffer.read(&self.proc)?;
 
         let idx = buffer
@@ -304,7 +305,11 @@ where
         if ptr.is_null() {
             return Ok(None);
         }
-        Ok(Some(ptr.read(&self.proc)?))
+        Ok(Some(ptr.read::<Component<T>>(&self.proc)?))
+    }
+
+    pub fn get(&self, entity: &Entity) -> io::Result<Option<T>> {
+        Ok(self.get_full(entity)?.map(|c| c.data))
     }
 }
 
