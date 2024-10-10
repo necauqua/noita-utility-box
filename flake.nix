@@ -99,8 +99,8 @@
               # nativeBuildInputs = [ pkgs.wineWowPackages.staging ];
               #
               # # run the given .exe with wine in a temp prefix
-              # CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeScript "wine-wrapper" ''
-              #   export WINEPREFIX="$(mktemp -d)"
+              # CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeShellScript "wine-wrapper" ''
+              #   export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
               #   exec wine64 $@
               # '';
             };
@@ -111,14 +111,29 @@
             program = "${packages.default}/bin/${name}";
           };
 
+          # This is for testing only lul
+          # `nix run .#windows-with-wine` (or github:necauqua/noita-utility-box#windows-with-wine if not in the repo)
+          # Didn't find a way to run it in the Noita proton prefix in a way that allows sysinfo to find the noita process yet
+          apps.windows-with-wine =
+            {
+              type = "app";
+              program =
+                let
+                  script = with pkgs; writeShellScript "${name}-with-wine" ''
+                    export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
+                    trap "rm -rf \"$WINEPREFIX\"" EXIT
+                    ${wineWowPackages.staging}/bin/wine64 ${packages.windows}/bin/${name}.exe
+                  '';
+                in
+                "${script}";
+            };
+
           devShells.default = pkgs.mkShell {
             inputsFrom = builtins.attrValues packages;
             nativeBuildInputs = with pkgs; [
               rust-analyzer-nightly
               cargo-udeps
               cargo-nextest
-
-              wineWowPackages.staging
             ];
 
             LD_LIBRARY_PATH = runtimeDeps;
