@@ -44,7 +44,7 @@
                 "rust-src"
                 "rustc"
               ])
-              targets.x86_64-pc-windows-gnu.latest.rust-std
+              targets.x86_64-pc-windows-gnu.stable.rust-std
             ];
           naersk-lib = naersk.lib.${system}.override {
             cargo = toolchain;
