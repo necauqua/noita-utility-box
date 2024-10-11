@@ -1,5 +1,6 @@
 [package]
 name = "noita-utility-box"
+description = "Noita Utility Box - a collection of memory-reading utilities for the game Noita"
 version = "0.1.0"
 edition = "2021"
 
@@ -36,3 +37,6 @@ zerocopy = { version = "0.8", default-features = false, features = [
     "alloc",
     "derive",
 ] }
+
+[build-dependencies]
+winresource = { version = "0.1", default-features = false }

@@ -1,7 +1,10 @@
 use std::{
+    env,
     path::Path,
     process::{Command, Stdio},
 };
+
+use winresource::WindowsResource;
 
 fn format(dirty: bool, commit_id: &str, branches: &str) -> (String, Option<String>) {
     // no branches or multiple
@@ -88,7 +91,7 @@ fn get_from_git() -> Option<(String, Option<String>)> {
     Some(format(!is_empty, &commit_id, branch))
 }
 
-fn main() {
+fn emit_build_info() {
     // either git or colocated
     if Path::new(".git/HEAD").exists() {
         println!("cargo::rerun-if-changed=.git/HEAD");
@@ -106,4 +109,18 @@ fn main() {
     if let Some(info) = info {
         println!("cargo::rustc-env=JJ_INFO={info}");
     }
+}
+
+fn embed_windows_resource() {
+    if env::var_os("CARGO_CFG_WINDOWS").is_some() {
+        WindowsResource::new()
+            .set_icon("src/icon.ico")
+            .compile()
+            .expect("Failed to embed the Windows resource");
+    }
+}
+
+fn main() {
+    emit_build_info();
+    embed_windows_resource();
 }
