@@ -15,6 +15,8 @@ pub struct Settings {
     #[default([0.5; Interval::COUNT])]
     intervals: [f32; Interval::COUNT],
     #[default(true)]
+    pub check_for_updates: bool,
+    #[default(true)]
     pub check_export_name: bool,
     #[default(true)]
     pub pipette: bool,
@@ -105,6 +107,9 @@ impl Settings {
                     );
                     ui.end_row();
                 }
+
+                ui.checkbox(&mut self.check_for_updates, "Check for updates on startup");
+                ui.end_row();
 
                 ui.checkbox(&mut self.check_export_name, "Check export name")
                     .on_hover_text("When detecting noita, check that the executable export name is 'wizard_physics.exe'");

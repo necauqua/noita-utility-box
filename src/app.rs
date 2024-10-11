@@ -13,6 +13,7 @@ use crate::{
         address_maps::AddressMaps, live_stats::LiveStats, material_pipette::MaterialPipette,
         orb_radar::OrbRadar, process_panel::ProcessPanel, settings::Settings,
     },
+    update_check::UpdateChecker,
     util::persist,
 };
 
@@ -44,6 +45,9 @@ pub struct NoitaUtilityBox {
     material_pipette: MaterialPipette,
     state: AppState,
 
+    #[serde(skip)]
+    update_checker: UpdateChecker,
+
     #[cfg(debug_assertions)]
     #[serde(skip)]
     repaints: u64,
@@ -66,6 +70,9 @@ pub enum CurrentTab {
 
 impl eframe::App for NoitaUtilityBox {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.update_checker
+            .check(ctx, &mut self.state.settings.check_for_updates);
+
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
             ui.add_space(0.5);
             ui.horizontal_wrapped(|ui| {

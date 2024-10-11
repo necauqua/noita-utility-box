@@ -1,6 +1,6 @@
 use derive_more::Debug;
 use std::{borrow::Borrow, future::Future};
-use tokio::sync::oneshot::{error::TryRecvError, Receiver};
+use tokio::sync::oneshot::{self, error::TryRecvError, Receiver};
 
 /// A variant of poll-promise that can be used as storage. Uses tokio.
 #[derive(Debug)]
@@ -23,7 +23,7 @@ impl<T> Promise<T> {
     {
         // we use tokio and not pollster or something because
         // obws brings (and depends on) tokio anyway
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = oneshot::channel();
         tokio::spawn(async { tx.send(future.await) });
         Self::Pending(rx)
     }

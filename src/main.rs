@@ -7,6 +7,7 @@ use tracing_subscriber::{fmt::format::FmtSpan, EnvFilter};
 mod app;
 mod orb_searcher;
 mod tools;
+mod update_check;
 mod util;
 
 fn main() -> Result<()> {
