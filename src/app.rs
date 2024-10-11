@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use eframe::{
-    egui::{self, Align, Layout, RichText, ViewportBuilder},
+    egui::{self, ViewportBuilder},
     get_value, icon_data, set_value, NativeOptions,
 };
 use noita_utility_box::noita::{Noita, Seed};
@@ -110,16 +110,16 @@ impl eframe::App for NoitaUtilityBox {
 
             #[cfg(debug_assertions)]
             {
+                use eframe::egui::{Align, Layout, RichText};
+
                 ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
                     self.repaints += 1;
                     ui.label(RichText::new(format!("Repaints: {}", self.repaints)).small());
-
-                    let text = RichText::new("⚠ Debug build ⚠")
-                        .small()
-                        .color(ui.visuals().warn_fg_color);
-                    ui.label(text)
-                        // .on_hover_text(format!("Commit: {}", env!("JJ_COMMIT")))
-                        .on_hover_text("Commit: todo extract build commit+branch");
+                    ui.label(
+                        RichText::new("⚠ Debug build ⚠")
+                            .small()
+                            .color(ui.visuals().warn_fg_color),
+                    )
                 });
             }
         });

@@ -1,6 +1,9 @@
-use std::time::Instant;
+use std::{env, time::Instant};
 
-use eframe::egui::{Checkbox, CollapsingHeader, Context, DragValue, Grid, ScrollArea};
+use eframe::egui::{
+    Checkbox, CollapsingHeader, Context, DragValue, FontId, Grid, Label, RichText, ScrollArea,
+    TextStyle,
+};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum::{EnumCount, EnumIter, EnumMessage, IntoEnumIterator};
@@ -60,6 +63,26 @@ impl Timer {
 impl Settings {
     pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
         ui.heading("Settings");
+
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.add(Label::new(RichText::new("Build: ").small()).selectable(false));
+
+            let commit = env!("JJ_COMMIT");
+            let info = option_env!("JJ_INFO").unwrap_or(&commit[..7]);
+
+            let small_size = TextStyle::Small.resolve(ui.style()).size;
+            let info = RichText::new(info).font(FontId::monospace(small_size));
+
+            // github actions set this
+            if let Some(repo) = option_env!("GITHUB_REPOSITORY") {
+                let url = format!("https://github.com/{repo}/tree/{commit}");
+                ui.hyperlink_to(info, url.clone()).on_hover_text(url);
+            } else {
+                ui.label(info).on_hover_text(commit);
+            }
+        });
+
         ui.separator();
 
         ScrollArea::vertical().show(ui, |ui| {
