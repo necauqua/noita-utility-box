@@ -148,7 +148,7 @@ impl NoitaUtilityBox {
                 viewport: ViewportBuilder {
                     title: Some("Noita Utility Box".into()),
                     icon: Some(Arc::new(
-                        icon_data::from_png_bytes(include_bytes!("icon.png")).unwrap(),
+                        icon_data::from_png_bytes(include_bytes!("../res/icon.png")).unwrap(),
                     )),
                     ..Default::default()
                 },

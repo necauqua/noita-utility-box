@@ -86,7 +86,7 @@
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
                 mkdir -p $out/share/icons/hicolor/256x256/apps
-                cp ${./src/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
+                cp ${./res/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
               '';
               desktopItems = [
                 (pkgs.makeDesktopItem {

@@ -121,10 +121,10 @@ fn emit_build_info() {
 
 fn embed_windows_resource() {
     if env::var_os("CARGO_CFG_WINDOWS").is_some() {
-        WindowsResource::new()
-            .set_icon("src/icon.ico")
-            .compile()
-            .expect("Failed to embed the Windows resource");
+        if let Err(e) = WindowsResource::new().set_icon("res/icon.ico").compile() {
+            eprintln!("Failed to embed Windows resource: {e}");
+            std::process::exit(1);
+        }
     }
 }
 
