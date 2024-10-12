@@ -26,8 +26,7 @@
   outputs = { self, nixpkgs, naersk, flake-utils, fenix }:
     let
       cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-      name = cargoToml.package.name;
-      version = cargoToml.package.version;
+      inherit (cargoToml.package) name version description;
     in
     flake-utils.lib.eachDefaultSystem
       (system:
@@ -83,10 +82,22 @@
         rec {
           packages = {
             default = buildPackage {
-              nativeBuildInputs = [ pkgs.makeWrapper ];
+              nativeBuildInputs = with pkgs; [ makeWrapper copyDesktopItems ];
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
+                mkdir -p $out/share/icons/hicolor/256x256/apps
+                ln -s ${./src/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
               '';
+              desktopItems = [
+                (pkgs.makeDesktopItem {
+                  name = "Noita Utility Box";
+                  exec = "${name}";
+                  icon = "${name}";
+                  desktopName = "Noita Utility Box";
+                  comment = description;
+                  categories = [ "System" "Utility" "Debugger" "Amusement" ];
+                })
+              ];
             };
             windows = buildPackage {
               depsBuildBuild = with pkgs.pkgsCross.mingwW64; [
