@@ -1,6 +1,5 @@
 use std::{
-    env,
-    path::Path,
+    env::var,
     process::{Command, Stdio},
 };
 
@@ -101,27 +100,23 @@ fn get_from_git() -> Option<(String, String)> {
 }
 
 fn emit_build_info() {
-    // either git or colocated
-    if Path::new(".git/HEAD").exists() {
-        println!("cargo::rerun-if-changed=.git/HEAD");
-    }
-    // any jj op change
-    if Path::new(".jj/repo/op_heads/heads").exists() {
-        println!("cargo::rerun-if-changed=.jj/repo/op_heads/heads");
-    }
-    println!("cargo::rerun-if-env-changed=BUILD_COMMIT");
-
     let (commit, info) = get_from_jj()
         .or_else(get_from_git)
         .expect("Building without jj or git installed, or not in a repo");
 
     println!("cargo::rustc-env=BUILD_COMMIT={commit}");
-    println!("cargo::rustc-env=BUILD_INFO={info}");
+    println!("cargo::rustc-env=BUILD_INFO={info}")
 }
 
 fn embed_windows_resource() {
-    if env::var_os("CARGO_CFG_WINDOWS").is_some() {
-        if let Err(e) = WindowsResource::new().set_icon("res/icon.ico").compile() {
+    if var("CARGO_CFG_WINDOWS").is_ok() {
+        let res = WindowsResource::new()
+            .set_icon("res/icon.ico")
+            .set("ProductName", "Noita Utility Box")
+            .set("CompanyName", "necauqua")
+            .set("LegalCopyright", &var("CARGO_PKG_LICENSE").unwrap())
+            .compile();
+        if let Err(e) = res {
             eprintln!("Failed to embed Windows resource: {e}");
             std::process::exit(1);
         }

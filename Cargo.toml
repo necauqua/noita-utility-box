@@ -1,7 +1,8 @@
 [package]
 name = "noita-utility-box"
-description = "Noita Utility Box - a collection of memory-reading utilities for the game Noita"
+description = "A collection of memory-reading utilities for the game Noita"
 version = "0.1.0"
+license = "MIT"
 edition = "2021"
 
 [dependencies]

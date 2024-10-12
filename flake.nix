@@ -1,5 +1,5 @@
 {
-  description = "Noita Utility Box - a collection of memory-reading utilities for the game Noita";
+  description = "A collection of memory-reading utilities for the game Noita";
 
   nixConfig = {
     extra-substituters = [ "https://necauqua.cachix.org" ];
