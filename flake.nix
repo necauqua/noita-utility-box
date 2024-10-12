@@ -86,7 +86,7 @@
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
                 mkdir -p $out/share/icons/hicolor/256x256/apps
-                ln -s ${./src/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
+                cp ${./src/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
               '';
               desktopItems = [
                 (pkgs.makeDesktopItem {
@@ -99,6 +99,43 @@
                 })
               ];
             };
+            # my bad, "unpatches your nix executable"
+            # this still depends on like glibc 2.39 so gl running this on not newest ubuntu
+            linux = pkgs.stdenv.mkDerivation {
+              inherit name version;
+              src = packages.default;
+              phases = [ "installPhase" ];
+              installPhase = ''
+                cp -r $src $out
+                chmod -R +w $out
+                mv $out/bin/{.${name}-wrapped,${name}}
+                ${pkgs.patchelf}/bin/patchelf $out/bin/${name} \
+                  --set-interpreter "/lib64/ld-linux-x86-64.so.2" \
+                  --set-rpath ""
+              '';
+            };
+            # this is made significantly easier by the fact that we don't have
+            # any system dependencies other than runtime x11/wayland stuff
+            deb = pkgs.stdenv.mkDerivation {
+              inherit version;
+              name = "${name}.deb";
+              src = packages.linux;
+              phases = [ "installPhase" ];
+              installPhase = ''
+                mkdir -p package/{usr,DEBIAN}
+                cp -r $src/* package/usr
+                cat > package/DEBIAN/control <<EOF
+                Package: ${name}
+                Version: ${version}
+                Architecture: amd64
+                Maintainer: necauqua <him@necauq.ua>
+                Description: ${description}
+                EOF
+                ${pkgs.dpkg}/bin/dpkg-deb --build package
+                mv package.deb $out
+              '';
+            };
+
             windows = buildPackage {
               depsBuildBuild = with pkgs.pkgsCross.mingwW64; [
                 stdenv.cc
