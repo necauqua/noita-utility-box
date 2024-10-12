@@ -21,9 +21,14 @@
       url = "github:nix-community/naersk";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    build-env = {
+      url = "file+file:///dev/null";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, naersk, flake-utils, fenix }:
+  outputs = { self, nixpkgs, naersk, flake-utils, fenix, build-env }:
     let
       cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
       inherit (cargoToml.package) name version description;
@@ -50,7 +55,7 @@
             rustc = toolchain;
           };
 
-          runtimeDeps = with pkgs; lib.makeLibraryPath [
+          dynamicDeps = with pkgs; lib.makeLibraryPath [
             vulkan-loader
 
             # It's annoying that you need either wayland or the xorg stuff,
@@ -70,29 +75,32 @@
               inherit name version;
               src = ./.;
               strictDeps = true;
-
-              # a test or two that I left in there are *not* unit tests lol
-              # todo fix this
-              doCheck = false;
+              doCheck = true;
 
               NIX_REV = self.rev or "dirty";
-            } // attrs
+            } // attrs // builtins.fromTOML (builtins.readFile "${build-env}")
           );
+
+          wineWrap = name: cmd: pkgs.writeShellScript "${name}-in-wine" ''
+            export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
+            trap "rm -rf \"$WINEPREFIX\"" EXIT
+            exec ${pkgs.wineWowPackages.staging}/bin/wine64 ${cmd}
+          '';
         in
         rec {
           packages = {
             default = buildPackage {
               nativeBuildInputs = with pkgs; [ makeWrapper copyDesktopItems ];
               postInstall = ''
-                wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${runtimeDeps}
+                wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${dynamicDeps}
                 mkdir -p $out/share/icons/hicolor/256x256/apps
                 cp ${./res/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
               '';
               desktopItems = [
                 (pkgs.makeDesktopItem {
-                  name = "Noita Utility Box";
-                  exec = "${name}";
-                  icon = "${name}";
+                  inherit name;
+                  exec = name;
+                  icon = name;
                   desktopName = "Noita Utility Box";
                   comment = description;
                   categories = [ "System" "Utility" "Debugger" "Amusement" ];
@@ -141,18 +149,12 @@
                 stdenv.cc
                 windows.pthreads
               ];
+              doCheck = false;
 
               CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
 
-              # # This can run the tests with wine once we have/fix them
-              #
-              # nativeBuildInputs = [ pkgs.wineWowPackages.staging ];
-              #
-              # # run the given .exe with wine in a temp prefix
-              # CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeShellScript "wine-wrapper" ''
-              #   export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
-              #   exec wine64 $@
-              # '';
+              # can run the tests in wine
+              CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = wineWrap "${name}-tests" "$@";
             };
           };
 
@@ -164,30 +166,23 @@
           # This is for testing only lul
           # `nix run .#windows-with-wine` (or github:necauqua/noita-utility-box#windows-with-wine if not in the repo)
           # Didn't find a way to run it in the Noita proton prefix in a way that allows sysinfo to find the noita process yet
-          apps.windows-with-wine =
-            {
-              type = "app";
-              program =
-                let
-                  script = with pkgs; writeShellScript "${name}-with-wine" ''
-                    export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
-                    trap "rm -rf \"$WINEPREFIX\"" EXIT
-                    ${wineWowPackages.staging}/bin/wine64 ${packages.windows}/bin/${name}.exe
-                  '';
-                in
-                "${script}";
-            };
+          apps.windows-with-wine = {
+            type = "app";
+            program = wineWrap name "${packages.windows}/bin/${name}.exe";
+          };
 
           devShells.default = pkgs.mkShell {
             inputsFrom = builtins.attrValues packages;
+
             nativeBuildInputs = with pkgs; [
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview
-              cargo-udeps
               cargo-nextest
             ];
 
-            LD_LIBRARY_PATH = runtimeDeps;
+            LD_LIBRARY_PATH = dynamicDeps;
+
+            RUSTDOCFLAGS = "-D warnings";
             RUST_BACKTRACE = "full";
             RUST_LOG = "info,wgpu_core=warn,wgpu_hal=warn,zbus=warn,noita_utility_box=trace";
           };

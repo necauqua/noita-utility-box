@@ -229,74 +229,70 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
 }
 
 #[cfg(test)]
-mod tests {
+#[ignore]
+#[test]
+fn test() -> anyhow::Result<()> {
     use crate::memory::exe_image::PeHeader;
 
     use super::*;
 
     use std::time::Instant;
 
+    use anyhow::{bail, Context};
     use sysinfo::ProcessesToUpdate;
     use tracing::level_filters::LevelFilter;
     use tracing_subscriber::EnvFilter;
 
-    #[test]
-    fn test() -> anyhow::Result<()> {
-        tracing_subscriber::fmt()
-            .with_env_filter(
-                EnvFilter::builder()
-                    .with_default_directive(LevelFilter::DEBUG.into())
-                    .from_env()?,
-            )
-            .init();
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::DEBUG.into())
+                .from_env()?,
+        )
+        .try_init();
 
-        let mut system = sysinfo::System::new();
-        system.refresh_processes(ProcessesToUpdate::All, true);
+    let mut system = sysinfo::System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
-        let Some(noita_pid) = system
-            .processes_by_exact_name("noita.exe".as_ref())
-            .find(|p| p.thread_kind().is_none())
-        else {
-            eprintln!("Noita process not found");
-            return Ok(());
-        };
+    let noita_pid = system
+        .processes_by_exact_name("noita.exe".as_ref())
+        .find(|p| p.thread_kind().is_none())
+        .context("Noita process not found")?;
 
-        let proc = noita_pid.pid().as_u32().try_into()?;
-        let header = PeHeader::read(&proc)?;
-        if header.timestamp() != 0x66ba59d6 {
-            eprintln!("Timestamp mismatch: 0x{:x}", header.timestamp());
-            return Ok(());
-        }
-
-        let instant = Instant::now();
-        let image = header.read_image(&proc)?;
-        println!("Image read in {:?}", instant.elapsed());
-
-        let instant = Instant::now();
-        let globals = run(&image);
-        println!("Pointers found in {:?}", instant.elapsed());
-
-        println!("{globals:#?}");
-
-        // destructure so we know to update this when growing the list lol
-        let NoitaGlobals {
-            world_seed,
-            ng_count,
-            global_stats,
-            game_global,
-            entity_manager,
-            entity_tag_manager,
-            component_type_manager,
-        } = NoitaGlobals::debug();
-
-        assert_eq!(globals.world_seed, world_seed);
-        assert_eq!(globals.ng_count, ng_count);
-        assert_eq!(globals.global_stats, global_stats);
-        assert_eq!(globals.game_global, game_global);
-        assert_eq!(globals.entity_manager, entity_manager);
-        assert_eq!(globals.entity_tag_manager, entity_tag_manager);
-        assert_eq!(globals.component_type_manager, component_type_manager);
-
-        Ok(())
+    let proc = noita_pid.pid().as_u32().try_into()?;
+    let header = PeHeader::read(&proc)?;
+    if header.timestamp() != 0x66ba59d6 {
+        bail!("Timestamp mismatch: 0x{:x}", header.timestamp());
     }
+
+    let instant = Instant::now();
+    let image = header.read_image(&proc)?;
+    println!("Image read in {:?}", instant.elapsed());
+
+    let instant = Instant::now();
+    let globals = run(&image);
+    println!("Pointers found in {:?}", instant.elapsed());
+
+    println!("{globals:#?}");
+
+    // destructure so we know to update this when growing the list lol
+    let NoitaGlobals {
+        world_seed,
+        ng_count,
+        global_stats,
+        game_global,
+        entity_manager,
+        entity_tag_manager,
+        component_type_manager,
+    } = NoitaGlobals::debug();
+
+    assert_eq!(globals.world_seed, world_seed);
+    assert_eq!(globals.ng_count, ng_count);
+    assert_eq!(globals.global_stats, global_stats);
+    assert_eq!(globals.game_global, game_global);
+    assert_eq!(globals.entity_manager, entity_manager);
+    assert_eq!(globals.entity_tag_manager, entity_tag_manager);
+    assert_eq!(globals.component_type_manager, component_type_manager);
+
+    Ok(())
 }

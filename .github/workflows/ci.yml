@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/Cargo.*'
+      - '**.rs'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**/Cargo.*'
+      - '**.rs'
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - uses: actions/checkout@v4
+
+      - name: Check (flake)
+        uses: DeterminateSystems/flake-checker-action@v9
+        with:
+          fail-mode: true
+
+      - name: Check (fmt)
+        run: nix develop --command -- cargo fmt --check
+
+      - name: Check (clippy)
+        run: nix develop --command -- cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Check (docs)
+        run: nix develop --command -- cargo doc --all-features
+
+  build:
+    name: Test and Build
+    needs:
+      - checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - uses: actions/checkout@v4
+
+      # - name: Test
+      #   run: nix develop --command -- cargo test --all-features
+      #   timeout-minutes: 5
+
+      # the default package does run the tests
+      - name: Build
+        run: nix build . .#windows .#linux .#deb
+
+      # push the .#default package build result to cachix
+      - id: path
+        run: echo "PATH=$(readlink result)" >> $GITHUB_OUTPUT
+      - uses: cachix/cachix-action@v14
+        with:
+          name: necauqua
+          pathsToPush: ${{ steps.path.outputs.PATH }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Finalize artifacts
+        run: ./.github/workflows/finalize-artifacts.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows
+          path: noita-utility-box.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Generic Linux
+          path: noita-utility-box-linux-generic.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Debian
+          path: noita-utility-box.deb

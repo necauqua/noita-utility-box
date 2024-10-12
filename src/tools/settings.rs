@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum::{EnumCount, EnumIter, EnumMessage, IntoEnumIterator};
 
-use crate::{app::AppState, update_check::VERSION};
+use crate::{app::AppState, update_check::RELEASE_VERSION};
 
 #[derive(Debug, Serialize, Deserialize, Clone, SmartDefault)]
 pub struct Settings {
@@ -69,19 +69,16 @@ impl Settings {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
 
-            // try to fix up the link in case of PR CI builds or something
-            let repo = option_env!("GITHUB_REPOSITORY").unwrap_or("necauqua/noita-utility-box");
-            let (label, url) = match VERSION {
-                Some(tag) => {
+            let repo = "https://github.com/necauqua/noita-utility-box";
+            let (label, url) = match RELEASE_VERSION {
+                Some(version) => {
                     ui.add(Label::new(RichText::new("Version: ").small()));
-                    let url = format!("https://github.com/{repo}/releases/tag/{tag}");
-                    (tag, url)
+                    (version, format!("{repo}/releases/tag/v{version}"))
                 }
                 None => {
                     ui.add(Label::new(RichText::new("Build: ").small()).selectable(false));
                     let commit = env!("BUILD_COMMIT");
-                    let url = format!("https://github.com/{repo}/tree/{commit}");
-                    (env!("BUILD_INFO"), url)
+                    (env!("BUILD_INFO"), format!("{repo}/tree/{commit}"))
                 }
             };
 

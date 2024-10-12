@@ -314,8 +314,10 @@ where
 }
 
 #[cfg(test)]
+#[ignore]
 #[test]
 fn test() -> anyhow::Result<()> {
+    use anyhow::Context;
     use sysinfo::ProcessesToUpdate;
     use tracing::level_filters::LevelFilter;
     use tracing_subscriber::EnvFilter;
@@ -331,20 +333,15 @@ fn test() -> anyhow::Result<()> {
     let mut system = sysinfo::System::new();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
-    let Some(noita_pid) = system
+    let noita_pid = system
         .processes_by_exact_name("noita.exe".as_ref())
         .find(|p| p.thread_kind().is_none())
-    else {
-        eprintln!("Noita process not found");
-        return Ok(());
-    };
+        .context("Noita process not found")?;
 
     let proc = noita_pid.pid().as_u32().try_into()?;
     let noita = Noita::new(proc, NoitaGlobals::debug());
 
-    let stats = noita.read_stats()?;
-
-    println!("{:#?}", stats);
+    println!("{:#?}", noita.read_stats()?);
 
     Ok(())
 }
