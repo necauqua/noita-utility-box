@@ -5,13 +5,13 @@ use serde::Deserialize;
 
 use crate::util::Promise;
 
-const GITHUB_RELEASE: bool = match option_env!("GITHUB_REF_TYPE") {
+pub const IS_RELEASE: bool = match option_env!("GITHUB_REF_TYPE") {
     Some(ref_type) => matches!(ref_type.as_bytes(), b"tag"),
     _ => false,
 };
-const TAG: &str = match option_env!("GITHUB_REF_NAME") {
-    Some(tag) => tag,
-    _ => "v0.0.0",
+pub const VERSION: Option<&str> = match option_env!("GITHUB_REF_NAME") {
+    Some(tag) if IS_RELEASE => Some(tag),
+    _ => None,
 };
 
 #[derive(Debug, Deserialize)]
@@ -50,7 +50,7 @@ async fn fetch_newer_release() -> Result<Option<UpdateInfo>, String> {
     Ok(releases
         .into_iter()
         .find(|r| !r.prerelease)
-        .filter(|r| r.tag_name != TAG))
+        .filter(|r| r.tag_name != VERSION.unwrap_or_default()))
 }
 
 fn show_update_modal(
@@ -114,7 +114,7 @@ pub struct UpdateChecker {
 
 impl UpdateChecker {
     pub fn check(&mut self, ctx: &Context, check_for_updates: &mut bool) {
-        if !GITHUB_RELEASE {
+        if !IS_RELEASE {
             if !self.update_task.is_taken() {
                 tracing::info!("Not a github release, skipping update check");
                 self.update_task = Promise::Taken;

@@ -75,6 +75,8 @@
               # a test or two that I left in there are *not* unit tests lol
               # todo fix this
               doCheck = false;
+
+              NIX_REV = self.rev or "dirty";
             } // attrs
           );
         in

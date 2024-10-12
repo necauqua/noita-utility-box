@@ -6,17 +6,18 @@ use std::{
 
 use winresource::WindowsResource;
 
-fn format(dirty: bool, commit_id: &str, branches: &str) -> (String, Option<String>) {
+fn format(dirty: bool, commit_id: &str, branches: &str) -> (String, String) {
     // no branches or multiple
     if branches.is_empty() || branches.contains(' ') {
-        return (commit_id.to_owned(), None);
+        let info = format!("{commit_id:.7}{}", if dirty { "*" } else { "" });
+        return (commit_id.to_owned(), info);
     }
     let info = format!(
         "{}@{commit_id:.7}{}",
         branches.strip_suffix('*').unwrap_or(branches),
         if dirty { "*" } else { "" },
     );
-    (commit_id.to_owned(), Some(info))
+    (commit_id.to_owned(), info)
 }
 
 // why not just &[&str]?
@@ -36,28 +37,25 @@ fn sh<'a>(args: impl IntoIterator<Item = &'a str>) -> Option<String> {
         })
 }
 
-fn get_from_jj() -> Option<(String, Option<String>)> {
+fn get_from_jj() -> Option<(String, String)> {
     // avoid jj snapshots when RA calls this
     if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
-        return Some(("rust-analyzer".into(), None));
+        let stub = "rust-analyzer".to_owned();
+        return Some((stub.clone(), stub));
     }
     // ..or clippy
     if std::env::var("CARGO_CFG_CLIPPY").is_ok() {
-        return Some(("clippy".into(), None));
+        let stub = "clippy".to_owned();
+        return Some((stub.clone(), stub));
     }
 
-    // just because I'm turbo conscious about this fabulous build script
-    // making a quadrillion snapshots cuz it's bugged or something
-    //
-    // but basically every invocation of `cargo run` leaves an exact snapshot
-    // of the code it runs in the jj oplog, which is occasionally useful
-    sh([
-        "notify-send",
-        "--app-name=Noita", // this does use the icon from steam lul
-        "JJ snapshot",
-        "Made a jj snapshot of a project you're working on",
-    ]);
+    if let Ok(nix_rev) = std::env::var("NIX_REV") {
+        let info = format!("nix!{nix_rev:.7}");
+        return Some((nix_rev, info));
+    }
 
+    // in the future we'd get the commit topic
+    // instead of git branches here, would be better
     let res = sh([
         "jj",
         "log",
@@ -81,12 +79,23 @@ fn get_from_jj() -> Option<(String, Option<String>)> {
 }
 
 // we need to run *3* git commands to get all the information
-fn get_from_git() -> Option<(String, Option<String>)> {
+fn get_from_git() -> Option<(String, String)> {
     let is_empty = sh(["git", "diff", "--shortstat"])?.is_empty();
     let commit_id = sh(["git", "rev-parse", "HEAD"])?;
-    let branch = sh(["git", "name-rev", "--name-only", "--refs=heads/*", "HEAD"])?;
+    let branch = sh([
+        "git",
+        "name-rev",
+        "--name-only",
+        "--refs=heads/*",
+        "--refs=tags/*",
+        "HEAD",
+    ])?;
 
-    let branch = branch.strip_suffix("~1").unwrap_or_default();
+    let branch = branch
+        .strip_suffix("~1")
+        .or_else(|| branch.strip_suffix("^0"))
+        .filter(|b| *b != "undefined")
+        .unwrap_or_default();
 
     Some(format(!is_empty, &commit_id, branch))
 }
@@ -95,20 +104,19 @@ fn emit_build_info() {
     // either git or colocated
     if Path::new(".git/HEAD").exists() {
         println!("cargo::rerun-if-changed=.git/HEAD");
-    } else if Path::new(".jj/repo/op_heads/heads").exists() {
-        // maybe *someone* will clone this with jj without colocation lol
+    }
+    // any jj op change
+    if Path::new(".jj/repo/op_heads/heads").exists() {
         println!("cargo::rerun-if-changed=.jj/repo/op_heads/heads");
     }
-    println!("cargo::rerun-if-env-changed=JJ_COMMIT");
+    println!("cargo::rerun-if-env-changed=BUILD_COMMIT");
 
     let (commit, info) = get_from_jj()
         .or_else(get_from_git)
         .expect("Building without jj or git installed, or not in a repo");
 
-    println!("cargo::rustc-env=JJ_COMMIT={commit}");
-    if let Some(info) = info {
-        println!("cargo::rustc-env=JJ_INFO={info}");
-    }
+    println!("cargo::rustc-env=BUILD_COMMIT={commit}");
+    println!("cargo::rustc-env=BUILD_INFO={info}");
 }
 
 fn embed_windows_resource() {

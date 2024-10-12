@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use strum::{EnumCount, EnumIter, EnumMessage, IntoEnumIterator};
 
-use crate::app::AppState;
+use crate::{app::AppState, update_check::VERSION};
 
 #[derive(Debug, Serialize, Deserialize, Clone, SmartDefault)]
 pub struct Settings {
@@ -68,21 +68,26 @@ impl Settings {
 
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
-            ui.add(Label::new(RichText::new("Build: ").small()).selectable(false));
 
-            let commit = env!("JJ_COMMIT");
-            let info = option_env!("JJ_INFO").unwrap_or(&commit[..7]);
+            // try to fix up the link in case of PR CI builds or something
+            let repo = option_env!("GITHUB_REPOSITORY").unwrap_or("necauqua/noita-utility-box");
+            let (label, url) = match VERSION {
+                Some(tag) => {
+                    ui.add(Label::new(RichText::new("Version: ").small()));
+                    let url = format!("https://github.com/{repo}/releases/tag/{tag}");
+                    (tag, url)
+                }
+                None => {
+                    ui.add(Label::new(RichText::new("Build: ").small()).selectable(false));
+                    let commit = env!("BUILD_COMMIT");
+                    let url = format!("https://github.com/{repo}/tree/{commit}");
+                    (env!("BUILD_INFO"), url)
+                }
+            };
 
-            let small_size = TextStyle::Small.resolve(ui.style()).size;
-            let info = RichText::new(info).font(FontId::monospace(small_size));
-
-            // github actions set this
-            if let Some(repo) = option_env!("GITHUB_REPOSITORY") {
-                let url = format!("https://github.com/{repo}/tree/{commit}");
-                ui.hyperlink_to(info, url.clone()).on_hover_text(url);
-            } else {
-                ui.label(info).on_hover_text(commit);
-            }
+            let font = FontId::monospace(TextStyle::Small.resolve(ui.style()).size);
+            let info = RichText::new(label).font(font);
+            ui.hyperlink_to(info, url.clone()).on_hover_text(url);
         });
 
         ui.separator();
