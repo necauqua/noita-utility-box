@@ -38,7 +38,7 @@ jobs:
         run: nix develop --command -- cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Check (docs)
-        run: nix develop --command -- cargo doc --all-features
+        run: nix develop --command -- cargo doc --no-deps --all-features
 
   build:
     name: Test and Build
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Generic Linux
-          path: noita-utility-box-linux-generic.tar
+          path: noita-utility-box-linux-generic.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: Debian
