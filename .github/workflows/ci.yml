@@ -18,6 +18,7 @@ on:
 
 jobs:
   checks:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'release:') }}
     name: Checks
     runs-on: ubuntu-latest
     steps:
