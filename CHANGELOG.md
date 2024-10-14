@@ -11,6 +11,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - Logs are now saved to a file in the state directory for troubleshooting
 
+### Fixed
+  - Fixed the version link (it had an extra v in the tag name) in the settings panel
+
 ## [v0.2.0] 12024-10-14
 
 ### Added

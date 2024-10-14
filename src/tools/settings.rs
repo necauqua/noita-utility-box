@@ -78,7 +78,7 @@ impl Settings {
             let (label, url) = match RELEASE_VERSION {
                 Some(version) => {
                     ui.add(Label::new(RichText::new("Version: ").small()).selectable(false));
-                    (version, format!("{repo}/releases/tag/v{version}"))
+                    (version, format!("{repo}/releases/tag/{version}"))
                 }
                 None => {
                     ui.add(Label::new(RichText::new("Build: ").small()).selectable(false));
