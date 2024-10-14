@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Added
+  - Logs are now saved to a file in the state directory for troubleshooting
+
 ## [v0.2.0] 12024-10-14
 
 ### Added
