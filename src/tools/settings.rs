@@ -17,11 +17,16 @@ pub struct Settings {
     #[default(true)]
     pub check_for_updates: bool,
     #[default(true)]
+    pub notify_when_outdated: bool,
+    #[default(true)]
     pub check_export_name: bool,
     #[default(true)]
     pub pipette: bool,
     #[default(true)]
     pub pipette_checklist: bool,
+
+    #[serde(skip)]
+    pub newest_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, EnumCount, EnumIter, EnumMessage)]
@@ -72,7 +77,7 @@ impl Settings {
             let repo = "https://github.com/necauqua/noita-utility-box";
             let (label, url) = match RELEASE_VERSION {
                 Some(version) => {
-                    ui.add(Label::new(RichText::new("Version: ").small()));
+                    ui.add(Label::new(RichText::new("Version: ").small()).selectable(false));
                     (version, format!("{repo}/releases/tag/v{version}"))
                 }
                 None => {
@@ -85,13 +90,19 @@ impl Settings {
             let font = FontId::monospace(TextStyle::Small.resolve(ui.style()).size);
             let info = RichText::new(label).font(font);
             ui.hyperlink_to(info, url.clone()).on_hover_text(url);
+
+            if let Some(ref s) = self.newest_version {
+                let text = RichText::new(format!(" (latest: {s})"))
+                    .small()
+                    .color(ui.style().visuals.weak_text_color());
+                ui.add(Label::new(text).selectable(false));
+            }
         });
 
         ui.separator();
 
         ScrollArea::vertical().show(ui, |ui| {
-            ui.label("There will be a few more settings, and the intervals are a bit wonky atm.");
-            ui.label("You can play with egui for now I guess ");
+            ui.label("Note: You can permanently scale the UI with Ctrl+- and Ctrl+=");
 
             ui.separator();
 
@@ -110,7 +121,19 @@ impl Settings {
                     ui.end_row();
                 }
 
-                ui.checkbox(&mut self.check_for_updates, "Check for updates on startup");
+                ui.checkbox(&mut self.check_for_updates, "Check for updates on startup")
+                    .on_hover_text("This makes one request to the GitHub API on startup to check the latest release version");
+                ui.end_row();
+
+                if !self.check_for_updates {
+                    self.notify_when_outdated = false;
+                }
+                ui.vertical(|ui| {
+                    ui.indent("update-check", |ui| {
+                        ui.add_enabled(self.check_for_updates, Checkbox::new(&mut self.notify_when_outdated, "Startup update notification"))
+                            .on_hover_text("This controls the popup shown on startup if the latest release version is newer than the current version");
+                    });
+                });
                 ui.end_row();
 
                 ui.checkbox(&mut self.check_export_name, "Check export name")
@@ -121,8 +144,15 @@ impl Settings {
                     .on_hover_text("The pipette is obviously very targeted at Fury and most people wont need it");
                 ui.end_row();
 
-                ui.add_enabled(self.pipette, Checkbox::new(&mut self.pipette_checklist, "Add all materials checklist"))
-                    .on_hover_text("Adds a checklist of all materials to the material pipette");
+                if !self.pipette {
+                    self.pipette_checklist = false;
+                }
+                ui.vertical(|ui| {
+                    ui.indent("pipette", |ui| {
+                        ui.add_enabled(self.pipette, Checkbox::new(&mut self.pipette_checklist, "Add all materials checklist"))
+                            .on_hover_text("Adds a checklist of all materials to the material pipette");
+                    });
+                });
                 ui.end_row();
             });
 

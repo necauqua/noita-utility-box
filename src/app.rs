@@ -70,8 +70,7 @@ pub enum CurrentTab {
 
 impl eframe::App for NoitaUtilityBox {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.update_checker
-            .check(ctx, &mut self.state.settings.check_for_updates);
+        self.update_checker.check(ctx, &mut self.state);
 
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
             ui.add_space(0.5);

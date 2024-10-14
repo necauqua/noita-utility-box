@@ -90,7 +90,8 @@
         rec {
           packages = {
             default = buildPackage {
-              nativeBuildInputs = with pkgs; [ makeWrapper copyDesktopItems ];
+              nativeBuildInputs = with pkgs; [ makeWrapper copyDesktopItems pkg-config ];
+              buildInputs = [ pkgs.openssl ];
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${dynamicDeps}
                 mkdir -p $out/share/icons/hicolor/256x256/apps
@@ -108,7 +109,7 @@
               ];
             };
             # my bad, "unpatches your nix executable"
-            # this still depends on like glibc 2.39 so gl running this on not newest ubuntu
+            # this still depends on like glibc 2.39 so gl running this on ubuntu that's not the newest
             linux = pkgs.stdenv.mkDerivation {
               inherit name version;
               src = packages.default;
@@ -122,8 +123,7 @@
                   --set-rpath ""
               '';
             };
-            # this is made significantly easier by the fact that we don't have
-            # any system dependencies other than runtime x11/wayland stuff
+            # idk lol, build all the things through nix
             deb = pkgs.stdenv.mkDerivation {
               inherit version;
               name = "${name}.deb";
@@ -138,6 +138,7 @@
                 Architecture: amd64
                 Maintainer: necauqua <him@necauq.ua>
                 Description: ${description}
+                Depends: openssl
                 EOF
                 ${pkgs.dpkg}/bin/dpkg-deb --build package
                 mv package.deb $out
@@ -168,13 +169,14 @@
           # Didn't find a way to run it in the Noita proton prefix in a way that allows sysinfo to find the noita process yet
           apps.windows-with-wine = {
             type = "app";
-            program = wineWrap name "${packages.windows}/bin/${name}.exe";
+            program = "${wineWrap name "${packages.windows}/bin/${name}.exe"}";
           };
 
           devShells.default = pkgs.mkShell {
             inputsFrom = builtins.attrValues packages;
 
             nativeBuildInputs = with pkgs; [
+              pkg-config
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview
               cargo-nextest
@@ -190,7 +192,7 @@
                 IFS=""
 
                 # Extract the unreleased changelog section to be the tag annotation
-                annotation="Release v$vers $(echo; sed -n '/## \[Unreleased\]/,/## \[/{/## \[/!p;}' CHANGELOG.md)" 
+                annotation="Release v$vers $(echo; sed -n '/## \[Unreleased\]/,/## \[/{/## \[/!p;}' CHANGELOG.md)"
                 echo $annotation
 
                 # Update the unreleased section to be a release with todays date
