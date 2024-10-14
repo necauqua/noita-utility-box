@@ -205,7 +205,7 @@
 
                 # Make a commit and the annotated tag
                 jj commit -m "release: $vers" && jj bookmark set main -r @-
-                git tag -m "$annotation" "v$vers"
+                git tag --cleanup=whitespace -m "$annotation" "v$vers"
 
                 read -p $'Push it? [y/N]\n' -n 1 -r
                 if [[ "$REPLY" =~ ^[Yy]$ ]]; then
