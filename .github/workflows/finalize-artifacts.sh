@@ -1,6 +1,8 @@
 #/usr/bin/env bash
 
-cp -r --no-preserve=mode,ownership result-2 linux-generic
+set -e
+
+cp -r --no-preserve=mode,ownership result-2/ linux-generic
 chmod +x linux-generic/bin/noita-utility-box
 pushd linux-generic
 tar -czf ../noita-utility-box-linux-generic.tar *
