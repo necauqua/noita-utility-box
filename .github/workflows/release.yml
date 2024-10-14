@@ -27,7 +27,7 @@ jobs:
           ./.github/workflows/finalize-artifacts.sh
 
           gzip noita-utility-box-linux-generic.tar
-          zip -r noita-utility-box-windows.zip noita-utility-box.exe
+          nix develop --command -- 7z a noita-utility-box-windows noita-utility-box.exe
 
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -35,6 +35,6 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: true
           files: |
-            noita-utility-box-windows.zip
+            noita-utility-box-windows.7z
             noita-utility-box.deb
             noita-utility-box-linux-generic.tar.gz

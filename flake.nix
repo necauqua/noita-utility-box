@@ -181,6 +181,8 @@
               pkgs.fenix.default.rustfmt-preview
               cargo-nextest
 
+              p7zip
+
               (pkgs.writeShellScriptBin "release" ''
                 vers="$1"
                 if [ -z "$vers" ]; then
