@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.2.0] 12024-10-14
+
 ### Added
   - Added a desktop item to the nix package
   - Windows resource metadata and exe icon
@@ -18,7 +20,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.1.0
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
