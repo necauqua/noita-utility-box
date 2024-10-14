@@ -91,7 +91,7 @@ impl Settings {
             let info = RichText::new(label).font(font);
             ui.hyperlink_to(info, url.clone()).on_hover_text(url);
 
-            if let Some(ref s) = self.newest_version {
+            if let Some(s) = &self.newest_version {
                 let text = RichText::new(format!(" (latest: {s})"))
                     .small()
                     .color(ui.style().visuals.weak_text_color());
@@ -121,20 +121,22 @@ impl Settings {
                     ui.end_row();
                 }
 
-                ui.checkbox(&mut self.check_for_updates, "Check for updates on startup")
-                    .on_hover_text("This makes one request to the GitHub API on startup to check the latest release version");
-                ui.end_row();
+                if RELEASE_VERSION.is_some() {
+                    ui.checkbox(&mut self.check_for_updates, "Check for updates on startup")
+                        .on_hover_text("This makes one request to the GitHub API on startup to check the latest release version");
+                    ui.end_row();
 
-                if !self.check_for_updates {
-                    self.notify_when_outdated = false;
-                }
-                ui.vertical(|ui| {
-                    ui.indent("update-check", |ui| {
-                        ui.add_enabled(self.check_for_updates, Checkbox::new(&mut self.notify_when_outdated, "Startup update notification"))
-                            .on_hover_text("This controls the popup shown on startup if the latest release version is newer than the current version");
+                    if !self.check_for_updates {
+                        self.notify_when_outdated = false;
+                    }
+                    ui.vertical(|ui| {
+                        ui.indent("update-check", |ui| {
+                            ui.add_enabled(self.check_for_updates, Checkbox::new(&mut self.notify_when_outdated, "Startup update notification"))
+                                .on_hover_text("This controls the popup shown on startup if the latest release version is newer than the current version");
+                        });
                     });
-                });
-                ui.end_row();
+                    ui.end_row();
+                }
 
                 ui.checkbox(&mut self.check_export_name, "Check export name")
                     .on_hover_text("When detecting noita, check that the executable export name is 'wizard_physics.exe'");
