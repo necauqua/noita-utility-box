@@ -117,8 +117,12 @@ fn embed_windows_resource() {
             .set("LegalCopyright", &var("CARGO_PKG_LICENSE").unwrap())
             .compile();
         if let Err(e) = res {
-            eprintln!("Failed to embed Windows resource: {e}");
-            std::process::exit(1);
+            let msg = format!("Failed to embed Windows resource: {e}");
+            if let Ok("release") = var("PROFILE").as_deref() {
+                panic!("{msg}")
+            } else {
+                println!("cargo:warning={msg}")
+            }
         }
     }
 }
