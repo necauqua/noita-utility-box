@@ -35,7 +35,11 @@ fn setup_logging() -> Result<WorkerGuard> {
             )
             .with_span_events(FmtSpan::CLOSE)
             .finish()
-            .with(fmt::Layer::default().with_writer(file_writer)),
+            .with(
+                fmt::Layer::default()
+                    .with_ansi(false)
+                    .with_writer(file_writer),
+            ),
     )?;
     Ok(guard)
 }
