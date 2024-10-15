@@ -176,7 +176,10 @@
             inputsFrom = builtins.attrValues packages;
 
             nativeBuildInputs = with pkgs; [
-              pkg-config
+              # # inputsFrom does not seem to include the depsBuildBuild thing
+              # pkgsCross.mingwW64.stdenv.cc
+              # pkgsCross.mingwW64.windows.pthreads
+
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview
               cargo-nextest

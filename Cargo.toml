@@ -5,6 +5,10 @@ version = "0.2.0"
 license = "MIT"
 edition = "2021"
 
+[features]
+default = ["sneaky"]
+sneaky = ["dep:export-resolver", "dep:str_crypter"]
+
 [dependencies]
 anyhow = "1"
 color-eyre = "0.6"
@@ -23,7 +27,6 @@ lazy-regex = "3"
 memchr = "2"
 obws = { version = "0.13", features = ["events"] }
 rayon = "1"
-read-process-memory = "0.1"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 smart-default = "0.7"
@@ -38,6 +41,19 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 zerocopy = { version = "0.8", default-features = false, features = [
     "alloc",
     "derive",
+] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+export-resolver = { version = "1", optional = true }
+str_crypter = { version = "1", optional = true }
+windows = { version = "0.58", default-features = false, features = [
+    "Wdk_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_WindowsProgramming",
 ] }
 
 [build-dependencies]

@@ -51,7 +51,7 @@ impl NoitaData {
         exe_name: Option<String>,
         state: &AppState,
     ) -> Result<Self, NoitaError> {
-        let proc = pid.as_u32().try_into()?;
+        let proc = ProcessRef::connect(pid.as_u32())?;
         let header = PeHeader::read(&proc)?;
 
         if state.settings.check_export_name {

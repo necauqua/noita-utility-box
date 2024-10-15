@@ -14,6 +14,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Fixed
   - Fixed the version link (it had an extra v in the tag name) in the settings panel
 
+### Changed
+  - More sneakily attach to the process to read memory so that hopefully Windows Defender stops being annoying
+
 ## [v0.2.0] 12024-10-14
 
 ### Added

@@ -259,7 +259,7 @@ fn test() -> anyhow::Result<()> {
         .find(|p| p.thread_kind().is_none())
         .context("Noita process not found")?;
 
-    let proc = noita_pid.pid().as_u32().try_into()?;
+    let proc = ProcessRef::connect(noita_pid.pid().as_u32())?;
     let header = PeHeader::read(&proc)?;
     if header.timestamp() != 0x66ba59d6 {
         bail!("Timestamp mismatch: 0x{:x}", header.timestamp());
