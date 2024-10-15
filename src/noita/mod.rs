@@ -338,7 +338,7 @@ fn test() -> anyhow::Result<()> {
         .find(|p| p.thread_kind().is_none())
         .context("Noita process not found")?;
 
-    let proc = noita_pid.pid().as_u32().try_into()?;
+    let proc = ProcessRef::connect(noita_pid.pid().as_u32())?;
     let noita = Noita::new(proc, NoitaGlobals::debug());
 
     println!("{:#?}", noita.read_stats()?);
