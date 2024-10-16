@@ -2,6 +2,7 @@ use std::{collections::HashMap, io, marker::PhantomData};
 
 use derive_more::{derive::Display, Debug};
 use types::{
+    cell_factory::CellFactory,
     components::{Component, ComponentName},
     ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
     TagManager,
@@ -118,6 +119,13 @@ impl Noita {
         Ok(read_ptr!(self.global_stats))
     }
 
+    pub fn read_cell_factory(&self) -> io::Result<CellFactory> {
+        read_ptr!(self.game_global)
+            .read(&self.proc)?
+            .cell_factory
+            .read(&self.proc)
+    }
+
     pub fn get_player(&mut self) -> io::Result<Option<(Entity, bool)>> {
         let Some(player_unit_idx) = self.get_entity_tag_index("player_unit")? else {
             // no player_unit means definitely no player
@@ -201,7 +209,7 @@ impl Noita {
             .read(&self.proc)?
             .cell_factory
             .read(&self.proc)?
-            .materials
+            .material_ids
             .read(&self.proc)?;
 
         let mut materials = Vec::with_capacity(material_ptrs.len());
@@ -226,7 +234,7 @@ impl Noita {
             .cell_factory
             .read(&self.proc)?;
         let material_descs = cell_factory
-            .material_descs_maybe
+            .cell_data
             .truncated(cell_factory.number_of_materials)
             .read(&self.proc)?;
 
@@ -322,6 +330,8 @@ fn test() -> anyhow::Result<()> {
     use tracing::level_filters::LevelFilter;
     use tracing_subscriber::EnvFilter;
 
+    use crate::memory::set_debug_process;
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
@@ -339,9 +349,14 @@ fn test() -> anyhow::Result<()> {
         .context("Noita process not found")?;
 
     let proc = ProcessRef::connect(noita_pid.pid().as_u32())?;
-    let noita = Noita::new(proc, NoitaGlobals::debug());
+    set_debug_process(proc.clone());
 
-    println!("{:#?}", noita.read_stats()?);
+    let noita = Noita::new(proc.clone(), NoitaGlobals::debug());
+    let cell_factory = noita.read_cell_factory()?;
+
+    let data = cell_factory.cell_data.truncated(20).read(&proc)?;
+
+    println!("{:#?}", data);
 
     Ok(())
 }

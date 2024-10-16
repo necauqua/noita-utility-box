@@ -3,7 +3,9 @@ use std::{
     borrow::{Borrow, Cow},
     cell::RefCell,
     cmp::Ordering,
+    collections::HashMap,
     fmt::{self, Debug, Display},
+    hash::Hash,
     io,
 };
 
@@ -346,9 +348,19 @@ impl<K, V> StdMap<K, V> {
     }
 }
 
-impl<K, V> Debug for StdMap<K, V> {
+impl<K, V> Debug for StdMap<K, V>
+where
+    K: MemoryStorage,
+    V: MemoryStorage,
+    K::Value: Eq + Hash + Debug,
+    V::Value: Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // todo when we learn to iterate over the tree, impl complete debug
+        if let Some(s) =
+            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
+        {
+            return Debug::fmt(&s, f);
+        }
         write!(
             f,
             "StdMap[{} * ({} => {})]",
@@ -359,11 +371,52 @@ impl<K, V> Debug for StdMap<K, V> {
     }
 }
 
+impl<K, V> MemoryStorage for StdMap<K, V>
+where
+    K: MemoryStorage,
+    K::Value: Eq + Hash,
+    V: MemoryStorage,
+{
+    type Value = HashMap<K::Value, V::Value>;
+
+    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
+        let mut result = HashMap::with_capacity(self.len() as _);
+        let root_ptr = self.root;
+        let root = root_ptr.read(proc)?;
+
+        // just do bfs on the tree ig - this is unordered;
+        // for ordered we need to start from root.left/root.right
+        // (which are the smallest/biggest nodes) and do the correct
+        // tree traversal type of thing
+        let mut stack = vec![root.parent];
+        while let Some(node_ptr) = stack.pop() {
+            if node_ptr == root_ptr || node_ptr.is_null() {
+                continue;
+            }
+            let node = node_ptr.read(proc)?;
+            result.insert({ node.key }.read(proc)?, { node.value }.read(proc)?);
+            stack.push(node.right);
+            stack.push(node.left);
+        }
+        Ok(result)
+    }
+}
+
 // why did I have to overengineer this pos lolol
 // the whole MemoryStorage thing only exists because of this
-impl<K: MemoryStorage, V: MemoryStorage> StdMap<K, V> {
+impl<K: MemoryStorage, V> StdMap<K, V> {
     pub fn get<Q>(&self, proc: &ProcessRef, key: &Q) -> io::Result<Option<V::Value>>
     where
+        V: MemoryStorage,
+        Q: Ord + ?Sized,
+        K::Value: Borrow<Q>,
+    {
+        self.get_raw(proc, key)?.map(|v| v.read(proc)).transpose()
+    }
+
+    pub fn get_raw<Q>(&self, proc: &ProcessRef, key: &Q) -> io::Result<Option<V>>
+    where
+        V: Pod,
         Q: Ord + ?Sized,
         K::Value: Borrow<Q>,
     {
@@ -382,7 +435,7 @@ impl<K: MemoryStorage, V: MemoryStorage> StdMap<K, V> {
             let next = match key.cmp(node_key.borrow()) {
                 Ordering::Less => node.left,
                 Ordering::Greater => node.right,
-                Ordering::Equal => return Ok(Some({ node.value }.read(proc)?)),
+                Ordering::Equal => return Ok(Some(node.value)),
             };
             // the root pointer is used as the sentinel (and not just null?. huh)
             if next == root_ptr || next.is_null() {

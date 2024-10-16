@@ -1,5 +1,7 @@
+use cell_factory::CellFactory;
+use derive_more::Debug;
 use std::{
-    fmt::{self, Debug, Write as _},
+    fmt::{self, Write as _},
     io,
     ops::Index,
 };
@@ -10,6 +12,7 @@ use crate::memory::{
     ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
 };
 
+pub mod cell_factory;
 pub mod components;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
@@ -137,30 +140,11 @@ pub struct TagManager {
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
-pub struct CellFactory {
-    field_0x0: u32,
-    pub materials: StdVec<StdString>,
-    pub material_indices: StdMap<StdString, u32>,
-    pub material_descs_maybe: StdVec<MaterialDesc>,
-    pub number_of_materials: u32, // I mean this is the same as materials.len() but ok
-    field_0x28: u32,
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
-pub struct MaterialDesc {
-    _skip1: [u8; 0x18],
-    pub ui_name: StdString,
-    _woohoo_thats_alotta_bytes: [u8; 0x260],
-}
-const _: () = assert!(std::mem::size_of::<MaterialDesc>() == 0x290);
-
-#[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
 pub struct GameGlobal {
     pub frame_counter: u32,
     _skip: [u8; 0x14],
     pub cell_factory: Ptr<CellFactory>,
+    // a lot more skipped
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
@@ -188,7 +172,7 @@ pub struct GlobalStats {
     pub stats_version: u32,
     pub debug_tracker: u32,
     pub debug: PadBool<3>,
-    pub debug_reseet_counter: u32,
+    pub debug_reset_counter: u32,
     pub fix_stats_flag: ByteBool,
     pub session_dead: PadBool<2>,
     pub key_value_stats: StdMap<StdString, u32>,
