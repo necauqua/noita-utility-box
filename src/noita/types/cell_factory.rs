@@ -13,9 +13,13 @@ pub struct CellFactory {
     pub material_id_indices: StdMap<StdString, u32>,
     pub cell_data: StdVec<CellData>,
     pub number_of_materials: u32, // I mean this is the same as material_ids.len() but ok
-    skip1: [u8; 0x68],
+    #[debug(skip)]
+    _unknown: [u32; 26],
     pub materials_by_tag: StdMap<StdString, StdVec<Ptr<CellData>>>,
-    pub reactions: StdVec<RawPtr>,
+    #[debug(skip)]
+    _unknown2: [u32; 9],
+    _reactions: StdVec<CellReaction>,
+    _reactions2: StdVec<CellReaction>,
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
@@ -50,7 +54,6 @@ pub struct CellData {
     pub crackability: i32,
     pub electrical_conductivity: ByteBool,
     pub slippery: PadBool<2>,
-
     pub stickyness: f32,
     pub cold_freezes_to_material_name: StdString,
     pub warmth_melts_to_material: MaterialId,
@@ -58,7 +61,6 @@ pub struct CellData {
     pub cold_freezes_chance_rev: i16,
     pub warmth_melts_chance_rev: i16,
     pub cold_freezes_to_dont_do_reverse_reaction: PadBool<3>,
-
     pub lifetime: i32,
     pub hp: i32,
     pub density: f32,
@@ -76,12 +78,10 @@ pub struct CellData {
     pub liquid_sprite_stains_check_offset: u8,
     #[debug(skip)]
     _pad: [u8; 3],
-
     pub liquid_sprite_stains_status_threshold: f32,
     pub liquid_damping: f32,
     pub liquid_flow_speed: f32,
     pub liquid_sand_never_box2d: PadBool<3>,
-
     pub gas_speed: u8,
     pub gas_upwards_speed: u8,
     pub gas_horizontal_speed: u8,
@@ -97,16 +97,16 @@ pub struct CellData {
     pub solid_on_break_explode: ByteBool,
     pub solid_go_through_sand: ByteBool,
     pub solid_collide_with_self: PadBool<2>,
-
     pub solid_on_collision_material: MaterialId,
     pub solid_break_to_type: MaterialId,
     pub convert_to_box2d_material: MaterialId,
     pub vegetation_full_lifetime_growth: i32,
     pub vegetation_sprite: StdString,
     pub vegetation_random_flip_x_scale: PadBool<3>,
-
+    pub max_reaction_probability: u32,
+    pub max_fast_reaction_probability: u32,
     #[debug(skip)]
-    _unknown: [u8; 0xc],
+    _unknown: i32,
 
     pub wang_noise_percent: f32,
     pub wang_curvature: f32,
@@ -116,35 +116,53 @@ pub struct CellData {
     pub danger_radioactive: ByteBool,
     pub danger_poison: ByteBool,
     pub danger_water: ByteBool,
-
-    status_effects: RawPtr,
-    #[debug(skip)]
-    _unknown2: [u8; 0x14], // status_effects is prob a vector so some of this is it
-
+    pub stain_effects: StdVec<StatusEffect>,
+    pub ingestion_effects: StdVec<StatusEffect>,
     pub always_ignites_damagemodel: ByteBool,
     pub ignore_self_reaction_warning: PadBool<2>,
-
     pub audio_physics_material_event_idx: i32,
     pub audio_physics_material_wall_idx: i32,
     pub audio_physics_material_solid_idx: i32,
     pub audio_size_multiplier: f32,
     pub audio_is_soft: PadBool<3>,
-
     pub audio_materialaudio_type: i32,
     pub audio_materialbreakaudio_type: i32,
     pub show_in_creative_mode: ByteBool,
     pub is_just_particle_fx: ByteBool,
     pub transformed: PadBool<1>,
-
     pub particle_effect: Ptr<ParticleConfig>,
 }
 const _: () = assert!(std::mem::size_of::<CellData>() == 0x290);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes)]
 #[repr(C)]
 pub struct MaterialId {
     pub name: StdString,
     pub id: i32,
+}
+
+impl Debug for MaterialId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.name.is_empty() {
+            match self.id {
+                -1 => write!(f, "MaterialId::Air"),
+                0 => write!(f, "MaterialId::None"),
+                id => write!(f, "MaterialId({id})"),
+            }
+        } else {
+            f.debug_struct("MaterialId")
+                .field("name", &self.name)
+                .field("id", &self.id)
+                .finish()
+        }
+    }
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct StatusEffect {
+    pub id: i32,
+    pub duration: f32,
 }
 
 #[open_enum]
@@ -315,3 +333,45 @@ pub struct ParticleConfig {
     pub fade_based_on_lifetime: PadBool<2>,
 }
 const _: () = assert!(std::mem::size_of::<ParticleConfig>() == 0x54);
+
+#[open_enum]
+#[repr(i32)]
+#[derive(FromBytes, IntoBytes, Debug)]
+pub enum ReactionDir {
+    None = 1 - 2, // plain -1 does not work cuz open_enum is bugged lol
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct CellReaction {
+    pub fast_reaction: PadBool<3>,
+    pub probability_times_100: u32,
+    pub input_cell1: i32,
+    pub input_cell2: i32,
+    pub output_cell1: i32,
+    pub output_cell2: i32,
+    pub has_input_cell3: PadBool<3>,
+    pub input_cell3: i32,
+    pub output_cell3: i32,
+    pub cosmetic_particle: i32,
+    pub req_lifetime: i32,
+    pub blob_radius1: u8,
+    pub blob_radius2: u8,
+    pub blob_restrict_to_input_material1: ByteBool,
+    pub blob_restrict_to_input_material2: ByteBool,
+    pub destroy_horizontally_lonely_pixels: ByteBool,
+    pub convert_all: PadBool<2>,
+    pub entity_file_idx: u32,
+    pub direction: ReactionDir,
+    pub explosion_config: Ptr<ConfigExplosion>,
+    pub audio_fx_volume_1: f32,
+    /// Used in parsing and is empty at runtime
+    pub inputs: StdVec<StdString>,
+    /// Used in parsing and is empty at runtime
+    pub outputs: StdVec<StdString>,
+}
+const _: () = assert!(std::mem::size_of::<CellReaction>() == 0x5c);

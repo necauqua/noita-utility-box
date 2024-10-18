@@ -104,7 +104,11 @@ impl<T, const BASE: u32> Eq for Ptr<T, BASE> {}
 impl<T, const BASE: u32> Debug for Ptr<T, BASE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if BASE == 0 {
-            write!(f, "{:?} as {}", self.raw, debug_type::<T>())
+            if self.raw.is_null() {
+                write!(f, "NULL")
+            } else {
+                write!(f, "{:?} as {}", self.raw, debug_type::<T>())
+            }
         } else {
             write!(f, "0x{BASE:08x}+{:?} as {}", self.raw, debug_type::<T>())
         }

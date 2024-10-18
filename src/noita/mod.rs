@@ -354,9 +354,13 @@ fn test() -> anyhow::Result<()> {
     let noita = Noita::new(proc.clone(), NoitaGlobals::debug());
     let cell_factory = noita.read_cell_factory()?;
 
-    let data = cell_factory.cell_data.truncated(20).read(&proc)?;
+    let instant = std::time::Instant::now();
+    let map = cell_factory.materials_by_tag.read(&proc)?;
+    println!("Read in {:?}", instant.elapsed());
 
-    println!("{:#?}", data);
+    let tags = map.keys().collect::<Vec<_>>();
+
+    println!("Tags: {tags:?}");
 
     Ok(())
 }
