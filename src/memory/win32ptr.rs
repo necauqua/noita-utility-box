@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{fmt::Debug, io, marker::PhantomData};
+use std::{fmt::Debug, io, marker::PhantomData, mem::size_of};
 
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -68,6 +68,10 @@ impl<T, const BASE: u32> Ptr<T, BASE> {
             raw: RawPtr::of(addr),
             _phantom: PhantomData,
         }
+    }
+
+    pub const fn offset(self, offset: i32) -> Self {
+        Self::of((self.raw.addr() as i32 + offset * size_of::<T>() as i32) as u32)
     }
 }
 

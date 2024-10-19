@@ -292,10 +292,13 @@ where
     T: Pod + Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(s) =
-            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-        {
-            return Debug::fmt(&s, f);
+        // an heuristic to avoid printing huge or invalid vectors
+        if self.len() < 4096 {
+            if let Some(s) =
+                DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
+            {
+                return Debug::fmt(&s, f);
+            }
         }
         write!(f, "StdVec[{} * {}]", self.len(), debug_type::<T>())
     }

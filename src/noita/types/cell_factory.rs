@@ -1,4 +1,8 @@
-use crate::memory::{ByteBool, PadBool, Ptr, RawPtr, StdMap, StdString, StdVec};
+use std::io;
+
+use crate::memory::{
+    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
+};
 use derive_more::Debug;
 use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
@@ -13,13 +17,34 @@ pub struct CellFactory {
     pub material_id_indices: StdMap<StdString, u32>,
     pub cell_data: StdVec<CellData>,
     pub number_of_materials: u32, // I mean this is the same as material_ids.len() but ok
-    #[debug(skip)]
-    _unknown: [u32; 26],
+
+    _unknown: u32,
+
+    pub reaction_lookup: ReactionLookupTable,
+    pub fast_reaction_lookup: ReactionLookupTable,
+    pub req_reactions: StdVec<CellReactionBuf>,
     pub materials_by_tag: StdMap<StdString, StdVec<Ptr<CellData>>>,
-    #[debug(skip)]
-    _unknown2: [u32; 9],
-    _reactions: StdVec<CellReaction>,
-    _reactions2: StdVec<CellReaction>,
+}
+
+impl CellFactory {
+    /// This is slow
+    pub fn all_reactions(&self, proc: &ProcessRef) -> io::Result<Vec<CellReaction>> {
+        let mut res = self.reaction_lookup.all_reactions(proc)?;
+        res.extend(self.fast_reaction_lookup.all_reactions(proc)?);
+
+        let req_reactions = self.req_reactions.read(proc)?;
+        for buf in req_reactions {
+            res.extend(buf.read(proc)?);
+        }
+
+        Ok(res)
+    }
+
+    pub fn lookup_reaction(&self, proc: &ProcessRef, input: u32) -> io::Result<Vec<CellReaction>> {
+        let mut res = self.reaction_lookup.lookup(proc, input)?;
+        res.extend(self.fast_reaction_lookup.lookup(proc, input)?);
+        Ok(res)
+    }
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
@@ -147,12 +172,12 @@ impl Debug for MaterialId {
             match self.id {
                 -1 => write!(f, "MaterialId::Air"),
                 0 => write!(f, "MaterialId::None"),
-                id => write!(f, "MaterialId({id})"),
+                id => f.debug_tuple("MaterialId").field(&id).finish(),
             }
         } else {
-            f.debug_struct("MaterialId")
-                .field("name", &self.name)
-                .field("id", &self.id)
+            f.debug_tuple("MaterialId")
+                .field(&self.name)
+                .field(&self.id)
                 .finish()
         }
     }
@@ -369,9 +394,114 @@ pub struct CellReaction {
     pub direction: ReactionDir,
     pub explosion_config: Ptr<ConfigExplosion>,
     pub audio_fx_volume_1: f32,
-    /// Used in parsing and is empty at runtime
-    pub inputs: StdVec<StdString>,
-    /// Used in parsing and is empty at runtime
-    pub outputs: StdVec<StdString>,
 }
-const _: () = assert!(std::mem::size_of::<CellReaction>() == 0x5c);
+const _: () = assert!(std::mem::size_of::<CellReaction>() == 0x44);
+
+impl CellReaction {
+    pub fn pretty_print(&self, materials: &[String]) -> String {
+        use std::fmt::Write;
+
+        fn name(materials: &[String], id: i32) -> &str {
+            materials.get(id as usize).map_or("unknown", |s| s.as_str())
+        }
+
+        let mut res = String::new();
+        let _ = write!(
+            &mut res,
+            "{} + {}",
+            name(materials, self.input_cell1),
+            name(materials, self.input_cell2),
+        );
+        if self.has_input_cell3.as_bool() {
+            let _ = write!(&mut res, " + {}", name(materials, self.input_cell3));
+        }
+        let _ = write!(
+            &mut res,
+            " => {} + {}",
+            name(materials, self.output_cell1),
+            name(materials, self.output_cell2),
+        );
+        if self.output_cell3 != -1 {
+            let _ = write!(&mut res, " + {}", name(materials, self.output_cell3));
+        }
+        if self.cosmetic_particle != -1 {
+            let _ = write!(&mut res, " ^{}", name(materials, self.cosmetic_particle));
+        }
+        let _ = write!(
+            &mut res,
+            " : {}%",
+            self.probability_times_100 as f32 / 100.0
+        );
+        res
+    }
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct CellReactionBuf {
+    base: Ptr<CellReaction>,
+    _unknown: u32, // only ever saw this equal to len
+    len: u32,
+}
+
+impl CellReactionBuf {
+    pub fn len(&self) -> u32 {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.base.is_null() || self.len == 0
+    }
+
+    pub fn get(&self, index: u32) -> Option<Ptr<CellReaction>> {
+        (index < self.len).then(|| self.base.offset(index as i32))
+    }
+}
+
+impl MemoryStorage for CellReactionBuf {
+    type Value = Vec<CellReaction>;
+
+    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.base.raw().read_multiple(proc, self.len)
+    }
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ReactionLookupTable {
+    pub width: u32,
+    pub height: u32,
+    pub len: u32,
+    // #[debug(skip)]
+    _unknown: [u32; 5],
+    storage: Ptr<CellReactionBuf>,
+    _unknown2: u32,
+    _unknown3: u32,
+}
+
+impl ReactionLookupTable {
+    pub fn lookup(&self, proc: &ProcessRef, material_id: u32) -> io::Result<Vec<CellReaction>> {
+        let mut result = Vec::new();
+        for i in 0..self.height {
+            let reactions = self
+                .storage
+                .offset((self.width * i + material_id) as _)
+                .read(proc)?
+                .read(proc)?;
+            result.extend(reactions);
+        }
+        Ok(result)
+    }
+
+    /// This is slow
+    pub fn all_reactions(&self, proc: &ProcessRef) -> io::Result<Vec<CellReaction>> {
+        let mut result = Vec::new();
+        for i in 0..self.len {
+            result.extend(self.storage.offset(i as _).read(proc)?.read(proc)?);
+        }
+        Ok(result)
+    }
+}
