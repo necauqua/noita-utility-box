@@ -27,7 +27,7 @@ pub struct CellFactory {
 }
 
 impl CellFactory {
-    /// This is slow
+    /// This can be slow
     pub fn all_reactions(&self, proc: &ProcessRef) -> io::Result<Vec<CellReaction>> {
         let mut res = self.reaction_lookup.all_reactions(proc)?;
         res.extend(self.fast_reaction_lookup.all_reactions(proc)?);
@@ -496,11 +496,10 @@ impl ReactionLookupTable {
         Ok(result)
     }
 
-    /// This is slow
     pub fn all_reactions(&self, proc: &ProcessRef) -> io::Result<Vec<CellReaction>> {
         let mut result = Vec::new();
-        for i in 0..self.len {
-            result.extend(self.storage.offset(i as _).read(proc)?.read(proc)?);
+        for b in proc.read_multiple::<CellReactionBuf>(self.storage.addr(), self.len)? {
+            result.extend(b.read(proc)?);
         }
         Ok(result)
     }
