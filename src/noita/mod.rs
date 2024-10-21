@@ -18,7 +18,8 @@ pub mod types;
 pub struct Noita {
     proc: ProcessRef,
     g: NoitaGlobals,
-    entity_tag_cache: HashMap<String, u8>,
+
+    entity_tag_cache: HashMap<String, Option<u8>>,
     no_player_not_polied: bool,
 
     materials: Vec<String>,
@@ -176,8 +177,9 @@ impl Noita {
     /// Can store the index and check entity bitset directly to avoid hashmap
     /// lookups
     pub fn get_entity_tag_index(&mut self, tag: &str) -> io::Result<Option<u8>> {
-        if let Some(idx) = self.entity_tag_cache.get(tag) {
-            return Ok(Some(*idx));
+        let cache_entry = self.entity_tag_cache.get(tag).copied();
+        if let Some(idx) = cache_entry.flatten() {
+            return Ok(Some(idx));
         }
 
         let idx = read_ptr!(self.entity_tag_manager)
@@ -185,13 +187,13 @@ impl Noita {
             .tag_indices
             .get(&self.proc, tag)?;
 
-        if let Some(index) = idx {
-            self.entity_tag_cache.insert(tag.to_string(), index);
+        self.entity_tag_cache.insert(tag.to_string(), idx);
 
-            tracing::debug!("Found {tag} index: {index}");
-        } else {
-            // this can spam when the tag was never touched yet and thus doesn't exist
-            tracing::trace!("Did not find {tag} index");
+        if let Some(index) = idx {
+            tracing::debug!(tag, index, "Found entity tag");
+        } else if cache_entry.is_none() {
+            // ^ only log it once
+            tracing::debug!(tag, "Did not find entity tag - doesn't exist yet?");
         }
 
         Ok(idx)
