@@ -10,6 +10,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ### Added
   - Logs are now saved to a file in the state directory for troubleshooting
+  - Material pipette: a checkbox to automatically check off held materials in the checklist
 
 ### Fixed
   - The version link (it had an extra v in the tag name) in the settings panel

@@ -11,9 +11,11 @@ use serde::{Deserialize, Serialize};
 use crate::app::AppState;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MaterialPipette {
     realtime: bool,
     checked: HashSet<String>,
+    auto_check: bool,
 }
 
 impl MaterialPipette {
@@ -128,6 +130,10 @@ impl MaterialPipette {
                                             ui.label(format!("{name:?}"));
                                             ui.label(format!("{:.2}", amount));
                                             ui.end_row();
+
+                                            if self.auto_check {
+                                                self.checked.insert(name);
+                                            }
                                         }
                                         Ok(())
                                     })
@@ -142,6 +148,10 @@ impl MaterialPipette {
 
                         CollapsingHeader::new("Material checklist")
                             .show(ui, |ui| {
+                                ui.checkbox(
+                                    &mut self.auto_check,
+                                    "Automatically check held materials",
+                                );
                                 if ui.button("Reset").clicked() {
                                     self.checked.clear();
                                 }
