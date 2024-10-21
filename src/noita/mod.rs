@@ -119,6 +119,7 @@ impl Noita {
         Ok(read_ptr!(self.global_stats))
     }
 
+    #[track_caller]
     pub fn read_cell_factory(&self) -> io::Result<CellFactory> {
         read_ptr!(self.game_global)
             .read(&self.proc)?

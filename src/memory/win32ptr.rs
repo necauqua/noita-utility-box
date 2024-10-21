@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{fmt::Debug, io, marker::PhantomData, mem::size_of};
+use std::{fmt::Debug, io, marker::PhantomData, mem::size_of, panic::Location};
 
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -128,8 +128,17 @@ impl<T, const BASE: u32> From<u32> for Ptr<T, BASE> {
 impl<T: Pod, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
     type Value = T;
 
+    #[track_caller]
     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
-        self.raw.read_at(BASE, proc)
+        if BASE == 0 && self.raw.is_null() {
+            let loc = Location::caller();
+            Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("Reading a NULL pointer at {loc}"),
+            ))
+        } else {
+            self.raw.read_at(BASE, proc)
+        }
     }
 }
 
