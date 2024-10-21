@@ -14,11 +14,7 @@ use smart_default::SmartDefault;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use thiserror::Error;
 
-use crate::{
-    app::AppState,
-    tools::settings::{Interval, Timer},
-    util::persist,
-};
+use crate::{app::AppState, util::persist};
 
 #[derive(Debug)]
 pub struct NoitaData {
@@ -86,8 +82,6 @@ pub struct ProcessPanel {
 
     #[default(System::new())]
     system_info: System,
-    #[default(Timer::new(Interval::NoitaSearch))]
-    update_timer: Timer,
 
     #[default(Ok(None))]
     noita: Result<Option<NoitaData>, NoitaError>,
@@ -165,7 +159,7 @@ impl ProcessPanel {
         let Ok(noita) = &self.noita else {
             return;
         };
-        if (noita.is_none() && !self.look_for_noita) || !self.update_timer.go(ctx, state) {
+        if noita.is_none() && !self.look_for_noita {
             return;
         }
 

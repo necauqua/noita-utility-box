@@ -12,7 +12,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - Logs are now saved to a file in the state directory for troubleshooting
 
 ### Fixed
-  - Fixed the version link (it had an extra v in the tag name) in the settings panel
+  - The version link (it had an extra v in the tag name) in the settings panel
+  - Live stats not updating OBS when the window is minimized or hidden
+  - Settings fully ressetting on the slightest format change
 
 ### Changed
   - More sneakily attach to the process to read memory so that hopefully Windows Defender stops being annoying

@@ -1,5 +1,11 @@
 use derive_more::Debug;
-use std::{borrow::Borrow, future::Future};
+use eframe::egui;
+use std::{
+    borrow::Borrow,
+    future::Future,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tokio::sync::oneshot::{self, error::TryRecvError, Receiver};
 
 /// A variant of poll-promise that can be used as storage. Uses tokio.
@@ -133,3 +139,42 @@ macro_rules! persist {
 
 #[allow(unused_imports)] // same as above
 pub(crate) use persist;
+
+pub trait Tickable {
+    fn tick(&mut self, ctx: &egui::Context) -> Duration;
+}
+
+/// A legendarily cringe hack to have background updates until next major
+/// version of eframe finally has those
+#[derive(Debug)]
+pub struct UpdatableApp<T>(Arc<Mutex<T>>);
+
+impl<T> UpdatableApp<T>
+where
+    T: eframe::App + Tickable + Send + 'static,
+{
+    pub fn new(app: T, ctx: &egui::Context) -> Self {
+        let data = Arc::new(Mutex::new(app));
+        let ret = data.clone();
+
+        let ctx = ctx.clone();
+        tokio::spawn(async move {
+            loop {
+                let sleep = data.lock().unwrap().tick(&ctx);
+                tokio::time::sleep(sleep).await;
+            }
+        });
+
+        Self(ret)
+    }
+}
+
+impl<T: eframe::App> eframe::App for UpdatableApp<T> {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.0.lock().unwrap().update(ctx, frame)
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.0.lock().unwrap().save(storage)
+    }
+}

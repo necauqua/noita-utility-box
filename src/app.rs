@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use eframe::{
     egui::{self, ViewportBuilder},
@@ -14,7 +14,7 @@ use crate::{
         orb_radar::OrbRadar, process_panel::ProcessPanel, settings::Settings,
     },
     update_check::UpdateChecker,
-    util::persist,
+    util::{persist, Tickable, UpdatableApp},
 };
 
 #[derive(Default)]
@@ -35,6 +35,7 @@ persist!(AppState {
 });
 
 #[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct NoitaUtilityBox {
     show_process_panel: bool,
 
@@ -68,6 +69,14 @@ pub enum CurrentTab {
     Settings,
 }
 
+impl Tickable for NoitaUtilityBox {
+    fn tick(&mut self, ctx: &egui::Context) -> std::time::Duration {
+        self.process_panel.update(ctx, &mut self.state);
+        self.live_stats.update(ctx, &mut self.state);
+        Duration::from_secs_f32(self.state.settings.background_update_interval)
+    }
+}
+
 impl eframe::App for NoitaUtilityBox {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.update_checker.check(ctx, &mut self.state);
@@ -98,8 +107,6 @@ impl eframe::App for NoitaUtilityBox {
             ui.add_space(0.5);
         });
 
-        // update noita regardless of if it's panel is open/visible
-        self.process_panel.update(ctx, &mut self.state);
         egui::SidePanel::left("left").show_animated(ctx, self.show_process_panel, |ui| {
             self.process_panel.ui(ui, &mut self.state)
         });
@@ -108,7 +115,7 @@ impl eframe::App for NoitaUtilityBox {
             use CurrentTab as T;
             match self.state.current_tab {
                 T::OrbRadar => self.orb_radar.ui(ui, &mut self.state),
-                T::LiveStats => self.live_stats.ui(ui, &mut self.state),
+                T::LiveStats => self.live_stats.ui(ui),
                 T::MaterialPipette => self.material_pipette.ui(ui, &mut self.state),
                 T::AddressMaps => self.state.address_maps.ui(ui),
                 T::Settings => self.state.settings.ui(ui),
@@ -160,7 +167,7 @@ impl NoitaUtilityBox {
                     .and_then(|s| get_value(*s, eframe::APP_KEY))
                     .unwrap_or_default();
 
-                Ok(Box::new(app))
+                Ok(Box::new(UpdatableApp::new(app, &cc.egui_ctx)))
             }),
         )
     }

@@ -1,15 +1,15 @@
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
-use eframe::egui::{ComboBox, DragValue, Grid, RichText, TextEdit, Ui};
+use anyhow::Result;
+use eframe::egui::{ComboBox, Context, DragValue, Grid, RichText, TextEdit, Ui};
 use futures::{pin_mut, StreamExt};
-use noita_utility_box::{memory::MemoryStorage, noita::Noita};
+use noita_utility_box::memory::MemoryStorage;
 use obws::{events::Event, requests::inputs::SetSettings, responses::inputs::InputId};
 use smart_default::SmartDefault;
 use strfmt::{FmtError, Format};
 
 use crate::{
     app::AppState,
-    tools::settings::{Interval, Timer},
     util::{persist, Promise},
 };
 use derive_more::Debug;
@@ -34,17 +34,14 @@ struct Stats {
 
 #[derive(Debug, SmartDefault)]
 pub struct LiveStats {
-    stats: Option<Stats>,
+    stats: Option<Result<Stats, String>>,
 
     obs_ws: ObsState,
     text_sources: Promise<Vec<InputId>>,
 
     format_error: Option<String>,
-    /// Force setting the OBS text source on next update (normally it only happens when the stats change)
-    pending_obs_update: bool,
-
-    #[default(Timer::new(Interval::LiveStats))]
-    timer: Timer,
+    /// A signal to force an update of the OBS text source
+    format_changed: bool,
 
     #[default("localhost")]
     obs_address: String,
@@ -54,7 +51,6 @@ pub struct LiveStats {
     selected: Option<InputId>,
     #[default = "{deaths}/{wins}/{streak}({streak-pb})"]
     format: String,
-    running: bool,
 
     /// Used for persistence
     was_connected: bool,
@@ -66,12 +62,15 @@ persist!(LiveStats {
    obs_password: String,
    selected: Option<InputId>,
    format: String,
-   running: bool,
    was_connected: bool,
 });
 
 impl LiveStats {
-    fn update(&mut self, noita: &Noita) {
+    pub fn update(&mut self, ctx: &Context, state: &mut AppState) {
+        let Some(noita) = &state.noita else {
+            return;
+        };
+
         let new_stats = noita
             .read_stats()
             .and_then(|global| {
@@ -92,22 +91,19 @@ impl LiveStats {
                     actual_playtime: global.global.playtime_str.read(noita.proc())?,
                 })
             })
-            .map_err(|e| {
-                tracing::warn!("Failed to read stats: {e:#}");
-                e
-            })
-            .ok();
+            .map_err(|e| e.to_string());
 
-        if new_stats == self.stats && !self.pending_obs_update {
+        if self.stats.as_ref().is_some_and(|r| *r == new_stats) && !self.format_changed {
             return;
         }
-        self.pending_obs_update = false;
-        self.stats = new_stats;
 
-        if !self.running {
-            return;
-        }
-        if let (Some(stats), Some(selected), ObsState::Connected(client, _)) =
+        // wake up the ui to redraw the stats
+        ctx.request_repaint();
+
+        self.format_changed = false;
+        self.stats = Some(new_stats);
+
+        if let (Some(Ok(stats)), Some(selected), ObsState::Connected(client, _)) =
             (&self.stats, &self.selected, &self.obs_ws)
         {
             let data = HashMap::from([
@@ -165,54 +161,53 @@ impl LiveStats {
         self.was_connected = false;
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
-        if let Some(noita) = &state.noita {
-            if self.timer.go(ui.ctx(), state) {
-                self.update(noita);
-            }
-        };
-
+    pub fn ui(&mut self, ui: &mut Ui) {
         ui.heading("Live Stats");
         ui.separator();
 
-        Grid::new("live_stats").show(ui, |ui| {
-            const NA: Cow<str> = Cow::Borrowed("N/A");
-            let s = self.stats.as_ref();
+        match &self.stats {
+            Some(Ok(s)) => {
+                Grid::new("live_stats").show(ui, |ui| {
+                    ui.label("Deaths: ");
+                    ui.label(s.deaths.to_string());
+                    ui.end_row();
 
-            ui.label("Deaths: ");
-            ui.label(s.map_or(NA, |s| s.deaths.to_string().into()));
-            ui.end_row();
+                    ui.label("Wins: ");
+                    ui.label(s.wins.to_string());
+                    ui.end_row();
 
-            ui.label("Wins: ");
-            ui.label(s.map_or(NA, |s| s.wins.to_string().into()));
-            ui.end_row();
+                    ui.label("Streak: ");
+                    ui.label(s.streak.to_string());
+                    ui.end_row();
 
-            ui.label("Streak: ");
-            ui.label(s.map_or(NA, |s| s.streak.to_string().into()));
-            ui.end_row();
+                    ui.label("Record: ");
+                    ui.label(s.record.to_string());
+                    ui.end_row();
+                });
 
-            ui.label("Record: ");
-            ui.label(s.map_or(NA, |s| s.record.to_string().into()));
-            ui.end_row();
-        });
-
-        if let Some(ref s) = self.stats {
-            ui.label(format!(
-                "Your actual playtime (without AFK and pausing) as recorded by Noita is: {}",
-                s.actual_playtime
-            ));
-            ui.end_row();
+                ui.label(format!(
+                    "Your actual playtime (without AFK and pausing) as recorded by Noita is: {}",
+                    s.actual_playtime
+                ));
+                ui.end_row();
+            }
+            Some(Err(e)) => {
+                ui.label(RichText::new(e).color(ui.style().visuals.error_fg_color));
+                ui.end_row();
+            }
+            None => {
+                ui.label("No data");
+                ui.end_row();
+            }
         }
 
         ui.separator();
 
         ui.label("Format:");
-
         if ui.add(TextEdit::multiline(&mut self.format)).changed() {
             self.format_error = None;
-            self.pending_obs_update = true;
+            self.format_changed = true;
         }
-
         if let Some(format_error) = &self.format_error {
             ui.label(RichText::new(format_error).color(ui.style().visuals.error_fg_color));
         }
@@ -311,15 +306,10 @@ impl LiveStats {
                                 .map(|inputs| inputs.into_iter().map(|input| input.id).collect())
                                 .unwrap_or_default()
                         });
-                        self.running = false;
                     }
 
                     ui.end_row();
                 });
-
-                if ui.toggle_value(&mut self.running, "Run").clicked() {
-                    self.pending_obs_update = true;
-                }
             }
             ObsState::Error(e) => {
                 ui.label(RichText::new(&*e).color(ui.style().visuals.error_fg_color));

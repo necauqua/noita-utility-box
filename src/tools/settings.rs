@@ -1,19 +1,18 @@
-use std::{env, time::Instant};
+use std::env;
 
 use eframe::egui::{
-    Checkbox, CollapsingHeader, Context, DragValue, FontId, Grid, Label, RichText, ScrollArea,
-    TextStyle,
+    Checkbox, CollapsingHeader, DragValue, FontId, Grid, Label, RichText, ScrollArea, TextStyle,
 };
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
-use strum::{EnumCount, EnumIter, EnumMessage, IntoEnumIterator};
 
-use crate::{app::AppState, update_check::RELEASE_VERSION};
+use crate::update_check::RELEASE_VERSION;
 
 #[derive(Debug, Serialize, Deserialize, Clone, SmartDefault)]
+#[serde(default)]
 pub struct Settings {
-    #[default([0.5; Interval::COUNT])]
-    intervals: [f32; Interval::COUNT],
+    #[default(0.5)]
+    pub background_update_interval: f32,
     #[default(true)]
     pub check_for_updates: bool,
     #[default(true)]
@@ -27,44 +26,6 @@ pub struct Settings {
 
     #[serde(skip)]
     pub newest_version: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, EnumCount, EnumIter, EnumMessage)]
-#[repr(usize)]
-pub enum Interval {
-    /// Noita process search interval
-    NoitaSearch,
-    /// Live stats polling
-    LiveStats,
-}
-
-#[derive(Debug)]
-pub struct Timer {
-    interval: Interval,
-    last_tick: Instant,
-}
-
-impl Timer {
-    pub fn new(interval: Interval) -> Self {
-        Self {
-            interval,
-            last_tick: Instant::now(),
-        }
-    }
-
-    pub fn interval(&self, state: &AppState) -> f32 {
-        state.settings.intervals[self.interval as usize]
-    }
-
-    pub fn go(&mut self, ctx: &Context, state: &AppState) -> bool {
-        let interval = self.interval(state);
-        ctx.request_repaint_after_secs(interval);
-        if self.last_tick.elapsed().as_secs_f32() >= interval {
-            self.last_tick = Instant::now();
-            return true;
-        }
-        false
-    }
 }
 
 impl Settings {
@@ -107,19 +68,15 @@ impl Settings {
             ui.separator();
 
             Grid::new("settings").show(ui, |ui| {
-                for interval in Interval::iter() {
-                    let Some(doc) = interval.get_documentation() else {
-                        continue;
-                    };
-                    ui.label(doc);
-                    ui.add(
-                        DragValue::new(&mut self.intervals[interval as usize])
-                            .range(0.0..=60.0)
-                            .speed(0.02)
-                            .suffix(" s"),
-                    );
-                    ui.end_row();
-                }
+                ui.label("Background updates interval")
+                    .on_hover_text("How often the background updates run (used by live stats and noita process auto-detection)");
+                ui.add(
+                    DragValue::new(&mut self.background_update_interval)
+                        .range(0.0..=60.0)
+                        .speed(0.02)
+                        .suffix(" s"),
+                );
+                ui.end_row();
 
                 if RELEASE_VERSION.is_some() {
                     ui.checkbox(&mut self.check_for_updates, "Check for updates on startup")
