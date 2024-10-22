@@ -1,16 +1,20 @@
-use std::env;
-
 use eframe::egui::{
-    Checkbox, CollapsingHeader, DragValue, FontId, Grid, Label, RichText, ScrollArea, TextStyle,
+    self, Checkbox, CollapsingHeader, DragValue, FontId, Grid, Label, RichText, ScrollArea,
+    TextStyle, Ui,
 };
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
-use crate::update_check::RELEASE_VERSION;
+use crate::{app::AppState, update_check::RELEASE_VERSION};
+
+use super::Tool;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Settings;
 
 #[derive(Debug, Serialize, Deserialize, Clone, SmartDefault)]
 #[serde(default)]
-pub struct Settings {
+pub struct SettingsData {
     #[default(0.5)]
     pub background_update_interval: f32,
     #[default(true)]
@@ -19,18 +23,21 @@ pub struct Settings {
     pub notify_when_outdated: bool,
     #[default(true)]
     pub check_export_name: bool,
-    #[default(true)]
-    pub pipette: bool,
-    #[default(true)]
-    pub pipette_checklist: bool,
 
     #[serde(skip)]
     pub newest_version: Option<String>,
 }
 
+#[typetag::serde]
+impl Tool for Settings {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+        self.ui(ui, state);
+    }
+}
+
 impl Settings {
-    pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
-        ui.heading("Settings");
+    pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+        let s = &mut state.settings;
 
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
@@ -52,7 +59,7 @@ impl Settings {
             let info = RichText::new(label).font(font);
             ui.hyperlink_to(info, url.clone()).on_hover_text(url);
 
-            if let Some(s) = &self.newest_version {
+            if let Some(s) = &s.newest_version {
                 let text = RichText::new(format!(" (latest: {s})"))
                     .small()
                     .color(ui.style().visuals.weak_text_color());
@@ -65,13 +72,18 @@ impl Settings {
         ScrollArea::vertical().show(ui, |ui| {
             ui.label("Note: You can permanently scale the UI with Ctrl+- and Ctrl+=");
 
+            ui.horizontal(|ui| {
+                ui.label("Also, click this:");
+                egui::global_theme_preference_switch(ui);
+            });
+
             ui.separator();
 
             Grid::new("settings").show(ui, |ui| {
                 ui.label("Background updates interval")
                     .on_hover_text("How often the background updates run (used by live stats and noita process auto-detection)");
                 ui.add(
-                    DragValue::new(&mut self.background_update_interval)
+                    DragValue::new(&mut s.background_update_interval)
                         .range(0.0..=60.0)
                         .speed(0.02)
                         .suffix(" s"),
@@ -79,39 +91,24 @@ impl Settings {
                 ui.end_row();
 
                 if RELEASE_VERSION.is_some() {
-                    ui.checkbox(&mut self.check_for_updates, "Check for updates on startup")
+                    ui.checkbox(&mut s.check_for_updates, "Check for updates on startup")
                         .on_hover_text("This makes one request to the GitHub API on startup to check the latest release version");
                     ui.end_row();
 
-                    if !self.check_for_updates {
-                        self.notify_when_outdated = false;
+                    if !s.check_for_updates {
+                        s.notify_when_outdated = false;
                     }
                     ui.vertical(|ui| {
                         ui.indent("update-check", |ui| {
-                            ui.add_enabled(self.check_for_updates, Checkbox::new(&mut self.notify_when_outdated, "Startup update notification"))
+                            ui.add_enabled(s.check_for_updates, Checkbox::new(&mut s.notify_when_outdated, "Startup update notification"))
                                 .on_hover_text("This controls the popup shown on startup if the latest release version is newer than the current version");
                         });
                     });
                     ui.end_row();
                 }
 
-                ui.checkbox(&mut self.check_export_name, "Check export name")
+                ui.checkbox(&mut s.check_export_name, "Check export name")
                     .on_hover_text("When detecting noita, check that the executable export name is 'wizard_physics.exe'");
-                ui.end_row();
-
-                ui.checkbox(&mut self.pipette, "Enable Material Pipette")
-                    .on_hover_text("The pipette is obviously very targeted at Fury and most people wont need it");
-                ui.end_row();
-
-                if !self.pipette {
-                    self.pipette_checklist = false;
-                }
-                ui.vertical(|ui| {
-                    ui.indent("pipette", |ui| {
-                        ui.add_enabled(self.pipette, Checkbox::new(&mut self.pipette_checklist, "Add all materials checklist"))
-                            .on_hover_text("Adds a checklist of all materials to the material pipette");
-                    });
-                });
                 ui.end_row();
             });
 

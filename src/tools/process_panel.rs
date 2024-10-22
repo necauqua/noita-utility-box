@@ -16,6 +16,8 @@ use thiserror::Error;
 
 use crate::{app::AppState, util::persist};
 
+use super::Tool;
+
 #[derive(Debug)]
 pub struct NoitaData {
     pid: sysinfo::Pid,
@@ -91,6 +93,17 @@ pub struct ProcessPanel {
 persist!(ProcessPanel {
     look_for_noita: bool,
 });
+
+#[typetag::serde]
+impl Tool for ProcessPanel {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+        self.ui(ui, state);
+    }
+
+    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
+        self.update(ctx, state);
+    }
+}
 
 impl ProcessPanel {
     fn set_noita(
@@ -205,9 +218,6 @@ impl ProcessPanel {
     }
 
     pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
-        ui.heading("Noita");
-        ui.separator();
-
         match &self.noita {
             Err(e) => {
                 ui.label(RichText::new(e.to_string()).color(ui.style().visuals.error_fg_color));

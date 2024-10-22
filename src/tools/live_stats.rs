@@ -14,6 +14,8 @@ use crate::{
 };
 use derive_more::Debug;
 
+use super::Tool;
+
 #[derive(Debug, Default)]
 enum ObsState {
     #[default]
@@ -64,6 +66,17 @@ persist!(LiveStats {
    format: String,
    was_connected: bool,
 });
+
+#[typetag::serde]
+impl Tool for LiveStats {
+    fn ui(&mut self, ui: &mut Ui, _state: &mut AppState) {
+        self.ui(ui);
+    }
+
+    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
+        self.update(ctx, state);
+    }
+}
 
 impl LiveStats {
     pub fn update(&mut self, ctx: &Context, state: &mut AppState) {
@@ -162,9 +175,6 @@ impl LiveStats {
     }
 
     pub fn ui(&mut self, ui: &mut Ui) {
-        ui.heading("Live Stats");
-        ui.separator();
-
         match &self.stats {
             Some(Ok(s)) => {
                 Grid::new("live_stats").show(ui, |ui| {

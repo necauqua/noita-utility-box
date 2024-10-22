@@ -16,9 +16,13 @@ use noita_utility_box::{
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
+use crate::app::AppState;
+
+use super::Tool;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
-pub struct AddressMaps {
+pub struct AddressMapsData {
     maps: Vec<AddressMap>,
 }
 
@@ -100,105 +104,20 @@ fn hex_input(value: &mut u32) -> impl Widget + '_ {
     }
 }
 
-impl AddressMaps {
-    pub fn get(&self, noita_ts: u32) -> Option<AddressMap> {
-        self.maps
-            .iter()
-            .find(|m| m.data.read().unwrap().noita_ts == noita_ts)
-            .cloned()
-    }
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct AddressMaps;
 
-    pub fn discover(&mut self, proc: &ProcessRef, header: &PeHeader) -> io::Result<()> {
-        fn add_entry<T>(
-            entries: &mut Vec<AddressEntry>,
-            name: &str,
-            ptr: Option<Ptr<T>>,
-            comment: &str,
-        ) {
-            if let Some(ptr) = ptr {
-                entries.push(AddressEntry {
-                    name: name.to_owned(),
-                    address: ptr.addr(),
-                    comment: comment.to_owned(),
-                });
-            } else {
-                tracing::warn!("{name} pointer not found");
-            }
-        }
-
-        let image = header.clone().read_image(proc)?;
-        let discovered = discovery::run(&image);
-
-        let mut entries = Vec::new();
-        add_entry(
-            &mut entries,
-            "seed",
-            discovered.world_seed,
-            "Current world seed",
-        );
-        add_entry(
-            &mut entries,
-            "ng-plus-count",
-            discovered.ng_count,
-            "New Game Plus counter",
-        );
-        add_entry(
-            &mut entries,
-            "global-stats",
-            discovered.global_stats,
-            "Used to get all the stats",
-        );
-        add_entry(
-            &mut entries,
-            "game-global",
-            discovered.game_global,
-            "Stores global game state, like the list of materials",
-        );
-        add_entry(
-            &mut entries,
-            "entity-manager",
-            discovered.entity_manager,
-            "Entity manager, used to find the player or whatever it got polymorphed into",
-        );
-        add_entry(
-            &mut entries,
-            "entity-tag-manager",
-            discovered.entity_tag_manager,
-            "Entity tag manager, also used to find the player",
-        );
-        add_entry(
-            &mut entries,
-            "component-type-manager",
-            discovered.component_type_manager,
-            "Component type manager, used to get entity components",
-        );
-
-        if !entries.is_empty() {
-            let name = match discovery::find_noita_build(&image) {
-                Some(noita) => format!("Autodiscovered - {noita}"),
-                None => "Autodiscovered (no noita build string found!)".into(),
-            };
-
-            self.maps.push(AddressMap {
-                data: Arc::new(RwLock::new(AddressMapData {
-                    name,
-                    noita_ts: header.timestamp(),
-                    entries,
-                    ui_id: Id::new(fastrand::u64(..)),
-                })),
-            });
-        }
-
-        Ok(())
-    }
-
-    pub fn ui(&mut self, ui: &mut Ui) {
+#[typetag::serde]
+impl Tool for AddressMaps {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
         ui.heading("Address Maps");
         ui.separator();
 
         let mut removed = None;
 
-        for (i, map) in self.maps.iter_mut().enumerate() {
+        let s = &mut state.address_maps;
+
+        for (i, map) in s.maps.iter_mut().enumerate() {
             let mut map = map.data_mut();
             CollapsingHeader::new(format!("(0x{:x}) {}", map.noita_ts, map.name))
                 .id_salt(map.ui_id)
@@ -322,7 +241,7 @@ impl AddressMaps {
         }
 
         if let Some((i, header_id)) = removed {
-            self.maps.remove(i);
+            s.maps.remove(i);
 
             // cleanup the collapsing state at this id
             CollapsingState::load_with_default_open(ui.ctx(), header_id, false).remove(ui.ctx());
@@ -330,7 +249,100 @@ impl AddressMaps {
         }
 
         if ui.button("Add").clicked() {
-            self.maps.push(AddressMap::default());
+            s.maps.push(AddressMap::default());
         }
+    }
+}
+
+impl AddressMapsData {
+    pub fn get(&self, noita_ts: u32) -> Option<AddressMap> {
+        self.maps
+            .iter()
+            .find(|m| m.data.read().unwrap().noita_ts == noita_ts)
+            .cloned()
+    }
+
+    pub fn discover(&mut self, proc: &ProcessRef, header: &PeHeader) -> io::Result<()> {
+        fn add_entry<T>(
+            entries: &mut Vec<AddressEntry>,
+            name: &str,
+            ptr: Option<Ptr<T>>,
+            comment: &str,
+        ) {
+            if let Some(ptr) = ptr {
+                entries.push(AddressEntry {
+                    name: name.to_owned(),
+                    address: ptr.addr(),
+                    comment: comment.to_owned(),
+                });
+            } else {
+                tracing::warn!("{name} pointer not found");
+            }
+        }
+
+        let image = header.clone().read_image(proc)?;
+        let discovered = discovery::run(&image);
+
+        let mut entries = Vec::new();
+        add_entry(
+            &mut entries,
+            "seed",
+            discovered.world_seed,
+            "Current world seed",
+        );
+        add_entry(
+            &mut entries,
+            "ng-plus-count",
+            discovered.ng_count,
+            "New Game Plus counter",
+        );
+        add_entry(
+            &mut entries,
+            "global-stats",
+            discovered.global_stats,
+            "Used to get all the stats",
+        );
+        add_entry(
+            &mut entries,
+            "game-global",
+            discovered.game_global,
+            "Stores global game state, like the list of materials",
+        );
+        add_entry(
+            &mut entries,
+            "entity-manager",
+            discovered.entity_manager,
+            "Entity manager, used to find the player or whatever it got polymorphed into",
+        );
+        add_entry(
+            &mut entries,
+            "entity-tag-manager",
+            discovered.entity_tag_manager,
+            "Entity tag manager, also used to find the player",
+        );
+        add_entry(
+            &mut entries,
+            "component-type-manager",
+            discovered.component_type_manager,
+            "Component type manager, used to get entity components",
+        );
+
+        if !entries.is_empty() {
+            let name = match discovery::find_noita_build(&image) {
+                Some(noita) => format!("Autodiscovered - {noita}"),
+                None => "Autodiscovered (no noita build string found!)".into(),
+            };
+
+            self.maps.push(AddressMap {
+                data: Arc::new(RwLock::new(AddressMapData {
+                    name,
+                    noita_ts: header.timestamp(),
+                    entries,
+                    ui_id: Id::new(fastrand::u64(..)),
+                })),
+            });
+        }
+
+        Ok(())
     }
 }

@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::AppState;
 
+use super::Tool;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct MaterialPipette {
@@ -18,11 +20,15 @@ pub struct MaterialPipette {
     auto_check: bool,
 }
 
+#[typetag::serde]
+impl Tool for MaterialPipette {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+        self.ui(ui, state);
+    }
+}
+
 impl MaterialPipette {
     pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
-        ui.heading("Material Pipette");
-        ui.separator();
-
         ui.checkbox(&mut self.realtime, "Realtime");
         if self.realtime {
             ui.ctx().request_repaint();
@@ -143,57 +149,48 @@ impl MaterialPipette {
                             .transpose()?;
                     }
 
-                    if state.settings.pipette_checklist {
-                        ui.separator();
+                    ui.separator();
 
-                        CollapsingHeader::new("Material checklist")
-                            .show(ui, |ui| {
-                                ui.checkbox(
-                                    &mut self.auto_check,
-                                    "Automatically check held materials",
-                                );
-                                if ui.button("Reset").clicked() {
-                                    self.checked.clear();
-                                }
-                                ui.add_space(0.5);
-                                Grid::new("all_materials")
-                                    .num_columns(4)
-                                    .striped(true)
-                                    .show(ui, |ui| {
-                                        for idx in 0..noita.materials()?.len() as u32 {
-                                            let name = noita.get_material_name(idx)?.unwrap();
+                    CollapsingHeader::new("Material checklist")
+                        .show(ui, |ui| {
+                            ui.checkbox(&mut self.auto_check, "Automatically check held materials");
+                            if ui.button("Reset").clicked() {
+                                self.checked.clear();
+                            }
+                            ui.add_space(0.5);
+                            Grid::new("all_materials")
+                                .num_columns(4)
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    for idx in 0..noita.materials()?.len() as u32 {
+                                        let name = noita.get_material_name(idx)?.unwrap();
 
-                                            ui.label(idx.to_string());
+                                        ui.label(idx.to_string());
 
-                                            let mut checked = self.checked.contains(&name);
-                                            ui.checkbox(&mut checked, "");
+                                        let mut checked = self.checked.contains(&name);
+                                        ui.checkbox(&mut checked, "");
 
-                                            ui.label(format!("{name:?}"));
+                                        ui.label(format!("{name:?}"));
 
-                                            if checked {
-                                                self.checked.insert(name);
-                                            } else {
-                                                self.checked.remove(&name);
-                                            }
-
-                                            if let Some(ui_name) =
-                                                noita.get_material_ui_name(idx)?
-                                            {
-                                                ui.label(ui_name);
-                                            }
-
-                                            ui.end_row();
+                                        if checked {
+                                            self.checked.insert(name);
+                                        } else {
+                                            self.checked.remove(&name);
                                         }
-                                        Ok(())
-                                    })
-                                    .inner
-                            })
-                            .body_returned
-                            .transpose()
-                            .map(|_| ())
-                    } else {
-                        Ok(())
-                    }
+
+                                        if let Some(ui_name) = noita.get_material_ui_name(idx)? {
+                                            ui.label(ui_name);
+                                        }
+
+                                        ui.end_row();
+                                    }
+                                    Ok(())
+                                })
+                                .inner
+                        })
+                        .body_returned
+                        .transpose()
+                        .map(|_| ())
                 })
                 .inner
         })();

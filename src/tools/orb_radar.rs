@@ -4,18 +4,26 @@ use crate::{app::AppState, orb_searcher::OrbSearcher};
 use eframe::egui::{
     pos2, vec2, Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, Ui,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default)]
+use super::Tool;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OrbRadar {
     realtime: bool,
+    #[serde(skip)]
     orb_searcher: OrbSearcher,
+}
+
+#[typetag::serde]
+impl Tool for OrbRadar {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+        self.ui(ui, state);
+    }
 }
 
 impl OrbRadar {
     pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
-        ui.heading("Orb Radar");
-        ui.separator();
-
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.realtime, "Realtime");

@@ -178,3 +178,60 @@ impl<T: eframe::App> eframe::App for UpdatableApp<T> {
         self.0.lock().unwrap().save(storage)
     }
 }
+
+// lol
+// does the * 2 thing mean those strings use 2x the space
+// or is it smart enough to figure out we're only using the slice
+// idk, and it's negligible anyway
+#[allow(unused_macros)] // same as above
+macro_rules! to_title_case {
+    ($s:expr) => {{
+        const B: &[u8] = $s.as_bytes();
+        const BUF: ([u8; B.len() * 2], usize) = {
+            let mut buf = [0; B.len() * 2];
+            let mut buf_pos = 0;
+            let mut i = 0;
+            while i < B.len() {
+                let next = B[i];
+                if i != 0 && next.is_ascii_uppercase() {
+                    buf[buf_pos] = b' ';
+                    buf_pos += 1;
+                }
+                buf[buf_pos] = next;
+                buf_pos += 1;
+                i += 1;
+            }
+            (buf, buf_pos)
+        };
+        // We only insert ascii spaces before an ascii uppercase,
+        // which means we insert a valid utf8 codepoint in between utf8
+        // codepoints - meaning the result is always valid utf8
+        // Could use from_utf8_unchecked but this is run at compile time anyway
+        match std::str::from_utf8(&BUF.0.split_at(BUF.1).0) {
+            ::std::result::Result::Ok(s) => s,
+            ::std::result::Result::Err(_) => panic!("to_title_case! failed somehow"),
+        }
+    }};
+}
+#[allow(unused_imports)] // same as above
+pub(crate) use to_title_case;
+
+#[cfg(test)]
+#[test]
+fn test_const_title_case() {
+    // happy path
+    assert_eq!(to_title_case!("SomeFunkyTool"), "Some Funky Tool");
+
+    // see that this compiles (meaning the * 2 trick worked lol)
+    const SCHLONG: &str = to_title_case!(
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    );
+    println!("{SCHLONG}");
+
+    // unicode gibberish compiles too
+    to_title_case!("𐍈𓂀ܰᚦΞ𝔄꧁৹ဨ");
+
+    // unicode gibberish but with an ascii uppercase in it
+    const P: &str = to_title_case!("𐍈𓂀ܰᚦΞB𝔄꧁৹ဨ");
+    println!("{P}")
+}
