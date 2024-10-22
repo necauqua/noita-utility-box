@@ -79,21 +79,62 @@ mod platform {
 
 #[cfg(windows)]
 mod platform {
-    use std::{io, rc::Rc};
-    use windows::{
-        core::Owned,
-        Win32::{
-            Foundation::HANDLE,
-            System::{Diagnostics::Debug::ReadProcessMemory, Threading::PROCESS_VM_READ},
-        },
+    use std::{io, sync::Arc};
+    use windows::Win32::System::{
+        Diagnostics::Debug::ReadProcessMemory, Threading::PROCESS_VM_READ,
     };
+
+    mod threadsafe_handle {
+        use std::ops::Deref;
+        use windows::{core::Owned, Win32::Foundation::HANDLE};
+
+        /// I'm pretty sure the kernel does not care which thread calls
+        /// ReadProcessMemory, as long as it's from the same process.
+        ///
+        /// > All handles you obtain from functions in Kernel32 are thread-safe,
+        /// > unless the MSDN Library article for the function explicitly mentions
+        /// > it is not. There's an easy way to tell from your code, such a handle
+        /// > is closed with CloseHandle().
+        ///
+        /// from this one guy on https://stackoverflow.com/a/12214212
+        ///
+        /// Handle is an opaque number, it's just that in Windows Rust API they
+        /// made it !Send and !Sync because it is indeed not always threadsafe
+        /// I think?.
+        #[derive(Debug)]
+        pub struct ThreadsafeHandle(Owned<HANDLE>);
+        unsafe impl Send for ThreadsafeHandle {}
+        unsafe impl Sync for ThreadsafeHandle {}
+
+        impl ThreadsafeHandle {
+            /// SAFETY:
+            /// Up to the caller to determine if the given handle is owned and
+            /// indeed threadsafe lol
+            pub unsafe fn new(handle: HANDLE) -> Self {
+                Self(unsafe { Owned::new(handle) })
+            }
+        }
+
+        impl Deref for ThreadsafeHandle {
+            type Target = HANDLE;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    }
+    use threadsafe_handle::ThreadsafeHandle;
 
     #[derive(Debug, Clone)]
     pub struct Handle {
         pid: u32,
-        handle: Rc<Owned<HANDLE>>,
+        handle: Arc<ThreadsafeHandle>,
     }
 
+    /// Only difference from io::Error::from_os_error (which is the default Into
+    /// conversion) is that Rust formats the error as a signed decimal number,
+    /// which makes windows error codes into ugly large negatives instead of hex
+    /// strings that windows does
     fn better_message(e: windows::core::Error) -> io::Error {
         io::Error::new(io::ErrorKind::Other, e.to_string())
     }
@@ -102,7 +143,7 @@ mod platform {
         pub fn connect(pid: u32) -> io::Result<Self> {
             Ok(Self {
                 pid,
-                handle: Rc::new(open_process(PROCESS_VM_READ, pid).map_err(better_message)?),
+                handle: Arc::new(open_process(PROCESS_VM_READ, pid).map_err(better_message)?),
             })
         }
 
@@ -133,10 +174,10 @@ mod platform {
     fn open_process(
         access: windows::Win32::System::Threading::PROCESS_ACCESS_RIGHTS,
         pid: u32,
-    ) -> windows::core::Result<Owned<HANDLE>> {
+    ) -> windows::core::Result<ThreadsafeHandle> {
         use windows::Win32::System::Threading::OpenProcess;
 
-        unsafe { OpenProcess(access, false, pid).map(|h| Owned::new(h)) }
+        unsafe { OpenProcess(access, false, pid).map(|h| ThreadsafeHandle::new(h)) }
     }
 
     #[cfg(feature = "sneaky")]
@@ -159,7 +200,6 @@ mod platform {
         use std::arch::asm;
         use str_crypter::{decrypt_string, sc};
         use windows::{
-            core::Owned,
             Wdk::Foundation::OBJECT_ATTRIBUTES,
             Win32::{
                 Foundation::{HANDLE, NTSTATUS},
@@ -168,10 +208,12 @@ mod platform {
             },
         };
 
+        use super::ThreadsafeHandle;
+
         pub fn open_process(
             access: PROCESS_ACCESS_RIGHTS,
             pid: u32,
-        ) -> windows::core::Result<Owned<HANDLE>> {
+        ) -> windows::core::Result<ThreadsafeHandle> {
             let mut process_handle = HANDLE::default();
 
             let mut object_attributes = OBJECT_ATTRIBUTES {
@@ -192,7 +234,7 @@ mod platform {
                 )
             };
             if status.is_ok() {
-                Ok(unsafe { Owned::new(process_handle) })
+                Ok(unsafe { ThreadsafeHandle::new(process_handle) })
             } else {
                 Err(windows::core::Error::from_win32())
             }
@@ -201,12 +243,11 @@ mod platform {
         static SSN: std::sync::LazyLock<Option<u32>> = std::sync::LazyLock::new(|| {
             let mut exports = export_resolver::ExportList::new();
 
-            // don't put sus strings in .rdata
+            // don't put sus strings in .rdata (also result returned can never be Err)
             let op = sc!("NtOpenProcess", 42).unwrap();
             let dll = sc!("ntdll.dll", 42).unwrap();
 
-            // ok the api is a bit weird, the guy is 1000x smarter than me,
-            // but is a rust newbie probably with a bunch of c/c++ preconceptions or something
+            // the api is a bit weird for like caching purposes I suppose
             exports.add(&dll, &op).ok()?;
             // never fails if above succeeded
             let f = exports.get_function_address(&op).unwrap();
