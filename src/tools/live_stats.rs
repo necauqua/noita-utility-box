@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use anyhow::Context as _;
 use eframe::egui::{ComboBox, Context, DragValue, Grid, RichText, TextEdit, Ui};
 use futures::{pin_mut, StreamExt};
 use noita_utility_box::memory::MemoryStorage;
@@ -66,37 +67,44 @@ persist!(LiveStats {
    was_connected: bool,
 });
 
-#[typetag::serde]
-impl Tool for LiveStats {
-    fn ui(&mut self, ui: &mut Ui, _state: &mut AppState) -> Result {
-        self.ui(ui);
-        Ok(())
+impl LiveStats {
+    fn connect(&mut self) {
+        self.obs_ws = ObsState::Connecting(Promise::spawn(obws::Client::connect(
+            self.obs_address.clone(),
+            self.obs_port,
+            Some(self.obs_password.clone()),
+        )));
     }
 
-    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
-        self.update(ctx, state);
+    fn disconnect(&mut self) {
+        self.obs_ws = ObsState::NotConnected;
+        self.was_connected = false;
     }
 }
 
-impl LiveStats {
-    pub fn update(&mut self, ctx: &Context, state: &mut AppState) {
+#[typetag::serde]
+impl Tool for LiveStats {
+    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
         let Some(noita) = &state.noita else {
             return;
         };
 
         let new_stats = noita
             .read_stats()
+            .context("Reading global stats")
             .and_then(|global| {
                 let end0 = global
                     .key_value_stats
-                    .get(noita.proc(), "progress_ending0")?
+                    .get(noita.proc(), "progress_ending0")
+                    .context("Getting progress_ending0 stat")?
                     .unwrap_or_default();
                 let end1 = global
                     .key_value_stats
-                    .get(noita.proc(), "progress_ending1")?
+                    .get(noita.proc(), "progress_ending1")
+                    .context("Getting progress_ending1 stat")?
                     .unwrap_or_default();
 
-                Ok(Stats {
+                anyhow::Ok(Stats {
                     deaths: global.global.death_count,
                     wins: end0 + end1,
                     streak: global.session.streaks,
@@ -104,7 +112,7 @@ impl LiveStats {
                     actual_playtime: global.global.playtime_str.read(noita.proc())?,
                 })
             })
-            .map_err(|e| e.to_string());
+            .map_err(|e| format!("{e:#}"));
 
         if self.stats.as_ref().is_some_and(|r| *r == new_stats) && !self.format_changed {
             return;
@@ -161,20 +169,7 @@ impl LiveStats {
         }
     }
 
-    fn connect(&mut self) {
-        self.obs_ws = ObsState::Connecting(Promise::spawn(obws::Client::connect(
-            self.obs_address.clone(),
-            self.obs_port,
-            Some(std::mem::take(&mut self.obs_password)),
-        )));
-    }
-
-    fn disconnect(&mut self) {
-        self.obs_ws = ObsState::NotConnected;
-        self.was_connected = false;
-    }
-
-    pub fn ui(&mut self, ui: &mut Ui) {
+    fn ui(&mut self, ui: &mut Ui, _state: &mut AppState) -> Result {
         match &self.stats {
             Some(Ok(s)) => {
                 Grid::new("live_stats").show(ui, |ui| {
@@ -282,7 +277,7 @@ impl LiveStats {
             ObsState::Connected(client, end_promise) => {
                 if end_promise.poll().is_some() {
                     self.disconnect();
-                    return;
+                    return Ok(());
                 }
                 // stop referencing self.obs_ws via this client through the big match
                 let client = (*client).clone();
@@ -322,7 +317,10 @@ impl LiveStats {
                 });
             }
             ObsState::Error(e) => {
-                ui.label(RichText::new(&*e).color(ui.style().visuals.error_fg_color));
+                ui.label(
+                    RichText::new(format!("OBS error: {e}"))
+                        .color(ui.style().visuals.error_fg_color),
+                );
                 ui.horizontal(|ui| {
                     if ui.button("Retry").clicked() {
                         self.connect();
@@ -333,5 +331,6 @@ impl LiveStats {
                 });
             }
         }
+        Ok(())
     }
 }

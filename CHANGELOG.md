@@ -14,6 +14,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Removed
   - The settings checkbox to disable material pipette - just close the tab to hide it now it you don't need it
 
+### Fixed
+  - Live stats resetting the stored OBS password when connected
+
 ## [v0.2.1] 12024-10-22
 
 ### Added

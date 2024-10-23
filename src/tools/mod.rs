@@ -69,11 +69,11 @@ pub type Result = std::result::Result<(), ToolError>;
 
 #[typetag::serde]
 pub trait Tool: Send + 'static {
-    /// The main egui draw function for the tool
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result;
-
     /// The background update call
     fn tick(&mut self, _ctx: &Context, _state: &mut AppState) {}
+
+    /// The main egui draw function for the tool
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result;
 
     fn type_id(&self) -> TypeId {
         TypeId::of::<Self>()
