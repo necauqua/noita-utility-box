@@ -100,8 +100,17 @@ impl egui_tiles::Behavior<Pane> for AppState {
     }
 
     fn on_tab_close(&mut self, tiles: &mut Tiles<Pane>, tile_id: TileId) -> bool {
-        if let Some(Tile::Pane(pane)) = tiles.remove(tile_id) {
-            self.hidden_tools.push(pane);
+        if let Some(tile) = tiles.remove(tile_id) {
+            match tile {
+                Tile::Pane(pane) => {
+                    self.hidden_tools.push(pane);
+                }
+                Tile::Container(container) => {
+                    for tile_id in container.children() {
+                        self.on_tab_close(tiles, *tile_id);
+                    }
+                }
+            }
         }
         false // we removed it ourselves (to get ownership)
     }
