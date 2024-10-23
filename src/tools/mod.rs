@@ -1,3 +1,5 @@
+use std::any::TypeId;
+
 use crate::app::AppState;
 use crate::util::to_title_case;
 use eframe::egui::{Context, Ui};
@@ -17,6 +19,13 @@ macro_rules! tools {
                 &$crate::tools::ToolInfo {
                     default_constructor: || Box::new(<$prefix::$t>::default()),
                     title: tools!(_get_title $($title)?; $t),
+                    type_id: {
+                        fn deferred() -> TypeId {
+                            TypeId::of::<$prefix::$t>()
+                        }
+
+                        deferred
+                    },
                 },
             )*
         ];
@@ -36,6 +45,13 @@ tools! {
 pub struct ToolInfo {
     pub default_constructor: fn() -> Box<dyn Tool>,
     pub title: &'static str,
+    type_id: fn() -> TypeId,
+}
+
+impl ToolInfo {
+    pub fn is_it(&self, tool: &dyn Tool) -> bool {
+        (self.type_id)() == tool.type_id()
+    }
 }
 
 #[typetag::serde]
@@ -45,4 +61,8 @@ pub trait Tool: Send + 'static {
 
     /// The background update call
     fn tick(&mut self, _ctx: &Context, _state: &mut AppState) {}
+
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
 }

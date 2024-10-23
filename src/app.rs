@@ -221,13 +221,23 @@ impl eframe::App for NoitaUtilityBox {
 }
 
 impl NoitaUtilityBox {
+    // in case of bugs or whatever that would cause tools to be lost from storage
+    // or, more likely, new tools being added in new versions
     fn ensure_all_tools_present(&mut self) {
-        // TODO
-        // Since we load panes from storage, check that all tools are added to the state
-        // Otherwise a tool potentially can be lost forever somehow
-        // (unless the user knows to fully delete state so the default kicks in)
-        //
-        // this would require dyn Tool <-> ToolInfo equality that's not the title though, meh
+        let mut all_tools = TOOLS.iter().collect::<Vec<_>>();
+
+        for tile in self.tree.tiles.tiles() {
+            let Tile::Pane(pane) = tile else {
+                continue;
+            };
+            all_tools.retain(|info| !info.is_it(&*pane.tool));
+        }
+        self.state
+            .hidden_tools
+            .extend(all_tools.iter().map(|info| Pane {
+                title: info.title.into(),
+                tool: (info.default_constructor)(),
+            }));
     }
 
     pub fn run() -> eframe::Result {

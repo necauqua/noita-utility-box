@@ -186,35 +186,47 @@ impl<T: eframe::App> eframe::App for UpdatableApp<T> {
 #[allow(unused_macros)] // same as above
 macro_rules! to_title_case {
     ($s:expr) => {{
-        const B: &[u8] = $s.as_bytes();
-        const BUF: ([u8; B.len() * 2], usize) = {
-            let mut buf = [0; B.len() * 2];
-            let mut buf_pos = 0;
-            let mut i = 0;
-            while i < B.len() {
-                let next = B[i];
-                if i != 0 && next.is_ascii_uppercase() {
-                    buf[buf_pos] = b' ';
-                    buf_pos += 1;
-                }
-                buf[buf_pos] = next;
-                buf_pos += 1;
-                i += 1;
-            }
-            (buf, buf_pos)
-        };
-        // We only insert ascii spaces before an ascii uppercase,
-        // which means we insert a valid utf8 codepoint in between utf8
-        // codepoints - meaning the result is always valid utf8
-        // Could use from_utf8_unchecked but this is run at compile time anyway
-        match std::str::from_utf8(&BUF.0.split_at(BUF.1).0) {
-            ::std::result::Result::Ok(s) => s,
-            ::std::result::Result::Err(_) => panic!("to_title_case! failed somehow"),
-        }
+        const S: &str = $s;
+        const BUF: ([u8; S.len() * 2], usize) = $crate::util::to_title_case_impl(S);
+        $crate::util::to_title_case_impl2(&BUF.0.split_at(BUF.1).0)
     }};
 }
 #[allow(unused_imports)] // same as above
 pub(crate) use to_title_case;
+
+#[allow(dead_code)] // same as above
+#[doc(hidden)]
+pub(crate) const fn to_title_case_impl<const B: usize>(input: &str) -> ([u8; B], usize) {
+    let input = input.as_bytes();
+    let mut buf = [0; B];
+    let mut buf_pos = 0;
+    let mut i = 0;
+    while i < input.len() {
+        let next = input[i];
+        if i != 0 && next.is_ascii_uppercase() {
+            buf[buf_pos] = b' ';
+            buf_pos += 1;
+        }
+        buf[buf_pos] = next;
+        buf_pos += 1;
+        i += 1;
+    }
+
+    (buf, buf_pos)
+}
+
+#[allow(dead_code)] // same as above
+#[doc(hidden)]
+pub(crate) const fn to_title_case_impl2(bytes: &[u8]) -> &str {
+    // We only insert ascii spaces before an ascii uppercase,
+    // which means we insert a valid utf8 codepoint in between utf8
+    // codepoints - meaning the result is always valid utf8
+    // Could use from_utf8_unchecked but this is run at compile time anyway
+    match std::str::from_utf8(bytes) {
+        ::std::result::Result::Ok(s) => s,
+        ::std::result::Result::Err(_) => panic!("to_title_case! failed somehow"),
+    }
+}
 
 #[cfg(test)]
 #[test]
