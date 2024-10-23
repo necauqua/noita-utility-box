@@ -156,7 +156,7 @@ impl egui_tiles::Behavior<Pane> for AppState {
     ) -> egui_tiles::UiResponse {
         // re-add margins but inside of the panes
         Frame::central_panel(ui.style()).show(ui, |ui| {
-            pane.tool.ui(ui, self);
+            _ = pane.tool.ui(ui, self);
 
             #[cfg(debug_assertions)]
             {

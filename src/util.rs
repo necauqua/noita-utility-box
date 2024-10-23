@@ -106,7 +106,7 @@ macro_rules! persist {
     };
     ($t:ident { $($field:ident: $field_t:ty),* $(,)? }) => {
         impl ::serde::Serialize for $t {
-            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            fn serialize<S: ::serde::Serializer>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error> {
 
                 #[derive(::serde::Serialize)]
                 struct Persisted<'a> {
@@ -121,7 +121,7 @@ macro_rules! persist {
         impl<'de> ::serde::Deserialize<'de> for $t {
             fn deserialize<D: ::serde::Deserializer<'de>>(
                 deserializer: D,
-            ) -> Result<Self, D::Error> {
+            ) -> ::std::result::Result<Self, D::Error> {
                 #[derive(::serde::Deserialize)]
                 struct Persisted {
                     $($field: $field_t,)*

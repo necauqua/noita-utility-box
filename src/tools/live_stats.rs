@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::Result;
 use eframe::egui::{ComboBox, Context, DragValue, Grid, RichText, TextEdit, Ui};
 use futures::{pin_mut, StreamExt};
 use noita_utility_box::memory::MemoryStorage;
@@ -14,7 +13,7 @@ use crate::{
 };
 use derive_more::Debug;
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug, Default)]
 enum ObsState {
@@ -36,7 +35,7 @@ struct Stats {
 
 #[derive(Debug, SmartDefault)]
 pub struct LiveStats {
-    stats: Option<Result<Stats, String>>,
+    stats: Option<std::result::Result<Stats, String>>,
 
     obs_ws: ObsState,
     text_sources: Promise<Vec<InputId>>,
@@ -69,8 +68,9 @@ persist!(LiveStats {
 
 #[typetag::serde]
 impl Tool for LiveStats {
-    fn ui(&mut self, ui: &mut Ui, _state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, _state: &mut AppState) -> Result {
         self.ui(ui);
+        Ok(())
     }
 
     fn tick(&mut self, ctx: &Context, state: &mut AppState) {

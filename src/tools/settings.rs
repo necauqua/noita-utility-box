@@ -7,7 +7,7 @@ use smart_default::SmartDefault;
 
 use crate::{app::AppState, update_check::RELEASE_VERSION};
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Settings;
@@ -30,8 +30,9 @@ pub struct SettingsData {
 
 #[typetag::serde]
 impl Tool for Settings {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         self.ui(ui, state);
+        Ok(())
     }
 }
 

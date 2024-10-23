@@ -6,7 +6,7 @@ use eframe::egui::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OrbRadar {
@@ -17,8 +17,9 @@ pub struct OrbRadar {
 
 #[typetag::serde]
 impl Tool for OrbRadar {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         self.ui(ui, state);
+        Ok(())
     }
 }
 

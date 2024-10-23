@@ -18,7 +18,7 @@ use smart_default::SmartDefault;
 
 use crate::app::AppState;
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -109,10 +109,7 @@ pub struct AddressMaps;
 
 #[typetag::serde]
 impl Tool for AddressMaps {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
-        ui.heading("Address Maps");
-        ui.separator();
-
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         let mut removed = None;
 
         let s = &mut state.address_maps;
@@ -251,6 +248,8 @@ impl Tool for AddressMaps {
         if ui.button("Add").clicked() {
             s.maps.push(AddressMap::default());
         }
+
+        Ok(())
     }
 }
 

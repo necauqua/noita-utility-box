@@ -1,4 +1,3 @@
-use anyhow::Result;
 use derive_more::Debug;
 use eframe::egui::{
     text::LayoutJob, ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui,
@@ -16,7 +15,7 @@ use thiserror::Error;
 
 use crate::{app::AppState, util::persist};
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug)]
 pub struct NoitaData {
@@ -43,12 +42,10 @@ enum NoitaError {
     Io(#[from] std::io::Error),
 }
 
+type NoitaResult<T> = std::result::Result<T, NoitaError>;
+
 impl NoitaData {
-    fn connect(
-        pid: sysinfo::Pid,
-        exe_name: Option<String>,
-        state: &AppState,
-    ) -> Result<Self, NoitaError> {
+    fn connect(pid: sysinfo::Pid, exe_name: Option<String>, state: &AppState) -> NoitaResult<Self> {
         let proc = ProcessRef::connect(pid.as_u32())?;
         let header = PeHeader::read(&proc)?;
 
@@ -86,7 +83,7 @@ pub struct ProcessPanel {
     system_info: System,
 
     #[default(Ok(None))]
-    noita: Result<Option<NoitaData>, NoitaError>,
+    noita: NoitaResult<Option<NoitaData>>,
     selected_process: Option<(sysinfo::Pid, Option<String>)>,
 }
 
@@ -96,8 +93,9 @@ persist!(ProcessPanel {
 
 #[typetag::serde]
 impl Tool for ProcessPanel {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         self.ui(ui, state);
+        Ok(())
     }
 
     fn tick(&mut self, ctx: &Context, state: &mut AppState) {
@@ -110,7 +108,7 @@ impl ProcessPanel {
         &mut self,
         ctx: &Context,
         state: &mut AppState,
-        noita: Result<Option<NoitaData>, NoitaError>,
+        noita: NoitaResult<Option<NoitaData>>,
     ) {
         // update the global handle to be used by things
         if let Ok(Some(ref data)) = noita {

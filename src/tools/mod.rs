@@ -3,6 +3,7 @@ use std::any::TypeId;
 use crate::app::AppState;
 use crate::util::to_title_case;
 use eframe::egui::{Context, Ui};
+use thiserror::Error;
 
 macro_rules! tools {
     (_get_title $title:expr ; $t:ident) => {
@@ -54,10 +55,22 @@ impl ToolInfo {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum ToolError {
+    #[error("Not connected to Noita")]
+    NoitaNotConnected,
+    #[error(transparent)]
+    Contextual(#[from] anyhow::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+
+pub type Result = std::result::Result<(), ToolError>;
+
 #[typetag::serde]
 pub trait Tool: Send + 'static {
     /// The main egui draw function for the tool
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState);
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result;
 
     /// The background update call
     fn tick(&mut self, _ctx: &Context, _state: &mut AppState) {}

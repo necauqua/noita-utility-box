@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use anyhow::{Context, Ok};
+use anyhow::Context;
 use eframe::egui::{CollapsingHeader, Grid, ScrollArea, Ui};
 use noita_utility_box::{
     memory::MemoryStorage,
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::AppState;
 
-use super::Tool;
+use super::{Result, Tool};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -22,8 +22,9 @@ pub struct MaterialPipette {
 
 #[typetag::serde]
 impl Tool for MaterialPipette {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         self.ui(ui, state);
+        Ok(())
     }
 }
 
@@ -47,7 +48,7 @@ impl MaterialPipette {
                 Some((player, false)) => player,
                 Some((_, true)) => {
                     ui.label("Polymorphed LOL");
-                    return Ok(());
+                    return anyhow::Ok(());
                 }
                 None => {
                     ui.label("Player not found");
@@ -126,7 +127,7 @@ impl MaterialPipette {
                                         if mats.is_empty() {
                                             ui.label("<Empty>");
                                             ui.end_row();
-                                            return Ok(());
+                                            return anyhow::Ok(());
                                         }
                                         for (idx, amount) in mats {
                                             let name =
