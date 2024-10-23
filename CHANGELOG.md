@@ -10,6 +10,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ### Changed
   - A big UI refactor using egui-tiles - all the tools are dockable, tabbable, draggable and splittable windows now
+  - Better error reporting here and there
 
 ### Removed
   - The settings checkbox to disable material pipette - just close the tab to hide it now it you don't need it

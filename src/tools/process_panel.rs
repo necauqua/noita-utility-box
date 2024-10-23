@@ -1,12 +1,10 @@
+use anyhow::{anyhow, Context as _};
 use derive_more::Debug;
 use eframe::egui::{
     text::LayoutJob, ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui,
 };
 use noita_utility_box::{
-    memory::{
-        exe_image::{PeHeader, ReadImageError},
-        ProcessRef,
-    },
+    memory::{exe_image::PeHeader, ProcessRef},
     noita::Noita,
 };
 use smart_default::SmartDefault;
@@ -28,8 +26,6 @@ pub struct NoitaData {
 
 #[derive(Error, Debug)]
 enum NoitaError {
-    #[error("Not Noita\nExport exe name: {name:?}, not wizard_physics.exe")]
-    NotNoita { name: String },
     #[error("Unmapped Noita version (timestamp 0x{:x})", header.timestamp())]
     Unmapped {
         #[debug(skip)]
@@ -37,23 +33,27 @@ enum NoitaError {
         header: PeHeader,
     },
     #[error(transparent)]
-    BadProcess(#[from] ReadImageError),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Contextual(#[from] anyhow::Error),
 }
 
 type NoitaResult<T> = std::result::Result<T, NoitaError>;
 
 impl NoitaData {
     fn connect(pid: sysinfo::Pid, exe_name: Option<String>, state: &AppState) -> NoitaResult<Self> {
-        let proc = ProcessRef::connect(pid.as_u32())?;
-        let header = PeHeader::read(&proc)?;
+        let proc = ProcessRef::connect(pid.as_u32())
+            .with_context(|| format!("Couldn't open the process {pid}"))?;
+
+        let header =
+            PeHeader::read(&proc).with_context(|| format!("Couldn't read the process {pid}"))?;
 
         if state.settings.check_export_name {
             let export_name = header.export_name();
             if export_name != b"wizard_physics.exe\0" {
                 let name = String::from_utf8_lossy(&export_name[..export_name.len() - 1]);
-                return Err(NoitaError::NotNoita { name: name.into() });
+                // bail! didn't convert?.
+                Err(anyhow!(
+                    "Export exe name was {name:?}, expecting wizard_physics.exe"
+                ))?;
             }
         }
 
@@ -90,18 +90,6 @@ pub struct ProcessPanel {
 persist!(ProcessPanel {
     look_for_noita: bool,
 });
-
-#[typetag::serde]
-impl Tool for ProcessPanel {
-    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
-        self.ui(ui, state);
-        Ok(())
-    }
-
-    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
-        self.update(ctx, state);
-    }
-}
 
 impl ProcessPanel {
     fn set_noita(
@@ -165,8 +153,11 @@ impl ProcessPanel {
             );
         }
     }
+}
 
-    pub fn update(&mut self, ctx: &Context, state: &mut AppState) {
+#[typetag::serde]
+impl Tool for ProcessPanel {
+    fn tick(&mut self, ctx: &Context, state: &mut AppState) {
         let Ok(noita) = &self.noita else {
             return;
         };
@@ -215,10 +206,10 @@ impl ProcessPanel {
         );
     }
 
-    pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
+    fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         match &self.noita {
             Err(e) => {
-                ui.label(RichText::new(e.to_string()).color(ui.style().visuals.error_fg_color));
+                ui.label(RichText::new(format!("{e:#}")).color(ui.style().visuals.error_fg_color));
 
                 if let NoitaError::Unmapped { proc, header } = e {
                     if ui.button("Run auto-discovery").clicked() {
@@ -277,6 +268,8 @@ impl ProcessPanel {
         }
 
         ui.checkbox(&mut self.look_for_noita, "Auto-detect Noita process");
+
+        Ok(())
     }
 }
 

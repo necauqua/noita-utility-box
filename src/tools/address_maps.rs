@@ -1,8 +1,6 @@
-use std::{
-    io,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-};
+use std::sync::{Arc, Mutex};
 
+use anyhow::Context as _;
 use derive_more::Debug;
 use eframe::egui::{
     collapsing_header::CollapsingState, Align, Button, CollapsingHeader, Id, TextEdit, Ui, Vec2,
@@ -27,14 +25,14 @@ pub struct AddressMapsData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct AddressEntry {
+pub struct AddressEntry {
     name: String,
     address: u32,
     comment: String,
 }
 
 #[derive(SmartDefault, Debug, Serialize, Deserialize)]
-pub struct AddressMapData {
+pub struct AddressMapInner {
     name: String,
     noita_ts: u32,
     entries: Vec<AddressEntry>,
@@ -43,21 +41,26 @@ pub struct AddressMapData {
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct AddressMap {
-    data: Arc<RwLock<AddressMapData>>,
+#[serde(transparent)]
+#[repr(transparent)]
+pub struct AddressMap(Arc<Mutex<AddressMapInner>>);
+
+impl AddressMap {
+    pub fn new(name: String, noita_ts: u32, entries: Vec<AddressEntry>) -> Self {
+        Self(Arc::new(Mutex::new(AddressMapInner {
+            name,
+            noita_ts,
+            entries,
+            ui_id: Id::new(fastrand::u64(..)),
+        })))
+    }
 }
 
 impl AddressMap {
-    pub fn data(&self) -> RwLockReadGuard<AddressMapData> {
-        self.data.read().unwrap()
-    }
-
-    pub fn data_mut(&self) -> RwLockWriteGuard<AddressMapData> {
-        self.data.write().unwrap()
-    }
-
     fn get<T>(&self, name: &str) -> Option<Ptr<T>> {
-        self.data()
+        self.0
+            .lock()
+            .unwrap()
             .entries
             .iter()
             .find(|e| e.name == name)
@@ -115,7 +118,7 @@ impl Tool for AddressMaps {
         let s = &mut state.address_maps;
 
         for (i, map) in s.maps.iter_mut().enumerate() {
-            let mut map = map.data_mut();
+            let mut map = map.0.lock().unwrap();
             CollapsingHeader::new(format!("(0x{:x}) {}", map.noita_ts, map.name))
                 .id_salt(map.ui_id)
                 .show(ui, |ui| {
@@ -257,11 +260,11 @@ impl AddressMapsData {
     pub fn get(&self, noita_ts: u32) -> Option<AddressMap> {
         self.maps
             .iter()
-            .find(|m| m.data.read().unwrap().noita_ts == noita_ts)
+            .find(|m| m.0.lock().unwrap().noita_ts == noita_ts)
             .cloned()
     }
 
-    pub fn discover(&mut self, proc: &ProcessRef, header: &PeHeader) -> io::Result<()> {
+    pub fn discover(&mut self, proc: &ProcessRef, header: &PeHeader) -> anyhow::Result<()> {
         fn add_entry<T>(
             entries: &mut Vec<AddressEntry>,
             name: &str,
@@ -279,7 +282,11 @@ impl AddressMapsData {
             }
         }
 
-        let image = header.clone().read_image(proc)?;
+        let image = header
+            .clone()
+            .read_image(proc)
+            .context("Reading the entire EXE image of the game for discovery")?;
+
         let discovered = discovery::run(&image);
 
         let mut entries = Vec::new();
@@ -332,14 +339,8 @@ impl AddressMapsData {
                 None => "Autodiscovered (no noita build string found!)".into(),
             };
 
-            self.maps.push(AddressMap {
-                data: Arc::new(RwLock::new(AddressMapData {
-                    name,
-                    noita_ts: header.timestamp(),
-                    entries,
-                    ui_id: Id::new(fastrand::u64(..)),
-                })),
-            });
+            self.maps
+                .push(AddressMap::new(name, header.timestamp(), entries));
         }
 
         Ok(())
