@@ -163,7 +163,6 @@ impl egui_tiles::Behavior<Pane> for AppState {
                 use eframe::egui::{Align, Layout, RichText};
 
                 ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-                    self.repaints += 1;
                     ui.label(RichText::new(format!("Repaints: {}", self.repaints)).small());
                     ui.label(
                         RichText::new("⚠ Debug build ⚠")
@@ -213,6 +212,11 @@ impl eframe::App for NoitaUtilityBox {
                         .move_tile_to_container(pane, tile_id, usize::MAX, true);
                 }
             });
+
+        #[cfg(debug_assertions)]
+        {
+            self.state.repaints += 1;
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
