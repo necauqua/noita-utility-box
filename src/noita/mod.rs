@@ -253,7 +253,10 @@ impl Noita {
         let index = read_ptr!(self.component_type_manager)
             .component_indices
             .get(&self.proc, T::NAME)?
-            .ok_or_else(not_found!("Component type index not found"))?;
+            .ok_or_else(not_found!(
+                "Component type index not found for '{}'",
+                T::NAME
+            ))?;
 
         let buffer = read_ptr!(self.entity_manager)
             .read(&self.proc)?

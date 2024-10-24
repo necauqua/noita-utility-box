@@ -24,12 +24,12 @@ pub trait ComponentName {
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
+#[repr(C, packed(4))]
 pub struct WalletComponent {
     pub money: u64,
     pub money_spent: u64,
-    pub money_prev_frame: u64,
-    pub money_infinite: PadBool<7>,
+    pub m_money_prev_frame: u64,
+    pub m_has_reached_inf: PadBool<3>,
 }
 
 impl ComponentName for WalletComponent {

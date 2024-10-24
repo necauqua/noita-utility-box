@@ -1,4 +1,7 @@
-use std::any::TypeId;
+use std::{
+    any::TypeId,
+    fmt::{self, Display},
+};
 
 use crate::app::AppState;
 use crate::util::to_title_case;
@@ -55,14 +58,42 @@ impl ToolInfo {
     }
 }
 
+#[derive(Debug)]
+pub enum UnexpectedError {
+    Contextual(anyhow::Error),
+    Io(std::io::Error),
+}
+
+impl Display for UnexpectedError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use UnexpectedError as E;
+        match self {
+            E::Contextual(e) => write!(f, "Error: {e:#}"),
+            E::Io(e) => write!(f, "I/O error: {e}"),
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ToolError {
+    #[error("{0}")]
+    Unexpected(UnexpectedError),
     #[error("Not connected to Noita")]
     NoitaNotConnected,
-    #[error(transparent)]
-    Contextual(#[from] anyhow::Error),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[error("Player entity not found")]
+    PlayerNotFound,
+}
+
+impl From<anyhow::Error> for ToolError {
+    fn from(e: anyhow::Error) -> Self {
+        ToolError::Unexpected(UnexpectedError::Contextual(e))
+    }
+}
+
+impl From<std::io::Error> for ToolError {
+    fn from(e: std::io::Error) -> Self {
+        ToolError::Unexpected(UnexpectedError::Io(e))
+    }
 }
 
 pub type Result = std::result::Result<(), ToolError>;

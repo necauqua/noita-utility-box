@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use eframe::{
-    egui::{self, Frame, TextWrapMode, Ui, ViewportBuilder, WidgetText},
+    egui::{self, Frame, RichText, TextWrapMode, Ui, ViewportBuilder, WidgetText},
     get_value, icon_data, set_value, NativeOptions,
 };
 use egui_tiles::{Container, Linear, LinearDir, SimplificationOptions, Tabs, Tile, TileId, Tiles};
@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
 use crate::{
-    tools::{address_maps::AddressMapsData, settings::SettingsData, Tool, TOOLS},
+    tools::{
+        address_maps::AddressMapsData, settings::SettingsData, Tool, ToolError, ToolInfo,
+        UnexpectedError, TOOLS,
+    },
     update_check::UpdateChecker,
     util::{persist, Tickable, UpdatableApp},
 };
@@ -28,6 +31,12 @@ pub struct AppState {
 
     #[cfg(debug_assertions)]
     repaints: u64,
+}
+
+impl AppState {
+    pub fn get_noita(&mut self) -> Result<&mut Noita, ToolError> {
+        self.noita.as_mut().ok_or(ToolError::NoitaNotConnected)
+    }
 }
 
 persist!(AppState {
@@ -52,28 +61,33 @@ pub struct NoitaUtilityBox {
 struct Pane {
     title: String,
     tool: Box<dyn Tool>,
+
+    #[serde(skip)]
+    error: Option<UnexpectedError>,
+}
+
+impl Pane {
+    fn new(tool_info: &ToolInfo) -> Self {
+        Self {
+            title: tool_info.title.into(),
+            tool: (tool_info.default_constructor)(),
+            error: None,
+        }
+    }
 }
 
 fn default_tree() -> egui_tiles::Tree<Pane> {
     let mut tiles = egui_tiles::Tiles::default();
 
     // first tool is the process panel
-    let [first, rest @ ..] = TOOLS else {
-        panic!("No tools defined");
-    };
+    let (first, rest) = TOOLS.split_first().expect("No tools defined");
 
-    let split_tab = vec![tiles.insert_pane(Pane {
-        title: first.title.into(),
-        tool: (first.default_constructor)(),
-    })];
+    let split_tab = vec![tiles.insert_pane(Pane::new(first))];
 
-    let mut tabs = vec![];
-    for tool in rest {
-        tabs.push(tiles.insert_pane(Pane {
-            title: tool.title.into(),
-            tool: (tool.default_constructor)(),
-        }));
-    }
+    let tabs = rest
+        .iter()
+        .map(|tool| tiles.insert_pane(Pane::new(tool)))
+        .collect();
 
     let split_tab = tiles.insert_tab_tile(split_tab);
     let tabs = tiles.insert_tab_tile(tabs);
@@ -156,7 +170,27 @@ impl egui_tiles::Behavior<Pane> for AppState {
     ) -> egui_tiles::UiResponse {
         // re-add margins but inside of the panes
         Frame::central_panel(ui.style()).show(ui, |ui| {
-            _ = pane.tool.ui(ui, self);
+            loop {
+                if let Some(e) = pane.error.as_ref() {
+                    ui.label(RichText::new(e.to_string()).color(ui.visuals().error_fg_color));
+                    if ui.button("Retry").clicked() {
+                        pane.error = None;
+                    }
+                    break;
+                }
+                match pane.tool.ui(ui, self) {
+                    Ok(()) => {}
+                    Err(ToolError::Unexpected(e)) => {
+                        pane.error = Some(e);
+                        continue; // goto drawing the error lol
+                    }
+                    // all other errors are expected and also immediate
+                    Err(e) => {
+                        ui.label(format!("{e}"));
+                    }
+                }
+                break;
+            }
 
             #[cfg(debug_assertions)]
             {
@@ -238,10 +272,7 @@ impl NoitaUtilityBox {
         }
         self.state
             .hidden_tools
-            .extend(all_tools.iter().map(|info| Pane {
-                title: info.title.into(),
-                tool: (info.default_constructor)(),
-            }));
+            .extend(all_tools.iter().map(|info| Pane::new(info)));
     }
 
     pub fn run() -> eframe::Result {
