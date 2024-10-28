@@ -61,6 +61,28 @@ impl<const PAD: usize> From<PadBool<PAD>> for bool {
     }
 }
 
+#[derive(FromBytes, IntoBytes, Debug, Clone, Copy)]
+#[repr(C, packed(4))]
+pub struct Align4<T: Copy>(T);
+
+impl<T: Display + Copy> Display for Align4<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&{ self.0 }, f)
+    }
+}
+
+impl<T: Copy> Align4<T> {
+    pub fn get(self) -> T {
+        self.0
+    }
+}
+
+impl<T: Copy> From<T> for Align4<T> {
+    fn from(t: T) -> Self {
+        Self(t)
+    }
+}
+
 pub trait MemoryStorage: Pod {
     type Value;
 
