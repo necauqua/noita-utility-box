@@ -8,6 +8,10 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Added
+  - Orb radar can now also look for sampo positions
+  - Orb radar now shows a "Searching..." spinner when looking for orbs
+
 ### Changed
   - A big UI refactor using egui-tiles - all the tools are dockable, tabbable, draggable and splittable windows now
   - Better and improved error reporting and UI
@@ -17,6 +21,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ### Fixed
   - Live stats resetting the stored OBS password when connected
+  - Orb radar showing old orbs when seed/NG-count changes
 
 ## [v0.2.1] 12024-10-22
 

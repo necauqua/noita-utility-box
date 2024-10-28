@@ -6,7 +6,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use smart_default::SmartDefault;
 use tracing::Instrument;
 
-use crate::util::Promise;
+use crate::util::{persist, Promise};
 
 #[derive(Debug, SmartDefault)]
 pub struct OrbSearcher {
@@ -14,10 +14,15 @@ pub struct OrbSearcher {
     chunk_size: u32,
     #[default([10, 3])]
     search_range: [i32; 2],
+    pub look_for_sampo_instead: bool,
     searched_chunks: HashSet<(i32, i32)>,
     known_orbs: Vec<Pos2>,
     search_task: Promise<Vec<(i32, i32)>>,
 }
+
+persist!(OrbSearcher {
+    look_for_sampo_instead: bool,
+});
 
 impl OrbSearcher {
     pub fn known_orbs(&self) -> &[Pos2] {
@@ -35,6 +40,11 @@ impl OrbSearcher {
     pub fn reset(&mut self) {
         self.known_orbs.clear();
         self.searched_chunks.clear();
+        self.search_task = Promise::default();
+    }
+
+    pub fn is_searching(&self) -> bool {
+        !self.search_task.is_taken()
     }
 
     fn next_chunk(&mut self, pos: Pos2) -> Option<(i32, i32)> {
@@ -58,9 +68,10 @@ impl OrbSearcher {
                 let x = x * size as i32;
                 let y = y * size as i32;
                 let ctx = ctx.clone();
+                let sampo = self.look_for_sampo_instead;
                 self.search_task = Promise::spawn(
                     async move {
-                        let orbs = find_orbs(seed.sum(), x, y, size, size);
+                        let orbs = find_orbs(seed.sum(), x, y, size, size, sampo);
                         ctx.request_repaint();
                         orbs
                     }
@@ -70,6 +81,7 @@ impl OrbSearcher {
         } else if let Some(orbs) = self.search_task.poll_take() {
             self.known_orbs
                 .extend(orbs.into_iter().map(|(x, y)| pos2(x as f32, y as f32)));
+            return self.poll_search(ctx, seed, pos);
         }
         self.known_orbs.sort_unstable_by_key(|orb| {
             let dir = *orb - pos;
@@ -78,7 +90,14 @@ impl OrbSearcher {
     }
 }
 
-fn find_orbs(world_seed: u32, x: i32, y: i32, x_size: u32, y_size: u32) -> Vec<(i32, i32)> {
+fn find_orbs(
+    world_seed: u32,
+    x: i32,
+    y: i32,
+    x_size: u32,
+    y_size: u32,
+    sampo: bool,
+) -> Vec<(i32, i32)> {
     (0..x_size * y_size)
         .into_par_iter()
         .filter_map(|i| {
@@ -87,7 +106,9 @@ fn find_orbs(world_seed: u32, x: i32, y: i32, x_size: u32, y_size: u32) -> Vec<(
 
             let mut rng = NoitaRng::from_pos(world_seed, xi as f64, yi as f64);
 
-            if (rng.random() * 100001.0) as u32 == 100000 && (rng.random() * 1001.0) as u32 == 999 {
+            if (rng.random() * 100001.0) as u32 == 100000
+                && sampo ^ ((rng.random() * 1001.0) as u32 == 999)
+            {
                 tracing::debug!(x = xi, y = yi, "orb found");
                 return Some((xi, yi));
             }

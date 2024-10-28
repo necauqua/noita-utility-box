@@ -276,7 +276,7 @@ impl Noita {
     }
 }
 
-#[derive(Display, Debug, Clone, Copy)]
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
 #[display("{world_seed}+{ng_count}")]
 pub struct Seed {
     pub world_seed: u32,
