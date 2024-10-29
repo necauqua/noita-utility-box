@@ -11,8 +11,7 @@ use smart_default::SmartDefault;
 
 use crate::{
     tools::{
-        address_maps::AddressMapsData, settings::SettingsData, Tool, ToolError, ToolInfo,
-        UnexpectedError, TOOLS,
+        address_maps::AddressMapsData, settings::SettingsData, Tool, ToolError, ToolInfo, TOOLS,
     },
     update_check::UpdateChecker,
     util::{persist, Tickable, UpdatableApp},
@@ -35,7 +34,10 @@ pub struct AppState {
 
 impl AppState {
     pub fn get_noita(&mut self) -> Result<&mut Noita, ToolError> {
-        self.noita.as_mut().ok_or(ToolError::NoitaNotConnected)
+        match self.noita.as_mut() {
+            Some(noita) => Ok(noita),
+            None => ToolError::retry("Not connected to Noita"),
+        }
     }
 }
 
@@ -63,7 +65,7 @@ struct Pane {
     tool: Box<dyn Tool>,
 
     #[serde(skip)]
-    error: Option<UnexpectedError>,
+    error: Option<ToolError>,
 }
 
 impl Pane {
@@ -172,7 +174,15 @@ impl egui_tiles::Behavior<Pane> for AppState {
         Frame::central_panel(ui.style()).show(ui, |ui| {
             loop {
                 if let Some(e) = pane.error.as_ref() {
-                    ui.label(RichText::new(e.to_string()).color(ui.visuals().error_fg_color));
+                    // bad state is informative, don't scream with red
+                    let color = if matches!(e, ToolError::BadState(_)) {
+                        ui.visuals().warn_fg_color
+                    } else {
+                        ui.visuals().error_fg_color
+                    };
+
+                    ui.label(RichText::new(e.to_string()).color(color));
+
                     if ui.button("Retry").clicked() {
                         pane.error = None;
                     }
@@ -180,13 +190,12 @@ impl egui_tiles::Behavior<Pane> for AppState {
                 }
                 match pane.tool.ui(ui, self) {
                     Ok(()) => {}
-                    Err(ToolError::Unexpected(e)) => {
+                    Err(ToolError::ImmediateRetry(e)) => {
+                        ui.label(format!("{e}"));
+                    }
+                    Err(e) => {
                         pane.error = Some(e);
                         continue; // goto drawing the error lol
-                    }
-                    // all other errors are expected and also immediate
-                    Err(e) => {
-                        ui.label(format!("{e}"));
                     }
                 }
                 break;

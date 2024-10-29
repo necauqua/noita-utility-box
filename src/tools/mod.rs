@@ -1,5 +1,6 @@
 use std::{
     any::TypeId,
+    borrow::Cow,
     fmt::{self, Display},
 };
 
@@ -41,6 +42,7 @@ tools! {
     orb_radar::OrbRadar;
     live_stats::LiveStats;
     material_pipette::MaterialPipette;
+    material_list::MaterialList;
     address_maps::AddressMaps;
     settings::Settings;
 }
@@ -78,10 +80,19 @@ impl Display for UnexpectedError {
 pub enum ToolError {
     #[error("{0}")]
     Unexpected(UnexpectedError),
-    #[error("Not connected to Noita")]
-    NoitaNotConnected,
-    #[error("Player entity not found")]
-    PlayerNotFound,
+    #[error("{0}")]
+    BadState(String),
+    #[error("{0}")]
+    ImmediateRetry(Cow<'static, str>),
+}
+
+impl ToolError {
+    pub fn bad_state<R>(reason: impl Into<String>) -> std::result::Result<R, Self> {
+        Err(ToolError::BadState(reason.into()))
+    }
+    pub fn retry<R>(reason: impl Into<Cow<'static, str>>) -> std::result::Result<R, Self> {
+        Err(ToolError::ImmediateRetry(reason.into()))
+    }
 }
 
 impl From<anyhow::Error> for ToolError {

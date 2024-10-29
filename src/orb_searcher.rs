@@ -17,6 +17,7 @@ pub struct OrbSearcher {
     pub look_for_sampo_instead: bool,
     searched_chunks: HashSet<(i32, i32)>,
     known_orbs: Vec<Pos2>,
+    #[default(Promise::Taken)]
     search_task: Promise<Vec<(i32, i32)>>,
 }
 
@@ -40,7 +41,7 @@ impl OrbSearcher {
     pub fn reset(&mut self) {
         self.known_orbs.clear();
         self.searched_chunks.clear();
-        self.search_task = Promise::default();
+        self.search_task = Promise::Taken;
     }
 
     pub fn is_searching(&self) -> bool {

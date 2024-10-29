@@ -1,11 +1,12 @@
-use std::{collections::HashMap, io, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, io, marker::PhantomData};
 
+use convert_case::{Case, Casing};
 use derive_more::{derive::Display, Debug};
 use types::{
-    cell_factory::CellFactory,
+    cell_factory::{CellData, CellFactory},
     components::{Component, ComponentName},
     ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
-    TagManager,
+    PlatformWin, TagManager, TranslationManager,
 };
 
 use crate::memory::{MemoryStorage, Pod, ProcessRef, Ptr};
@@ -35,6 +36,8 @@ pub struct NoitaGlobals {
     pub entity_manager: Option<Ptr<Ptr<EntityManager>>>,
     pub entity_tag_manager: Option<Ptr<Ptr<TagManager>>>,
     pub component_type_manager: Option<Ptr<ComponentTypeManager>>,
+    pub translation_manager: Option<Ptr<TranslationManager>>,
+    pub platform: Option<Ptr<PlatformWin>>,
 }
 
 impl NoitaGlobals {
@@ -47,6 +50,8 @@ impl NoitaGlobals {
             entity_manager: Some(Ptr::of(0x1202b78)),
             entity_tag_manager: Some(Ptr::of(0x1204fbc)),
             component_type_manager: Some(Ptr::of(0x01221c08)),
+            translation_manager: Some(Ptr::of(0x01205c18)),
+            platform: Some(Ptr::of(0x0121fba0)),
         }
     }
 }
@@ -63,8 +68,31 @@ macro_rules! read_ptr {
             .g
             .$ident
             .ok_or_else(not_found!(concat!("No ", stringify!($ident), " pointer")))?
-            .read(&$self.proc)?
+            .read(&$self.proc)
     };
+}
+
+macro_rules! deep_read {
+    ($self:ident.$ident:ident $(. $next:ident)*) => {{
+        let thing = $self
+            .g
+            .$ident
+            .ok_or_else(not_found!(concat!("No ", stringify!($ident), " pointer")))?
+            .read(&$self.proc)?
+            .read(&$self.proc);
+        $(let thing = thing?.$next.read(&$self.proc);)*
+        thing
+    }};
+    ($self:ident*.$ident:ident $(. $next:ident)*) => {{
+        let thing = $self
+            .g
+            .$ident
+            .ok_or_else(not_found!(concat!("No ", stringify!($ident), " pointer")))?
+            .read(&$self.proc)?
+            .read(&$self.proc);
+        $(let thing = thing?.$next.read(&$self.proc);)*
+        thing
+    }};
 }
 
 pub trait TagRef {
@@ -106,26 +134,54 @@ impl Noita {
     }
 
     pub fn read_seed(&self) -> io::Result<Option<Seed>> {
-        let world_seed = read_ptr!(self.world_seed).read(&self.proc)?;
+        let world_seed = deep_read!(self.world_seed)?;
         if world_seed == 0 {
             return Ok(None);
         }
         Ok(Some(Seed {
             world_seed,
-            ng_count: read_ptr!(self.ng_count).read(&self.proc)?,
+            ng_count: deep_read!(self.ng_count)?,
         }))
     }
 
     pub fn read_stats(&self) -> io::Result<GlobalStats> {
-        Ok(read_ptr!(self.global_stats))
+        read_ptr!(self.global_stats)
+    }
+
+    pub fn read_game_global(&self) -> io::Result<GameGlobal> {
+        deep_read!(self.game_global)
     }
 
     #[track_caller]
-    pub fn read_cell_factory(&self) -> io::Result<CellFactory> {
-        read_ptr!(self.game_global)
-            .read(&self.proc)?
-            .cell_factory
-            .read(&self.proc)
+    pub fn read_cell_factory(&self) -> io::Result<Option<CellFactory>> {
+        let ptr = deep_read!(self.game_global)?.cell_factory;
+        if ptr.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(ptr.read(&self.proc)?))
+    }
+
+    pub fn read_translation_manager(&self) -> io::Result<TranslationManager> {
+        read_ptr!(self.translation_manager)
+    }
+
+    pub fn read_platform(&self) -> io::Result<PlatformWin> {
+        read_ptr!(self.platform)
+    }
+
+    pub fn translations(&self) -> io::Result<CachedTranslations> {
+        let manager = self.read_translation_manager()?;
+        let lang_key_indices = manager.key_to_index.read(&self.proc)?;
+        let current_lang_strings = manager
+            .langs
+            .read_at(manager.current_lang_idx, &self.proc)?
+            .ok_or_else(not_found!("Current language not found"))?
+            .strings
+            .read_storage(&self.proc)?;
+        Ok(CachedTranslations {
+            lang_key_indices,
+            current_lang_strings,
+        })
     }
 
     pub fn get_player(&mut self) -> io::Result<Option<(Entity, bool)>> {
@@ -156,7 +212,7 @@ impl Noita {
     }
 
     pub fn get_first_tagged_entity(&mut self, tag: impl TagRef) -> io::Result<Option<Entity>> {
-        let entity_manager = read_ptr!(self.entity_manager).read(&self.proc)?;
+        let entity_manager = deep_read!(self.entity_manager)?;
 
         let Some(tag_idx) = tag.get_tag_index(self)? else {
             return Ok(None);
@@ -182,8 +238,7 @@ impl Noita {
             return Ok(Some(idx));
         }
 
-        let idx = read_ptr!(self.entity_tag_manager)
-            .read(&self.proc)?
+        let idx = deep_read!(self.entity_tag_manager)?
             .tag_indices
             .get(&self.proc, tag)?;
 
@@ -203,23 +258,24 @@ impl Noita {
         Ok(entity.tags[tag.get_tag_index(self)?])
     }
 
+    pub fn read_materials(&mut self) -> io::Result<Vec<String>> {
+        self.read_cell_factory()?.map_or(Ok(Vec::new()), |cf| {
+            cf.material_ids.read_storage(&self.proc)
+        })
+    }
+
+    pub fn read_cell_data(&mut self) -> io::Result<Vec<CellData>> {
+        self.read_cell_factory()?.map_or(Ok(Vec::new()), |cf| {
+            cf.cell_data
+                .truncated(cf.number_of_materials)
+                .read(&self.proc)
+        })
+    }
+
     pub fn materials(&mut self) -> io::Result<&[String]> {
-        if !self.materials.is_empty() {
-            return Ok(&self.materials);
+        if self.materials.is_empty() {
+            self.materials = self.read_materials()?;
         }
-
-        let material_ptrs = read_ptr!(self.game_global)
-            .read(&self.proc)?
-            .cell_factory
-            .read(&self.proc)?
-            .material_ids
-            .read(&self.proc)?;
-
-        let mut materials = Vec::with_capacity(material_ptrs.len());
-        for ptr in material_ptrs {
-            materials.push(ptr.read(&self.proc)?);
-        }
-        self.materials = materials;
         Ok(&self.materials)
     }
 
@@ -232,14 +288,7 @@ impl Noita {
             return Ok(self.material_ui_names.get(index as usize).cloned());
         }
 
-        let cell_factory = read_ptr!(self.game_global)
-            .read(&self.proc)?
-            .cell_factory
-            .read(&self.proc)?;
-        let material_descs = cell_factory
-            .cell_data
-            .truncated(cell_factory.number_of_materials)
-            .read(&self.proc)?;
+        let material_descs = self.read_cell_data()?;
 
         let mut material_ui_names = Vec::with_capacity(material_descs.len());
         for desc in material_descs {
@@ -250,7 +299,7 @@ impl Noita {
     }
 
     pub fn component_store<T: ComponentName>(&self) -> io::Result<ComponentStore<T>> {
-        let index = read_ptr!(self.component_type_manager)
+        let index = read_ptr!(self.component_type_manager)?
             .component_indices
             .get(&self.proc, T::NAME)?
             .ok_or_else(not_found!(
@@ -258,8 +307,7 @@ impl Noita {
                 T::NAME
             ))?;
 
-        let buffer = read_ptr!(self.entity_manager)
-            .read(&self.proc)?
+        let buffer = deep_read!(self.entity_manager)?
             .component_buffers
             .get(index)
             .ok_or_else(not_found!(
@@ -324,5 +372,26 @@ where
 
     pub fn get(&self, entity: &Entity) -> io::Result<Option<T>> {
         Ok(self.get_full(entity)?.map(|c| c.data))
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct CachedTranslations {
+    lang_key_indices: HashMap<String, u32>,
+    current_lang_strings: Vec<String>,
+}
+
+impl CachedTranslations {
+    pub fn translate<'k>(&self, key: &'k str, title_case: bool) -> Cow<'k, str> {
+        self.lang_key_indices
+            .get(key)
+            .and_then(|i| self.current_lang_strings.get(*i as usize))
+            .map_or(Cow::Borrowed(key), |s| {
+                Cow::Owned(if title_case {
+                    s.to_case(Case::Title)
+                } else {
+                    (*s).clone()
+                })
+            })
     }
 }

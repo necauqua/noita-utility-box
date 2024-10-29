@@ -9,7 +9,7 @@ use std::{
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
+    Align4, ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
 };
 
 pub mod cell_factory;
@@ -142,10 +142,11 @@ pub struct TagManager {
 #[repr(C)]
 pub struct GameGlobal {
     pub frame_counter: u32,
-    _skip: [u8; 0x14],
+    _skip: [u32; 5],
     pub cell_factory: Ptr<CellFactory>,
-    // a lot more skipped
+    _skip2: [u32; 97],
 }
+const _: () = assert!(std::mem::size_of::<GameGlobal>() == 0x1a0);
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
@@ -214,3 +215,59 @@ pub struct GameStats {
     pub biomes_visited_with_wands: u32,
     field_0xc4: u32, // same?
 }
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct TranslationManager {
+    pub langs: StdVec<Lang>,
+    pub key_to_index: StdMap<StdString, u32>,
+    pub extra_lang_files: StdVec<StdString>,
+    pub current_lang_idx: u32,
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct Lang {
+    pub name: StdString,
+    _unknown: [u8; 0x90],
+    pub strings: StdVec<StdString>,
+}
+
+const _: () = assert!(std::mem::size_of::<Lang>() == 0xb4);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct PlatformWin {
+    pub vftable: RawPtr,
+    pub application: RawPtr,
+    pub app_config: RawPtr,
+    pub internal_width: f32,
+    pub internal_height: f32,
+    pub input_disabled: PadBool<3>,
+    pub graphics: RawPtr,
+    pub fixed_time_step: PadBool<3>,
+    pub frame_count: i32,
+    pub frame_rate: i32,
+    pub last_frame_execution_time: Align4<f64>,
+    pub average_frame_execution_time: Align4<f64>,
+    pub one_frame_should_last: Align4<f64>,
+    pub time_elapsed_tracker: Align4<f64>,
+    pub width: i32,
+    pub height: i32,
+    pub event_recorder: RawPtr,
+    pub mouse: RawPtr,
+    pub keyboard: RawPtr,
+    pub touch: RawPtr,
+    pub joysticks: StdVec<RawPtr>,
+    pub sound_player: RawPtr,
+    pub file_system: RawPtr,
+    pub running: PadBool<3>,
+    pub mouse_pos: Vec2,
+    pub sleeping_mode: i32,
+    pub print_framerate: PadBool<3>,
+    pub working_dir: StdString,
+    pub random_i: i32,
+    pub random_seed: i32,
+    pub joysticks_enabled: PadBool<3>,
+}
+const _: () = assert!(std::mem::size_of::<PlatformWin>() == 0xac);

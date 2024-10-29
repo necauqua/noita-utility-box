@@ -12,6 +12,7 @@ sneaky = ["dep:export-resolver", "dep:str_crypter"]
 [dependencies]
 anyhow = "1"
 color-eyre = "0.6"
+convert_case = "0.6"
 derive_more = { version = "1", default-features = false, features = [
     "debug",
     "deref",
@@ -23,6 +24,7 @@ egui_extras = "0.29"
 egui_tiles = "0.10"
 fastrand = "2"
 futures = "0.3"
+fuzzy-matcher = "0.3"
 iced-x86 = "1"
 lazy-regex = "3"
 memchr = "2"

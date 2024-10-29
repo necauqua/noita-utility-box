@@ -39,7 +39,7 @@ impl Tool for MaterialPipette {
                 ui.label("Polymorphed LOL");
                 return Ok(());
             }
-            None => return Err(ToolError::PlayerNotFound),
+            None => return ToolError::retry("Player entity not found"),
         };
 
         let p = noita.proc().clone();
@@ -135,49 +135,7 @@ impl Tool for MaterialPipette {
                         .body_returned
                         .transpose()?;
                 }
-
-                ui.separator();
-
-                CollapsingHeader::new("Material checklist")
-                    .show(ui, |ui| {
-                        ui.checkbox(&mut self.auto_check, "Automatically check held materials");
-                        if ui.button("Reset").clicked() {
-                            self.checked.clear();
-                        }
-                        ui.add_space(0.5);
-                        Grid::new("all_materials")
-                            .num_columns(4)
-                            .striped(true)
-                            .show(ui, |ui| {
-                                for idx in 0..noita.materials()?.len() as u32 {
-                                    let name = noita.get_material_name(idx)?.unwrap();
-
-                                    ui.label(idx.to_string());
-
-                                    let mut checked = self.checked.contains(&name);
-                                    ui.checkbox(&mut checked, "");
-
-                                    ui.label(format!("{name:?}"));
-
-                                    if checked {
-                                        self.checked.insert(name);
-                                    } else {
-                                        self.checked.remove(&name);
-                                    }
-
-                                    if let Some(ui_name) = noita.get_material_ui_name(idx)? {
-                                        ui.label(ui_name);
-                                    }
-
-                                    ui.end_row();
-                                }
-                                Ok(())
-                            })
-                            .inner
-                    })
-                    .body_returned
-                    .transpose()
-                    .map(|_| ())
+                Ok(())
             })
             .inner
     }

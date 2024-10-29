@@ -76,6 +76,8 @@ impl AddressMap {
             entity_manager: self.get("entity-manager"),
             entity_tag_manager: self.get("entity-tag-manager"),
             component_type_manager: self.get("component-type-manager"),
+            translation_manager: self.get("translation-manager"),
+            platform: self.get("platform"),
         }
     }
 }
@@ -287,50 +289,67 @@ impl AddressMapsData {
             .read_image(proc)
             .context("Reading the entire EXE image of the game for discovery")?;
 
-        let discovered = discovery::run(&image);
+        let NoitaGlobals {
+            world_seed,
+            ng_count,
+            global_stats,
+            game_global,
+            entity_manager,
+            entity_tag_manager,
+            component_type_manager,
+            translation_manager,
+            platform,
+        } = discovery::run(&image);
 
         let mut entries = Vec::new();
-        add_entry(
-            &mut entries,
-            "seed",
-            discovered.world_seed,
-            "Current world seed",
-        );
+        add_entry(&mut entries, "seed", world_seed, "Current world seed");
         add_entry(
             &mut entries,
             "ng-plus-count",
-            discovered.ng_count,
+            ng_count,
             "New Game Plus counter",
         );
         add_entry(
             &mut entries,
             "global-stats",
-            discovered.global_stats,
+            global_stats,
             "Used to get all the stats",
         );
         add_entry(
             &mut entries,
             "game-global",
-            discovered.game_global,
+            game_global,
             "Stores global game state, like the list of materials",
         );
         add_entry(
             &mut entries,
             "entity-manager",
-            discovered.entity_manager,
+            entity_manager,
             "Entity manager, used to find the player or whatever it got polymorphed into",
         );
         add_entry(
             &mut entries,
             "entity-tag-manager",
-            discovered.entity_tag_manager,
+            entity_tag_manager,
             "Entity tag manager, also used to find the player",
         );
         add_entry(
             &mut entries,
             "component-type-manager",
-            discovered.component_type_manager,
+            component_type_manager,
             "Component type manager, used to get entity components",
+        );
+        add_entry(
+            &mut entries,
+            "translation-manager",
+            translation_manager,
+            "Allows us to get localized strings from the game, such as the material names",
+        );
+        add_entry(
+            &mut entries,
+            "platform",
+            platform,
+            "Platform-specific stuff, only used to get the game install directory",
         );
 
         if !entries.is_empty() {

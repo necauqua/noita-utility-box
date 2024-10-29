@@ -47,7 +47,7 @@ impl CellFactory {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Clone)]
 #[repr(C)]
 pub struct CellData {
     pub name: StdString,
@@ -130,8 +130,8 @@ pub struct CellData {
     pub vegetation_random_flip_x_scale: PadBool<3>,
     pub max_reaction_probability: u32,
     pub max_fast_reaction_probability: u32,
-    #[debug(skip)]
-    _unknown: i32,
+
+    pub unknown_field: i32,
 
     pub wang_noise_percent: f32,
     pub wang_curvature: f32,
@@ -159,7 +159,7 @@ pub struct CellData {
 }
 const _: () = assert!(std::mem::size_of::<CellData>() == 0x290);
 
-#[derive(FromBytes, IntoBytes)]
+#[derive(FromBytes, IntoBytes, Clone)]
 #[repr(C)]
 pub struct MaterialId {
     pub name: StdString,
@@ -192,7 +192,7 @@ pub struct StatusEffect {
 
 #[open_enum]
 #[repr(u32)]
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Clone, Copy)]
 pub enum CellType {
     Liquid = 1,
     Gas,
@@ -200,7 +200,7 @@ pub enum CellType {
     Fire,
 }
 
-#[derive(FromBytes, IntoBytes)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(transparent)]
 pub struct Color(pub u32);
 
@@ -211,7 +211,7 @@ impl Debug for Color {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Clone)]
 #[repr(C)]
 pub struct CellGraphics {
     pub texture_file: StdString,
@@ -412,7 +412,7 @@ impl CellReaction {
             name(materials, self.input_cell1),
             name(materials, self.input_cell2),
         );
-        if self.has_input_cell3.as_bool() {
+        if self.has_input_cell3.get().as_bool() {
             let _ = write!(&mut res, " + {}", name(materials, self.input_cell3));
         }
         let _ = write!(

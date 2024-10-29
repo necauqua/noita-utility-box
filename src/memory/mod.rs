@@ -22,48 +22,86 @@ pub use win32ptr::{Ibo, Ptr, RawPtr};
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed)]
-pub struct PadBool<const PAD: usize = 0>(u8, [u8; PAD]);
+pub struct WithPad<T: Copy, const PAD: usize = 0>(T, [u8; PAD]);
 
-pub type ByteBool = PadBool<0>;
+impl<T: Copy, const PAD: usize> WithPad<T, PAD> {
+    pub fn get(&self) -> T {
+        self.0
+    }
+}
 
-impl<const PAD: usize> PadBool<PAD> {
+impl<T: Copy + Debug, const PAD: usize> Debug for WithPad<T, PAD> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{:?}+{:02x?}", self.get(), { self.1 })
+        } else {
+            Debug::fmt(&self.get(), f)
+        }
+    }
+}
+
+impl<T: Copy + Display, const PAD: usize> Display for WithPad<T, PAD> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Display::fmt(&self.get(), f)
+    }
+}
+
+impl<T: Copy, const PAD: usize> From<T> for WithPad<T, PAD> {
+    fn from(t: T) -> Self {
+        Self(t, [0; PAD])
+    }
+}
+
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
+#[repr(transparent)]
+pub struct ByteBool(u8);
+
+pub type PadBool<const PAD: usize> = WithPad<ByteBool, PAD>;
+
+impl ByteBool {
     pub fn as_bool(&self) -> bool {
         debug_assert!(self.0 == 0 || self.0 == 1, "Invalid boolean: {self:?}");
         self.0 != 0
     }
 }
 
-impl<const PAD: usize> Debug for PadBool<PAD> {
+impl Debug for ByteBool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
-            0 => write!(f, "false"),
-            1 => write!(f, "true"),
-            x => write!(f, "PadBool({x:02x}, {:02x?})", { self.1 }),
+            0 => f.write_str("false"),
+            1 => f.write_str("true"),
+            x => write!(f, "ByteBool({x:02x})"),
         }
     }
 }
 
-impl<const PAD: usize> Display for PadBool<PAD> {
+impl Display for ByteBool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Display::fmt(&self.as_bool(), f)
     }
 }
 
-impl<const PAD: usize> From<bool> for PadBool<PAD> {
+impl From<bool> for ByteBool {
     fn from(b: bool) -> Self {
-        Self(b as u8, [0; PAD])
+        Self(b as u8)
     }
 }
 
-impl<const PAD: usize> From<PadBool<PAD>> for bool {
-    fn from(b: PadBool<PAD>) -> Self {
+impl From<ByteBool> for bool {
+    fn from(b: ByteBool) -> Self {
         b.as_bool()
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed(4))]
 pub struct Align4<T: Copy>(T);
+
+impl<T: Debug + Copy> Debug for Align4<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&{ self.0 }, f)
+    }
+}
 
 impl<T: Display + Copy> Display for Align4<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -331,7 +369,7 @@ impl<T: MemoryStorage> StdVec<T> {
         let len = self.len();
         let mut vec = Vec::with_capacity(len as usize);
         for i in 0..len {
-            vec.push(self.get(i).unwrap().read(proc)?.read(proc)?);
+            vec.push(self.read_at(i, proc)?.unwrap().read(proc)?);
         }
         Ok(vec)
     }

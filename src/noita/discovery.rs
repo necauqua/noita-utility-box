@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ffi::CStr};
 
-use iced_x86::{Code, Register};
+use iced_x86::{Code, Instruction, OpKind, Register};
 use memchr::memmem;
 
 use crate::memory::exe_image::ExeImage;
@@ -32,26 +32,53 @@ fn find_lua_api_fn(image: &ExeImage, name: &CStr) -> Option<u32> {
     }
 }
 
+/// Adapt the above function to return a stream of instructions
+fn in_lua_api_fn<'a>(image: &'a ExeImage, name: &CStr) -> impl Iterator<Item = Instruction> + 'a {
+    find_lua_api_fn(image, name)
+        .map(|addr| image.decode_fn(addr))
+        .into_iter()
+        .flatten()
+}
+
+trait JumpThere {
+    fn jump_there(self, image: &ExeImage) -> impl Iterator<Item = Instruction>;
+}
+
+impl JumpThere for Instruction {
+    fn jump_there(self, image: &ExeImage) -> impl Iterator<Item = Instruction> {
+        image.decode_fn(self.near_branch32())
+    }
+}
+
+trait ForcedRev: Iterator {
+    fn forced_rev(self) -> impl Iterator<Item = Self::Item>;
+}
+
+impl<I: Iterator> ForcedRev for I {
+    fn forced_rev(self) -> impl Iterator<Item = Self::Item> {
+        self.collect::<Vec<_>>().into_iter().rev()
+    }
+}
+
 /// We look for the `SetRandomSeed` Lua API function and then we look for
 /// the `mov eax, [addr]` and `add eax, [addr]` instructions, which
 /// correspond to WORLD_SEED + NEW_GAME_PLUS_COUNT being passed as a second
 /// parameter of a (SetRandomSeedImpl) function call.
 fn find_seed_pointers(image: &ExeImage) -> Option<(u32, u32)> {
-    let mut state = None;
-    for instr in image.decode_fn(find_lua_api_fn(image, c"SetRandomSeed")?) {
-        state = match state {
-            None if instr.code() == Code::Mov_EAX_moffs32 => Some(instr.memory_displacement32()),
-            // allow the `add esp, 0x10` thing in between
-            Some(addr) if instr.code() == Code::Add_rm32_imm8 => Some(addr),
-            Some(addr)
-                if instr.code() == Code::Add_r32_rm32 && instr.op0_register() == Register::EAX =>
-            {
-                return Some((addr, instr.memory_displacement32()));
+    let mut ng_plus = None;
+    in_lua_api_fn(image, c"SetRandomSeed")
+        .forced_rev()
+        .skip_while(|instr| {
+            if instr.code() != Code::Add_r32_rm32 || instr.op0_register() != Register::EAX {
+                return true;
             }
-            _ => None,
-        };
-    }
-    None
+            ng_plus = Some(instr.memory_displacement32());
+            false
+        })
+        // allow the `add esp, 0x10` thing in between
+        .skip_while(|instr| instr.code() == Code::Add_rm32_imm8)
+        .find(|instr| instr.code() == Code::Mov_EAX_moffs32)
+        .and_then(|instr| Some((instr.memory_displacement32(), ng_plus?)))
 }
 
 /// We look for the `GamePrint` Lua API function and then we look at the third
@@ -61,16 +88,11 @@ fn find_seed_pointers(image: &ExeImage) -> Option<(u32, u32)> {
 /// Then we look for the `MOV moffs32, EAX` instruction which is the assignment
 /// to the pointer of the GameGlobal structure.
 fn find_game_global_pointer(image: &ExeImage) -> Option<u32> {
-    let third_from_last_call_rel = image
-        .decode_fn(find_lua_api_fn(image, c"GamePrint")?)
+    in_lua_api_fn(image, c"GamePrint")
         .filter(|instr| instr.code() == Code::Call_rel32_32)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .nth(2)?;
-
-    image
-        .decode_fn(third_from_last_call_rel.near_branch32())
+        .forced_rev()
+        .nth(2)?
+        .jump_there(image)
         .find(|instr| {
             instr.code() == Code::Mov_moffs32_EAX && instr.segment_prefix() == Register::None
         })
@@ -88,89 +110,51 @@ fn find_game_global_pointer(image: &ExeImage) -> Option<u32> {
 /// argument to a following call which is the global KEY_VALUE_STATS map
 /// pointer.
 fn find_stats_map_pointer(image: &ExeImage) -> Option<u32> {
-    let mut before_last_call_rel = None;
-    let mut last_call_rel = None;
-    for instr in image.decode_fn(find_lua_api_fn(image, c"AddFlagPersistent")?) {
-        if instr.code() == Code::Call_rel32_32 {
-            before_last_call_rel = last_call_rel;
-            last_call_rel = Some(instr.near_branch32());
-        }
-    }
-
-    let end1_addr = image.find_string(c"progress_ending1")?;
-
-    enum State {
-        Init,
-        FoundProgressEnding1,
-        FoundStreqCall,
-    }
-    let mut state = State::Init;
-
-    for instr in image.decode_fn(before_last_call_rel?) {
-        match state {
-            State::Init
-                if instr.code() == Code::Mov_r32_imm32
-                    && instr.op0_register() == Register::EDX
-                    && instr.immediate32() == end1_addr =>
-            {
-                state = State::FoundProgressEnding1;
+    in_lua_api_fn(image, c"AddFlagPersistent")
+        .filter(|instr| instr.code() == Code::Call_rel32_32)
+        .forced_rev()
+        .nth(1)?
+        .jump_there(image)
+        .skip_while({
+            let end1_addr = image.find_string(c"progress_ending1")?;
+            move |instr| {
+                instr.code() != Code::Mov_r32_imm32
+                    || instr.op0_register() != Register::EDX
+                    || instr.immediate32() != end1_addr
             }
-            State::FoundProgressEnding1 if instr.code() == Code::Call_rel32_32 => {
-                state = State::FoundStreqCall;
-            }
-            State::FoundStreqCall
-                if instr.code() == Code::Mov_r32_imm32 && instr.op0_register() == Register::ECX =>
-            {
-                return Some(instr.immediate32());
-            }
-            _ => {}
-        };
-    }
-    None
+        })
+        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
+        .find(|instr| instr.code() == Code::Mov_r32_imm32 && instr.op0_register() == Register::ECX)
+        .map(|instr| instr.immediate32())
 }
 
 /// We look for the `EntityGetParent` Lua API function and there we look
-/// for `MOV ECX, [addr]` which immediately follows a Lua call - that MOV
-/// happens to be setting up an argument to a following relative call that
-/// is the pointer to the entity manager global.
+/// for `MOV ECX, [addr]` is the 0th argument to EntityManager::get_entity, the
+/// entity manager global.
 fn find_entity_manager_pointer(image: &ExeImage) -> Option<u32> {
-    let mut state = false;
-
-    for instr in image.decode_fn(find_lua_api_fn(image, c"EntityGetParent")?) {
-        state = match state {
-            false if instr.code() == Code::Call_rm32 => true,
-            true if instr.code() == Code::Mov_r32_rm32 && instr.op0_register() == Register::ECX => {
-                return Some(instr.memory_displacement32());
-            }
-            _ => false,
-        };
-    }
-    None
+    in_lua_api_fn(image, c"EntityGetParent")
+        .find(|instr| {
+            instr.code() == Code::Mov_r32_rm32
+                && instr.op0_register() == Register::ECX
+                && instr.op1_kind() == OpKind::Memory
+        })
+        .map(|instr| instr.memory_displacement32())
 }
 
 /// Look for the `EntityHasTag` Lua API function and then look for the
 /// second to last `CALL rel32` again, which is a call that accepts the
 /// entity tag manager global in ECX
 fn find_entity_tag_manager_pointer(image: &ExeImage) -> Option<u32> {
-    let mut before_last_call_rel = None;
-    let mut last_call_rel = None;
-
-    let instrs = image
-        .decode_fn(find_lua_api_fn(image, c"EntityHasTag")?)
-        .enumerate()
-        .map(|(i, instr)| {
-            if instr.code() == Code::Call_rel32_32 {
-                before_last_call_rel = last_call_rel;
-                last_call_rel = Some(i);
-            }
-            instr
+    in_lua_api_fn(image, c"EntityHasTag")
+        .forced_rev()
+        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
+        .skip(1)
+        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
+        .find(|instr| {
+            instr.code() == Code::Mov_r32_rm32
+                && instr.op0_register() == Register::ECX
+                && instr.op1_kind() == OpKind::Memory
         })
-        .collect::<Vec<_>>();
-
-    instrs[..before_last_call_rel?]
-        .iter()
-        .rev()
-        .find(|instr| instr.code() == Code::Mov_r32_rm32 && instr.op0_register() == Register::ECX)
         .map(|instr| instr.memory_displacement32())
 }
 
@@ -184,7 +168,8 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
     let mut state = false;
     let mut found = None;
 
-    for instr in image.decode_fn(find_lua_api_fn(image, c"EntityGetComponent")?) {
+    // havent found a low-hanging streaming version of "find X that immediately follows Y"
+    for instr in in_lua_api_fn(image, c"EntityGetComponent") {
         state = match state {
             false if instr.code() == Code::Push_r32 && instr.op0_register() == Register::EAX => {
                 true
@@ -200,6 +185,35 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
     image
         .decode_fn(found?)
         .find(|instr| instr.code() == Code::Mov_r32_imm32)
+        .map(|instr| instr.immediate32())
+}
+
+/// In `GameTextGet` Lua API function:
+///   - Look for the second CALL rel32 after JMP rm32 (second call after the
+///     switch starts), which is a call to `Translate` function
+///   - In that function extract the translation manager pointer from
+///     `TRANSLATION_MANAGER.langs[TRANSLATION_MANAGER.current_lang_idx]`
+///     pseudocode, where langs is conveniently the first field of the manager
+fn find_translation_manager_pointer(image: &ExeImage) -> Option<u32> {
+    in_lua_api_fn(image, c"GameTextGet")
+        .skip_while(|instr| instr.code() != Code::Jmp_rm32)
+        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
+        .skip(1)
+        .find(|instr| instr.code() == Code::Call_rel32_32)?
+        .jump_there(image)
+        .find(|instr| instr.code() == Code::Add_r32_rm32 && instr.op0_register() == Register::EAX)
+        .map(|instr| instr.memory_displacement32())
+}
+
+/// In `GameGetRealWorldTimeSinceStarted` Lua API function:
+///  - Look for the last `MOV ECX, imm32` instruction, which is the
+///    first arg to the vftable platform call (to get the time, duh).
+fn find_platform_pointer(image: &ExeImage) -> Option<u32> {
+    in_lua_api_fn(image, c"GameGetRealWorldTimeSinceStarted")
+        .filter(|instr| {
+            instr.code() == Code::Mov_r32_imm32 && instr.op0_register() == Register::ECX
+        })
+        .last()
         .map(|instr| instr.immediate32())
 }
 
@@ -224,6 +238,8 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
     g.entity_manager = find_entity_manager_pointer(image).map(|p| p.into());
     g.entity_tag_manager = find_entity_tag_manager_pointer(image).map(|p| p.into());
     g.component_type_manager = find_component_type_manager_pointer(image).map(|p| p.into());
+    g.translation_manager = find_translation_manager_pointer(image).map(|p| p.into());
+    g.platform = find_platform_pointer(image).map(|p| p.into());
 
     g
 }
@@ -284,6 +300,8 @@ fn test() -> anyhow::Result<()> {
         entity_manager,
         entity_tag_manager,
         component_type_manager,
+        translation_manager,
+        platform,
     } = NoitaGlobals::debug();
 
     assert_eq!(globals.world_seed, world_seed);
@@ -293,6 +311,8 @@ fn test() -> anyhow::Result<()> {
     assert_eq!(globals.entity_manager, entity_manager);
     assert_eq!(globals.entity_tag_manager, entity_tag_manager);
     assert_eq!(globals.component_type_manager, component_type_manager);
+    assert_eq!(globals.translation_manager, translation_manager);
+    assert_eq!(globals.platform, platform);
 
     Ok(())
 }
