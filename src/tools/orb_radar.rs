@@ -194,7 +194,7 @@ impl OrbRadar {
                 self.orb_searcher.known_orbs().len(),
             );
 
-            let pos = rect.right_top() + vec2(-5.0, 5.0);
+            let text_pos = rect.right_top() + vec2(-5.0, 5.0);
             let font = FontId::monospace(6.0);
             let limit = (rect.height() / ui.fonts(|f| f.row_height(&font))) as usize / 2;
             let orbs = self.orb_searcher.known_orbs();
@@ -205,7 +205,7 @@ impl OrbRadar {
                 writeln!(&mut text, "  ..{} more", orbs.len() - limit).unwrap();
             }
             let color = ui.style().visuals.weak_text_color();
-            painter.text(pos, Align2::RIGHT_TOP, text, font, color);
+            painter.text(text_pos, Align2::RIGHT_TOP, text, font, color);
 
             let diameter = 25.0;
             let offset = 10.0;
