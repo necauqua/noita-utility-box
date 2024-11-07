@@ -24,6 +24,14 @@ pub struct CellFactory {
     pub fast_reaction_lookup: ReactionLookupTable,
     pub req_reactions: StdVec<CellReactionBuf>,
     pub materials_by_tag: StdMap<StdString, StdVec<Ptr<CellData>>>,
+
+    _unknown2: StdVec<Ptr<StdVec<RawPtr>>>, // we know this is vector< vector<something>* >
+
+    pub fire_cell_data: Ptr<CellData>,
+
+    _unknown3: [u32; 4],
+
+    pub fire_material_id: u32,
 }
 
 impl CellFactory {
@@ -503,4 +511,35 @@ impl ReactionLookupTable {
         }
         Ok(result)
     }
+}
+
+// So ReactionLookupTable is supposed to be CArray2D<CSafeArray<CellReaction>>
+// but something doesn't add up yet
+
+#[derive(FromBytes, IntoBytes)]
+#[repr(C, packed)]
+pub struct CSafeArray<T> {
+    pub data: Ptr<T>,
+    pub len: u32,
+}
+
+#[derive(FromBytes, IntoBytes)]
+#[repr(C, packed)]
+pub struct CArray2D<T> {
+    pub width: u32,
+    pub height: u32,
+    pub size: u32,
+
+    pub helper: CArray2DHelper<T>,
+    not_sure: [u32; 2],
+    null_pointer_thing: RawPtr, // ?
+
+    storage: CSafeArray<T>,
+}
+
+#[derive(FromBytes, IntoBytes)]
+#[repr(C, packed)]
+pub struct CArray2DHelper<T> {
+    pub x: u32,
+    pub array: Ptr<CArray2D<T>>,
 }
