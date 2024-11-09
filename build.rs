@@ -1,6 +1,7 @@
 use std::{
     env::var,
     process::{Command, Stdio},
+    sync::LazyLock,
 };
 
 use winresource::WindowsResource;
@@ -36,14 +37,17 @@ fn sh<'a>(args: impl IntoIterator<Item = &'a str>) -> Option<String> {
         })
 }
 
+static IS_RA: LazyLock<bool> = LazyLock::new(|| var("RA_RUSTC_WRAPPER").is_ok());
+static IS_CLIPPY: LazyLock<bool> = LazyLock::new(|| var("CARGO_CFG_CLIPPY").is_ok());
+
 fn get_from_jj() -> Option<(String, String)> {
     // avoid jj snapshots when RA calls this
-    if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
+    if *IS_RA {
         let stub = "rust-analyzer".to_owned();
         return Some((stub.clone(), stub));
     }
     // ..or clippy
-    if std::env::var("CARGO_CFG_CLIPPY").is_ok() {
+    if *IS_CLIPPY {
         let stub = "clippy".to_owned();
         return Some((stub.clone(), stub));
     }
@@ -109,13 +113,30 @@ fn emit_build_info() {
 }
 
 fn embed_windows_resource() {
-    if var("CARGO_CFG_WINDOWS").is_ok() {
-        let res = WindowsResource::new()
-            .set_icon("res/icon.ico")
-            .set("ProductName", "Noita Utility Box")
-            .set("CompanyName", "necauqua")
-            .set("LegalCopyright", &var("CARGO_PKG_LICENSE").unwrap())
-            .compile();
+    if var("CARGO_CFG_WINDOWS").is_ok() && !(*IS_RA || *IS_CLIPPY) {
+        let res = (|| -> Result<(), Box<dyn std::error::Error>> {
+            Command::new("magick")
+                .args([
+                    "res/icon.png",
+                    "-define",
+                    "icon:auto-resize=256,128,96,64,48,32,16",
+                    "-filter",
+                    "point",
+                    "res/icon.ico",
+                ])
+                .spawn()?
+                .wait()?;
+
+            WindowsResource::new()
+                .set_icon("res/icon.ico")
+                .set("ProductName", "Noita Utility Box")
+                .set("CompanyName", "necauqua")
+                .set("LegalCopyright", &var("CARGO_PKG_LICENSE").unwrap())
+                .compile()?;
+
+            Ok(())
+        })();
+
         if let Err(e) = res {
             let msg = format!("Failed to embed Windows resource: {e}");
             if let Ok("release") = var("PROFILE").as_deref() {

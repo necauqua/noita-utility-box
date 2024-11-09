@@ -22,6 +22,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Fixed
   - Live stats resetting the stored OBS password when connected
   - Orb radar showing old orbs when seed/NG-count changes
+  - Windows exe icon being blurry in some cases
 
 ## [v0.2.1] 12024-10-22
 

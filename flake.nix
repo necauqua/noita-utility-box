@@ -150,6 +150,7 @@
                 stdenv.cc
                 windows.pthreads
               ];
+              nativeBuildInputs = [ pkgs.imagemagick ];
               doCheck = false;
 
               CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
