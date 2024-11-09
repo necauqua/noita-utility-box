@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use eframe::egui::{text::LayoutJob, Grid, ScrollArea, TextFormat, Ui};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use noita_utility_box::{
@@ -12,7 +14,7 @@ use super::{Result, Tool, ToolError};
 #[derive(Debug, Default)]
 pub struct MaterialList {
     search_text: String,
-    cell_data: Vec<CellData>,
+    cell_data: Vec<Arc<CellData>>,
     cached_translations: CachedTranslations,
 
     filter_buf: Vec<FilteredCellData>,
@@ -27,7 +29,7 @@ struct FilteredCellData {
     name: LayoutJob,
     ui_name: LayoutJob,
     score: i64,
-    _data: CellData,
+    _data: Arc<CellData>,
 }
 
 #[typetag::serde]
@@ -45,7 +47,7 @@ impl Tool for MaterialList {
 
         let clicked = ui.button(text).clicked();
         if clicked {
-            self.cell_data = noita.read_cell_data()?;
+            self.cell_data = noita.read_cell_data()?.into_iter().map(Arc::new).collect();
             if self.cell_data.is_empty() {
                 return ToolError::bad_state(
                     "CellData not initialized - did you enter a world?".to_string(),
@@ -64,45 +66,63 @@ impl Tool for MaterialList {
 
         if clicked || changed {
             self.filter_buf.clear();
-            let matcher = SkimMatcherV2::default().ignore_case();
-            for (idx, data) in self.cell_data.iter().enumerate() {
-                let name = data.name.read(noita.proc())?;
 
-                let ui_name = data.ui_name.read(noita.proc())?;
+            if self.search_text.is_empty() {
+                for (idx, data) in self.cell_data.iter().enumerate() {
+                    let name = data.name.read(noita.proc())?;
+                    let ui_name = data.ui_name.read(noita.proc())?;
+                    let ui_name = ui_name
+                        .strip_prefix("$")
+                        .map(|key| self.cached_translations.translate(key, true).into_owned())
+                        .unwrap_or(ui_name);
 
-                let ui_name = ui_name
-                    .strip_prefix("$")
-                    .map(|key| self.cached_translations.translate(key, true).into_owned())
-                    .unwrap_or(ui_name);
+                    self.filter_buf.push(FilteredCellData {
+                        idx: idx.to_string(),
+                        name: layout_text_with_indices(ui, name, vec![], true),
+                        ui_name: layout_text_with_indices(ui, ui_name, vec![], false),
+                        score: 0,
+                        _data: data.clone(),
+                    });
+                }
+            } else {
+                let matcher = SkimMatcherV2::default().ignore_case();
+                for (idx, data) in self.cell_data.iter().enumerate() {
+                    let name = data.name.read(noita.proc())?;
+                    let ui_name = data.ui_name.read(noita.proc())?;
 
-                let name_match = matcher.fuzzy_indices(&name, &self.search_text);
-                let ui_name_match = matcher.fuzzy_indices(&ui_name, &self.search_text);
+                    let ui_name = ui_name
+                        .strip_prefix("$")
+                        .map(|key| self.cached_translations.translate(key, true).into_owned())
+                        .unwrap_or(ui_name);
 
-                let (score, name_indices, ui_name_indices) = match (name_match, ui_name_match) {
-                    (Some((a, name_indices)), Some((b, ui_name_indices))) => {
-                        (a.max(b), name_indices, ui_name_indices)
-                    }
-                    (Some((a, name_indices)), None) => (a, name_indices, vec![]),
-                    (None, Some((b, ui_name_indices))) => (b, vec![], ui_name_indices),
-                    (None, None) => continue,
-                };
+                    let name_match = matcher.fuzzy_indices(&name, &self.search_text);
+                    let ui_name_match = matcher.fuzzy_indices(&ui_name, &self.search_text);
 
-                let name = layout_text_with_indices(ui, name, name_indices, true);
-                let ui_name = layout_text_with_indices(ui, ui_name, ui_name_indices, false);
+                    let (score, name_indices, ui_name_indices) = match (name_match, ui_name_match) {
+                        (Some((a, name_indices)), Some((b, ui_name_indices))) => {
+                            (a.max(b), name_indices, ui_name_indices)
+                        }
+                        (Some((a, name_indices)), None) => (a, name_indices, vec![]),
+                        (None, Some((b, ui_name_indices))) => (b, vec![], ui_name_indices),
+                        (None, None) => continue,
+                    };
 
-                self.filter_buf.push(FilteredCellData {
-                    idx: idx.to_string(),
-                    name,
-                    ui_name,
-                    score,
-                    _data: data.clone(),
-                });
+                    let name = layout_text_with_indices(ui, name, name_indices, true);
+                    let ui_name = layout_text_with_indices(ui, ui_name, ui_name_indices, false);
+
+                    self.filter_buf.push(FilteredCellData {
+                        idx: idx.to_string(),
+                        name,
+                        ui_name,
+                        score,
+                        _data: data.clone(),
+                    });
+                }
+                self.filter_buf.sort_by_key(|f| -f.score);
             }
-            self.filter_buf.sort_by_key(|f| -f.score);
         }
 
         ScrollArea::both()
-            .auto_shrink([true, false])
             .show(ui, |ui| {
                 Grid::new("all_materials")
                     .num_columns(3)
