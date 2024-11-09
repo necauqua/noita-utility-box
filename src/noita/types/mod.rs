@@ -219,21 +219,38 @@ pub struct GameStats {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct TranslationManager {
-    pub langs: StdVec<Lang>,
+    pub vftable: RawPtr,
+    pub unknown_strings: StdVec<StdString>,
+    pub languages: StdVec<Language>,
     pub key_to_index: StdMap<StdString, u32>,
     pub extra_lang_files: StdVec<StdString>,
     pub current_lang_idx: u32,
+    pub unknown: u32,
+    pub unknown_float: f32,
+    // those two are just empty in my game, so no clue what they are, no hints in ghidra (besides types) either
+    pub unknown_primitive_vec: StdVec<u32>,
+    pub unknown_map: StdMap<StdString, StdString>,
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
-pub struct Lang {
+pub struct Language {
+    pub id: StdString,
     pub name: StdString,
-    _unknown: [u8; 0x90],
+    pub font_default: StdString,
+    pub font_inventory_title: StdString,
+    pub font_important_message_title: StdString,
+    pub font_world_space_message: StdString,
+    pub fonts_utf8: ByteBool,
+    pub fonts_pixel_font: PadBool<2>,
+    pub fonts_dpi: f32,
+    pub ui_wand_info_offset1: f32,
+    pub ui_wand_info_offset2: f32,
+    pub ui_action_info_offset2: f32,
+    pub ui_configurecontrols_offset2: f32,
     pub strings: StdVec<StdString>,
 }
-
-const _: () = assert!(std::mem::size_of::<Lang>() == 0xb4);
+const _: () = assert!(std::mem::size_of::<Language>() == 0xb4);
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]

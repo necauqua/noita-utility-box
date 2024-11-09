@@ -50,7 +50,7 @@ impl NoitaGlobals {
             entity_manager: Some(Ptr::of(0x1202b78)),
             entity_tag_manager: Some(Ptr::of(0x1204fbc)),
             component_type_manager: Some(Ptr::of(0x01221c08)),
-            translation_manager: Some(Ptr::of(0x01205c18)),
+            translation_manager: Some(Ptr::of(0x01205c08)),
             platform: Some(Ptr::of(0x0121fba0)),
         }
     }
@@ -173,7 +173,7 @@ impl Noita {
         let manager = self.read_translation_manager()?;
         let lang_key_indices = manager.key_to_index.read(&self.proc)?;
         let current_lang_strings = manager
-            .langs
+            .languages
             .read_at(manager.current_lang_idx, &self.proc)?
             .ok_or_else(not_found!("Current language not found"))?
             .strings

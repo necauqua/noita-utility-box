@@ -193,7 +193,7 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
 ///     switch starts), which is a call to `Translate` function
 ///   - In that function extract the translation manager pointer from
 ///     `TRANSLATION_MANAGER.langs[TRANSLATION_MANAGER.current_lang_idx]`
-///     pseudocode, where langs is conveniently the first field of the manager
+///     pseudocode
 fn find_translation_manager_pointer(image: &ExeImage) -> Option<u32> {
     in_lua_api_fn(image, c"GameTextGet")
         .skip_while(|instr| instr.code() != Code::Jmp_rm32)
@@ -202,7 +202,7 @@ fn find_translation_manager_pointer(image: &ExeImage) -> Option<u32> {
         .find(|instr| instr.code() == Code::Call_rel32_32)?
         .jump_there(image)
         .find(|instr| instr.code() == Code::Add_r32_rm32 && instr.op0_register() == Register::EAX)
-        .map(|instr| instr.memory_displacement32())
+        .map(|instr| instr.memory_displacement32() - 0x10)
 }
 
 /// In `GameGetRealWorldTimeSinceStarted` Lua API function:

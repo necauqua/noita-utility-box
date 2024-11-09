@@ -160,6 +160,19 @@ macro_rules! primitives {
 
 primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
 
+/// An escape hatch for the above lack of specialization
+#[derive(FromBytes, IntoBytes, Clone, Copy, Debug)]
+#[repr(transparent)]
+pub struct Raw<T>(T);
+
+impl<T: Pod + Clone> MemoryStorage for Raw<T> {
+    type Value = T;
+
+    fn read(&self, _: &ProcessRef) -> io::Result<Self::Value> {
+        Ok(self.0.clone())
+    }
+}
+
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
 pub struct StdString {
@@ -214,6 +227,9 @@ impl Debug for StdString {
                 Ok(str) => write!(f, "inline:{str:?}"),
                 Err(_) => write!(f, "inline:{s:?}"),
             },
+            DecodedStdString::Heap(ptr) if ptr.is_null() => {
+                write!(f, "heap:\"\"(len={})", self.len)
+            }
             DecodedStdString::Heap(ptr) if self.len != 0 => write!(f, "heap:{ptr:?}"),
             _ => write!(f, "heap:\"\""),
         }
