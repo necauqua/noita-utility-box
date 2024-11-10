@@ -1,7 +1,8 @@
 use std::io;
 
 use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
+    ByteBool, MemoryStorage, PadBool, Pod, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
+    Vftable,
 };
 use derive_more::Debug;
 use open_enum::open_enum;
@@ -238,7 +239,7 @@ const _: () = assert!(std::mem::size_of::<CellGraphics>() == 0x40);
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ConfigExplosion {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub never_cache: PadBool<3>,
     pub explosion_radius: f32,
     pub explosion_sprite: StdString,
@@ -315,7 +316,7 @@ const _: () = assert!(std::mem::size_of::<ConfigExplosion>() == 0x174);
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ConfigDamageCritical {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub chance: i32,
     pub damage_multiplier: f32,
     pub m_succeeded: PadBool<3>,
@@ -346,7 +347,7 @@ pub struct Aabb {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ParticleConfig {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub m_material_id: i32,
     pub vel: Vec2,
     pub vel_random: Aabb,
@@ -453,11 +454,11 @@ pub struct CellReactionBuf {
 }
 
 impl CellReactionBuf {
-    pub fn len(&self) -> u32 {
+    pub const fn len(&self) -> u32 {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.base.is_null() || self.len == 0
     }
 
@@ -516,11 +517,35 @@ impl ReactionLookupTable {
 // So ReactionLookupTable is supposed to be CArray2D<CSafeArray<CellReaction>>
 // but something doesn't add up yet
 
-#[derive(FromBytes, IntoBytes)]
+#[derive(FromBytes, IntoBytes, Clone, Copy, std::fmt::Debug)]
 #[repr(C, packed)]
 pub struct CSafeArray<T> {
     pub data: Ptr<T>,
     pub len: u32,
+}
+
+impl<T> CSafeArray<T> {
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0 || { self.data }.is_null()
+    }
+
+    pub const fn truncate(&self, new_len: u32) -> Self {
+        Self {
+            len: new_len,
+            data: self.data,
+        }
+    }
+}
+
+impl<T: Pod> MemoryStorage for CSafeArray<T> {
+    type Value = Vec<T>;
+
+    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
+        if self.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.data.raw().read_multiple(proc, self.len)
+    }
 }
 
 #[derive(FromBytes, IntoBytes)]

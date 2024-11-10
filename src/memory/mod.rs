@@ -13,12 +13,14 @@ use lazy_regex::regex_replace_all;
 use zerocopy::{FromBytes, IntoBytes};
 
 mod process_ref;
+mod string;
 mod win32ptr;
 
 pub mod exe_image;
 
-pub use process_ref::{Pod, ProcessRef};
-pub use win32ptr::{Ibo, Ptr, RawPtr};
+pub use process_ref::*;
+pub use string::*;
+pub use win32ptr::*;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed)]
@@ -173,143 +175,14 @@ impl<T: Pod + Clone> MemoryStorage for Raw<T> {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Clone, Copy)]
-#[repr(C)]
-pub struct StdString {
-    buf: [u8; 16],
-    len: u32,
-    cap: u32,
-}
-
-#[derive(Clone, Copy)]
-pub enum DecodedStdString<'a> {
-    Inline(&'a [u8]),
-    Heap(RawPtr),
-}
-
-impl StdString {
-    pub fn len(&self) -> u32 {
-        self.len
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
-    pub fn decode(&self) -> DecodedStdString {
-        if let Some(inline) = self.buf[..15].get(..self.len as usize) {
-            DecodedStdString::Inline(inline)
-        } else {
-            DecodedStdString::Heap(RawPtr::of(u32::read_from_prefix(&self.buf).unwrap().0))
-        }
-    }
-}
-
 // thread local because on win Handle is not Sync
 // and a RefCell because it's not Copy
 thread_local! {
-    static DEBUG_PROCESS: RefCell<Option<ProcessRef>> = const { RefCell::new(None) };
+    pub(crate) static DEBUG_PROCESS: RefCell<Option<ProcessRef>> = const { RefCell::new(None) };
 }
+
 pub fn set_debug_process(proc: ProcessRef) {
     DEBUG_PROCESS.set(Some(proc));
-}
-
-impl Debug for StdString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(s) =
-            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-        {
-            return Debug::fmt(&s, f);
-        }
-
-        match self.decode() {
-            DecodedStdString::Inline(s) => match std::str::from_utf8(s) {
-                Ok(str) => write!(f, "inline:{str:?}"),
-                Err(_) => write!(f, "inline:{s:?}"),
-            },
-            DecodedStdString::Heap(ptr) if ptr.is_null() => {
-                write!(f, "heap:\"\"(len={})", self.len)
-            }
-            DecodedStdString::Heap(ptr) if self.len != 0 => write!(f, "heap:{ptr:?}"),
-            _ => write!(f, "heap:\"\""),
-        }
-    }
-}
-
-impl MemoryStorage for StdString {
-    type Value = String;
-
-    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
-        match self.decode() {
-            DecodedStdString::Inline(b) => std::str::from_utf8(b)
-                .map(|s| s.to_owned()) // lifetimes are super fun and cool and dandy if you try to have Cow here lul
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e)),
-            DecodedStdString::Heap(ptr) => {
-                if self.len == 0 {
-                    return Ok(String::new());
-                }
-                String::from_utf8(proc.read_multiple(ptr.addr(), self.len)?)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-            }
-        }
-    }
-}
-
-#[derive(FromBytes, IntoBytes, Clone, Copy)]
-#[repr(transparent)]
-pub struct CString(RawPtr);
-
-impl CString {
-    pub fn is_null(&self) -> bool {
-        self.0.is_null()
-    }
-}
-
-impl Debug for CString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(s) =
-            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-        {
-            return Debug::fmt(&s, f);
-        }
-
-        f.debug_tuple("CString").field(&self.0).finish()
-    }
-}
-
-impl From<CString> for RawPtr {
-    fn from(c: CString) -> Self {
-        c.0
-    }
-}
-
-impl From<RawPtr> for CString {
-    fn from(p: RawPtr) -> Self {
-        Self(p)
-    }
-}
-
-impl MemoryStorage for CString {
-    type Value = String;
-
-    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
-        let mut size = 64; // idk seems reasonable we'll very rarely hit the doubling even once
-
-        while size != 2048 {
-            let mut buf = self.0.read_multiple(proc, size)?;
-            if let Some(len) = buf.iter().position(|&b| b == 0) {
-                buf.truncate(len);
-                return String::from_utf8(buf)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e));
-            }
-            size *= 2;
-        }
-
-        Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("CString too long (at {:?})", self.0),
-        ))
-    }
 }
 
 #[derive(FromBytes, IntoBytes)]
@@ -410,7 +283,7 @@ pub struct StdMapNode<K, V> {
     value: V,
 }
 
-#[derive(FromBytes, IntoBytes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone)]
 #[repr(C, packed)]
 pub struct StdMap<K, V> {
     root: Ptr<StdMapNode<K, V>>,

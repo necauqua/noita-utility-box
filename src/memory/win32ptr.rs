@@ -5,7 +5,7 @@ use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::debug_type;
 
-use super::{process_ref::Pod, MemoryStorage, ProcessRef};
+use super::*;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
@@ -26,6 +26,10 @@ impl RawPtr {
 
     pub const fn is_null(self) -> bool {
         self.0 == 0
+    }
+
+    pub const fn offset(self, offset: i32) -> Self {
+        Self::of((self.0 as i32 + offset) as u32)
     }
 
     pub fn read_multiple<T: Pod>(self, proc: &ProcessRef, len: u32) -> io::Result<Vec<T>> {
@@ -152,3 +156,41 @@ impl<T: Pod, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
 //         self.raw.read_at::<T>(BASE, proc)?.read(proc)
 //     }
 // }
+
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
+#[repr(transparent)]
+pub struct Vftable {
+    pub ptr: RawPtr,
+}
+
+impl Vftable {
+    pub fn get_rtti_name(&self, proc: &ProcessRef) -> std::io::Result<String> {
+        let name = self
+            .ptr
+            .offset(-4) // meta pointer is behind the vftable
+            .read::<RawPtr>(proc)?
+            .offset(12) // skip signature, offset and cdOffset
+            .read::<RawPtr>(proc)?
+            .offset(8); // skip type_info::vftable and spare
+
+        CString::from(name).read(proc)
+    }
+}
+
+impl Debug for Vftable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(s) =
+            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.get_rtti_name(h).ok()))
+        {
+            return f
+                .debug_struct("Vftable")
+                .field("rtti_name", &format_args!("{s:?}"))
+                .field("ptr", &format_args!("{:?}", self.ptr))
+                .finish();
+        }
+
+        f.debug_tuple("Vftable")
+            .field(&format_args!("{:?}", self.ptr))
+            .finish()
+    }
+}

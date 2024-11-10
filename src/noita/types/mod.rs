@@ -10,6 +10,7 @@ use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
     Align4, ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
+    Vftable,
 };
 
 pub mod cell_factory;
@@ -105,7 +106,7 @@ pub struct Entity {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct EntityManager {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub next_entity_id: u32,
     pub free_ids: StdVec<u32>,
     pub entities: StdVec<Ptr<Entity>>,
@@ -158,7 +159,7 @@ pub struct ComponentTypeManager {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ComponentBuffer {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub default_index: u32,
     _skip1: [u8; 8],
     pub indices: StdVec<u32>,
@@ -169,7 +170,7 @@ pub struct ComponentBuffer {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GlobalStats {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub stats_version: u32,
     pub debug_tracker: u32,
     pub debug: PadBool<3>,
@@ -186,7 +187,7 @@ pub struct GlobalStats {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GameStats {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub dead: PadBool<3>,
     pub death_count: u32,
     pub streaks: u32,
@@ -219,7 +220,7 @@ pub struct GameStats {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct TranslationManager {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub unknown_strings: StdVec<StdString>,
     pub languages: StdVec<Language>,
     pub key_to_index: StdMap<StdString, u32>,
@@ -255,7 +256,7 @@ const _: () = assert!(std::mem::size_of::<Language>() == 0xb4);
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct PlatformWin {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub application: RawPtr,
     pub app_config: RawPtr,
     pub internal_width: f32,

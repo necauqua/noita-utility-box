@@ -1,13 +1,13 @@
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::memory::{Align4, ByteBool, CString, PadBool, RawPtr, StdString, StdVec};
+use crate::memory::{Align4, ByteBool, CString, PadBool, StdString, StdVec, Vftable};
 
 use super::{Bitset256, Vec2, Vec2i};
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C, packed)]
 pub struct Component<D> {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     _field_0x4: u32,
     pub type_name: CString,
     pub type_id: u32,
@@ -221,7 +221,7 @@ impl ComponentName for DamageModelComponent {
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ConfigDamagesByType {
-    pub vftable: RawPtr,
+    pub vftable: Vftable,
     pub melee: f32,
     pub projectile: f32,
     pub explosion: f32,
