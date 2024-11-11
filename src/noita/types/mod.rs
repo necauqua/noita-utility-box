@@ -9,12 +9,12 @@ use std::{
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
-    Align4, ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
-    Vftable,
+    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec, Vftable,
 };
 
 pub mod cell_factory;
 pub mod components;
+pub mod platform;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
@@ -252,40 +252,3 @@ pub struct Language {
     pub strings: StdVec<StdString>,
 }
 const _: () = assert!(std::mem::size_of::<Language>() == 0xb4);
-
-#[derive(FromBytes, IntoBytes, Debug)]
-#[repr(C)]
-pub struct PlatformWin {
-    pub vftable: Vftable,
-    pub application: RawPtr,
-    pub app_config: RawPtr,
-    pub internal_width: f32,
-    pub internal_height: f32,
-    pub input_disabled: PadBool<3>,
-    pub graphics: RawPtr,
-    pub fixed_time_step: PadBool<3>,
-    pub frame_count: i32,
-    pub frame_rate: i32,
-    pub last_frame_execution_time: Align4<f64>,
-    pub average_frame_execution_time: Align4<f64>,
-    pub one_frame_should_last: Align4<f64>,
-    pub time_elapsed_tracker: Align4<f64>,
-    pub width: i32,
-    pub height: i32,
-    pub event_recorder: RawPtr,
-    pub mouse: RawPtr,
-    pub keyboard: RawPtr,
-    pub touch: RawPtr,
-    pub joysticks: StdVec<RawPtr>,
-    pub sound_player: RawPtr,
-    pub file_system: RawPtr,
-    pub running: PadBool<3>,
-    pub mouse_pos: Vec2,
-    pub sleeping_mode: i32,
-    pub print_framerate: PadBool<3>,
-    pub working_dir: StdString,
-    pub random_i: i32,
-    pub random_seed: i32,
-    pub joysticks_enabled: PadBool<3>,
-}
-const _: () = assert!(std::mem::size_of::<PlatformWin>() == 0xac);

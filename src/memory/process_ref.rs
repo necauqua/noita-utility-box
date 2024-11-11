@@ -16,6 +16,15 @@ impl ProcessRef {
         platform::Handle::connect(pid).map(Self)
     }
 
+    pub fn pid(&self) -> u32 {
+        self.0.pid()
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn steam_compat_data_path(&self) -> &str {
+        self.0.steam_compat_data_path()
+    }
+
     pub fn read_multiple<T: Pod>(&self, addr: u32, len: u32) -> io::Result<Vec<T>> {
         let mut v = T::new_vec_zeroed(len as usize).expect("alloc error");
         self.0.read_memory(addr as usize, v.as_mut_bytes())?;
@@ -37,18 +46,30 @@ impl<T: IntoBytes + FromBytes + Sized + 'static> Pod for T {}
 #[cfg(target_os = "linux")]
 mod platform {
     use libc::{c_void, iovec, process_vm_readv};
-    use std::io;
+    use std::{io, sync::Arc};
 
     #[derive(Debug, Clone)]
     pub struct Handle {
         pid: libc::pid_t,
+        steam_compat_data_path: Arc<str>,
     }
 
     impl Handle {
         pub fn connect(pid: u32) -> io::Result<Self> {
+            let env = std::fs::read_to_string(format!("/proc/{pid}/environ"))?;
+            let steam_compat_data_path = env
+                .split('\0')
+                .find_map(|s| s.strip_prefix("STEAM_COMPAT_DATA_PATH="))
+                .unwrap_or_default()
+                .into();
             Ok(Self {
                 pid: pid as libc::pid_t,
+                steam_compat_data_path,
             })
+        }
+
+        pub fn steam_compat_data_path(&self) -> &str {
+            &self.steam_compat_data_path
         }
 
         pub fn pid(&self) -> u32 {

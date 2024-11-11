@@ -531,8 +531,15 @@ impl<T> CSafeArray<T> {
 
     pub const fn truncate(&self, new_len: u32) -> Self {
         Self {
-            len: new_len,
             data: self.data,
+            len: new_len,
+        }
+    }
+
+    pub const fn slice(&self, offset: u32, len: u32) -> Self {
+        Self {
+            data: self.data.offset(offset as i32),
+            len,
         }
     }
 }

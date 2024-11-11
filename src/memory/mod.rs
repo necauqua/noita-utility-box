@@ -163,7 +163,7 @@ macro_rules! primitives {
 primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
 
 /// An escape hatch for the above lack of specialization
-#[derive(FromBytes, IntoBytes, Clone, Copy, Debug)]
+#[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(transparent)]
 pub struct Raw<T>(T);
 
@@ -172,6 +172,12 @@ impl<T: Pod + Clone> MemoryStorage for Raw<T> {
 
     fn read(&self, _: &ProcessRef) -> io::Result<Self::Value> {
         Ok(self.0.clone())
+    }
+}
+
+impl<T: Debug> Debug for Raw<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Debug::fmt(&self.0, f)
     }
 }
 
@@ -308,10 +314,12 @@ where
     V::Value: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(s) =
-            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-        {
-            return Debug::fmt(&s, f);
+        if self.len() < 512 {
+            if let Some(s) =
+                DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
+            {
+                return Debug::fmt(&s, f);
+            }
         }
         write!(
             f,

@@ -47,7 +47,11 @@ impl RawPtr {
 
 impl Debug for RawPtr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "0x{:08x}", self.0)
+        if self.is_null() {
+            write!(f, "NULL")
+        } else {
+            write!(f, "0x{:08x}", self.0)
+        }
     }
 }
 
