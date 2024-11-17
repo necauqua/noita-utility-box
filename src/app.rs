@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use eframe::{
     egui::{self, Frame, RichText, TextWrapMode, Ui, ViewportBuilder, WidgetText},
@@ -271,17 +271,40 @@ impl NoitaUtilityBox {
     // in case of bugs or whatever that would cause tools to be lost from storage
     // or, more likely, new tools being added in new versions
     fn ensure_all_tools_present(&mut self) {
-        let mut all_tools = TOOLS.iter().collect::<Vec<_>>();
+        let mut tools = TOOLS.iter().collect::<Vec<_>>();
 
         for tile in self.tree.tiles.tiles() {
             let Tile::Pane(pane) = tile else {
                 continue;
             };
-            all_tools.retain(|info| !info.is_it(&*pane.tool));
+            tools.retain(|info| !info.is_it(&*pane.tool));
         }
+
+        // also ensure there's no duplicates in hidden tools lol
+        let mut unique_tools = HashSet::new();
+        let prev = self.state.hidden_tools.len();
         self.state
             .hidden_tools
-            .extend(all_tools.iter().map(|info| Pane::new(info)));
+            .retain(|pane| unique_tools.insert(pane.tool.type_id()));
+        let diff = prev - self.state.hidden_tools.len();
+        if diff != 0 {
+            tracing::info!("Removed {diff} duplicate hidden tools");
+        }
+
+        for tool in &self.state.hidden_tools {
+            tools.retain(|info| !info.is_it(&*tool.tool));
+        }
+        if tools.is_empty() {
+            return;
+        }
+
+        tracing::info!(
+            "Restoring tools {:?} as hidden",
+            tools.iter().map(|t| t.title).collect::<Vec<_>>()
+        );
+        self.state
+            .hidden_tools
+            .extend(tools.iter().map(|info| Pane::new(info)));
     }
 
     pub fn run() -> eframe::Result {
