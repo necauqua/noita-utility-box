@@ -213,6 +213,13 @@ pub enum CellType {
 #[repr(transparent)]
 pub struct Color(pub u32);
 
+impl From<Color> for eframe::egui::Color32 {
+    fn from(value: Color) -> Self {
+        let [r, g, b, a] = value.0.to_le_bytes();
+        Self::from_rgba_premultiplied(r, g, b, a)
+    }
+}
+
 impl Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let [r, g, b, a] = self.0.to_le_bytes();

@@ -324,6 +324,8 @@ impl NoitaUtilityBox {
                 ..Default::default()
             },
             Box::new(|cc| {
+                egui_extras::install_image_loaders(&cc.egui_ctx);
+
                 let mut app: Self = cc
                     .storage
                     .as_ref()

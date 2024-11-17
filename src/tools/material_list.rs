@@ -1,23 +1,42 @@
-use std::sync::Arc;
+use std::{
+    borrow::Cow,
+    io,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
-use eframe::egui::{text::LayoutJob, Grid, ScrollArea, TextFormat, Ui};
+use derive_more::derive::Debug;
+use eframe::egui::{
+    self, text::LayoutJob, Grid, Image, Label, Link, ScrollArea, TextFormat, TextureOptions, Ui,
+    ViewportBuilder, ViewportId, Widget,
+};
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use noita_utility_box::{
     memory::MemoryStorage,
-    noita::{types::cell_factory::CellData, CachedTranslations},
+    noita::{types::cell_factory::CellData, CachedTranslations, Noita},
 };
+use smart_default::SmartDefault;
 
 use crate::{app::AppState, util::persist};
 
 use super::{Result, Tool, ToolError};
 
-#[derive(Debug, Default)]
+#[derive(Debug, SmartDefault)]
 pub struct MaterialList {
+    #[default(true)]
+    first_update: bool,
     search_text: String,
     cell_data: Vec<Arc<CellData>>,
-    cached_translations: CachedTranslations,
+    cached_translations: Arc<CachedTranslations>,
 
+    #[default(SkimMatcherV2::default().ignore_case())]
+    #[debug(skip)]
+    matcher: SkimMatcherV2,
     filter_buf: Vec<FilteredCellData>,
+
+    open_materials: Vec<(ViewportId, Arc<MaterialView>)>,
 }
 persist!(MaterialList {
     search_text: String,
@@ -26,10 +45,92 @@ persist!(MaterialList {
 #[derive(Debug)]
 struct FilteredCellData {
     idx: String,
-    name: LayoutJob,
-    ui_name: LayoutJob,
+    name: String,
+    ui_name: String,
+    ui_name_translated: String,
+    name_highlights: LayoutJob,
+    ui_name_highlights: LayoutJob,
     score: i64,
-    _data: Arc<CellData>,
+    data: Arc<CellData>,
+}
+
+#[derive(Debug)]
+struct MaterialView {
+    name: String,
+    ui_name: String,
+    ui_name_translated: String,
+    texture: Option<(String, Arc<[u8]>)>,
+    cell_data: Arc<CellData>,
+    close_request: AtomicBool,
+}
+
+impl MaterialView {
+    fn new(noita: &Noita, entry: &FilteredCellData) -> io::Result<Self> {
+        let texture = entry
+            .data
+            .graphics
+            .texture_file
+            .read(noita.proc())
+            .and_then(|path| {
+                if path.is_empty() {
+                    return Ok(None);
+                }
+                noita
+                    .read_file(&path)
+                    .map(|bytes| bytes.map(|b| (format!("bytes://{path}"), b.into())))
+            })?;
+
+        Ok(Self {
+            name: entry.name.clone(),
+            ui_name: entry.ui_name.clone(),
+            ui_name_translated: entry.ui_name_translated.clone(),
+            texture,
+            cell_data: entry.data.clone(),
+            close_request: AtomicBool::new(false),
+        })
+    }
+}
+
+trait UiExt {
+    fn widget(&mut self, name: &str, widget: impl Widget);
+    fn plain(&mut self, name: &str, value: impl ToString);
+}
+
+impl UiExt for Ui {
+    fn widget(&mut self, name: &str, widget: impl Widget) {
+        self.label(name);
+        widget.ui(self);
+        self.end_row();
+    }
+
+    fn plain(&mut self, name: &str, value: impl ToString) {
+        self.widget(name, Label::new(value.to_string()));
+    }
+}
+
+impl Widget for &MaterialView {
+    fn ui(self, ui: &mut Ui) -> egui::Response {
+        ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+            Grid::new("material_view")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    if let Some(texture) = &self.texture {
+                        ui.widget(
+                            "texture",
+                            Image::new(texture.clone())
+                                .tint(self.cell_data.graphics.color)
+                                .texture_options(TextureOptions::NEAREST),
+                        );
+                    }
+                    ui.plain("name", &self.name);
+                    ui.plain("ui_name", &self.ui_name);
+                    ui.plain("ui_name (translated)", &self.ui_name_translated);
+                    ui.plain("durability", &self.cell_data.durability);
+                })
+        });
+        ui.response()
+    }
 }
 
 #[typetag::serde]
@@ -40,12 +141,14 @@ impl Tool for MaterialList {
             return Ok(());
         };
 
-        let text = match self.cell_data.is_empty() {
-            true => "Read materials",
-            false => "Refresh materials",
+        let res = ui.button("Refresh materials");
+        let clicked = if self.first_update {
+            self.first_update = false;
+            true
+        } else {
+            res.clicked()
         };
 
-        let clicked = ui.button(text).clicked();
         if clicked {
             self.cell_data = noita.read_cell_data()?.into_iter().map(Arc::new).collect();
             if self.cell_data.is_empty() {
@@ -53,7 +156,7 @@ impl Tool for MaterialList {
                     "CellData not initialized - did you enter a world?".to_string(),
                 );
             }
-            self.cached_translations = noita.translations()?;
+            self.cached_translations = Arc::new(noita.translations()?);
             self.filter_buf.reserve(self.cell_data.len());
         }
 
@@ -67,70 +170,84 @@ impl Tool for MaterialList {
         if clicked || changed {
             self.filter_buf.clear();
 
-            if self.search_text.is_empty() {
-                for (idx, data) in self.cell_data.iter().enumerate() {
-                    let name = data.name.read(noita.proc())?;
-                    let ui_name = data.ui_name.read(noita.proc())?;
-                    let ui_name = ui_name
-                        .strip_prefix("$")
-                        .map(|key| self.cached_translations.translate(key, true).into_owned())
-                        .unwrap_or(ui_name);
+            for (idx, data) in self.cell_data.iter().enumerate() {
+                let name = data.name.read(noita.proc())?;
+                let ui_name = data.ui_name.read(noita.proc())?;
+                let ui_name_translated = ui_name
+                    .strip_prefix("$")
+                    .map(|key| self.cached_translations.translate(key, true))
+                    .unwrap_or(Cow::Borrowed(&ui_name))
+                    .into_owned();
 
-                    self.filter_buf.push(FilteredCellData {
-                        idx: idx.to_string(),
-                        name: layout_text_with_indices(ui, name, vec![], true),
-                        ui_name: layout_text_with_indices(ui, ui_name, vec![], false),
-                        score: 0,
-                        _data: data.clone(),
-                    });
-                }
-            } else {
-                let matcher = SkimMatcherV2::default().ignore_case();
-                for (idx, data) in self.cell_data.iter().enumerate() {
-                    let name = data.name.read(noita.proc())?;
-                    let ui_name = data.ui_name.read(noita.proc())?;
+                let name_match = self.matcher.fuzzy_indices(&name, &self.search_text);
+                let ui_name_match = self
+                    .matcher
+                    .fuzzy_indices(&ui_name_translated, &self.search_text);
 
-                    let ui_name = ui_name
-                        .strip_prefix("$")
-                        .map(|key| self.cached_translations.translate(key, true).into_owned())
-                        .unwrap_or(ui_name);
+                let (score, name_indices, ui_name_indices) = match (name_match, ui_name_match) {
+                    (Some((a, name_indices)), Some((b, ui_name_indices))) => {
+                        (a.max(b), name_indices, ui_name_indices)
+                    }
+                    (Some((a, name_indices)), None) => (a, name_indices, vec![]),
+                    (None, Some((b, ui_name_indices))) => (b, vec![], ui_name_indices),
+                    (None, None) => continue,
+                };
 
-                    let name_match = matcher.fuzzy_indices(&name, &self.search_text);
-                    let ui_name_match = matcher.fuzzy_indices(&ui_name, &self.search_text);
+                let name_highlights = layout_text_with_indices(ui, &name, name_indices, true);
+                let ui_name_highlights =
+                    layout_text_with_indices(ui, &ui_name_translated, ui_name_indices, false);
 
-                    let (score, name_indices, ui_name_indices) = match (name_match, ui_name_match) {
-                        (Some((a, name_indices)), Some((b, ui_name_indices))) => {
-                            (a.max(b), name_indices, ui_name_indices)
-                        }
-                        (Some((a, name_indices)), None) => (a, name_indices, vec![]),
-                        (None, Some((b, ui_name_indices))) => (b, vec![], ui_name_indices),
-                        (None, None) => continue,
-                    };
-
-                    let name = layout_text_with_indices(ui, name, name_indices, true);
-                    let ui_name = layout_text_with_indices(ui, ui_name, ui_name_indices, false);
-
-                    self.filter_buf.push(FilteredCellData {
-                        idx: idx.to_string(),
-                        name,
-                        ui_name,
-                        score,
-                        _data: data.clone(),
-                    });
-                }
+                self.filter_buf.push(FilteredCellData {
+                    idx: idx.to_string(),
+                    name_highlights,
+                    ui_name_highlights,
+                    name,
+                    ui_name,
+                    ui_name_translated,
+                    score,
+                    data: data.clone(),
+                });
+            }
+            if !self.search_text.is_empty() {
                 self.filter_buf.sort_by_key(|f| -f.score);
             }
         }
 
+        self.open_materials.retain(|(id, view)| {
+            let b = ViewportBuilder::default()
+                .with_title("Material")
+                .with_app_id("noita-utility-box");
+            ui.ctx().show_viewport_deferred(*id, b, {
+                let view = view.clone();
+                move |ctx, _| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        ui.add(&*view);
+                    });
+                    if ctx.input(|s| s.viewport().close_requested()) {
+                        view.close_request.store(true, Ordering::Relaxed);
+                    }
+                }
+            });
+            !view.close_request.load(Ordering::Relaxed)
+        });
+
         ScrollArea::both()
+            .auto_shrink(false)
             .show(ui, |ui| {
                 Grid::new("all_materials")
+                    .striped(true)
                     .num_columns(3)
                     .show(ui, |ui| {
                         for entry in &self.filter_buf {
                             ui.label(entry.idx.clone());
-                            ui.label(entry.name.clone());
-                            ui.label(entry.ui_name.clone());
+
+                            if ui.add(Link::new(entry.name_highlights.clone())).clicked() {
+                                let id = ViewportId::from_hash_of(&entry.idx);
+                                let view = MaterialView::new(noita, entry)?;
+                                self.open_materials.push((id, Arc::new(view)));
+                            }
+
+                            ui.label(entry.ui_name_highlights.clone());
                             ui.end_row();
                         }
                         Ok(())
@@ -141,10 +258,14 @@ impl Tool for MaterialList {
     }
 }
 
-fn layout_text_with_indices(ui: &Ui, text: String, indices: Vec<usize>, quote: bool) -> LayoutJob {
+fn layout_text_with_indices(ui: &Ui, text: &str, indices: Vec<usize>, quote: bool) -> LayoutJob {
     if indices.is_empty() {
         return LayoutJob::single_section(
-            if quote { format!("\"{text}\"") } else { text },
+            if quote {
+                format!("\"{text}\"")
+            } else {
+                text.to_owned()
+            },
             TextFormat::default(),
         );
     }

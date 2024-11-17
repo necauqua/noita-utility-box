@@ -242,34 +242,6 @@ pub struct PathProxy {
     pub path: StdString,
 }
 
-macro_rules! define_subclasses {
-    ($name:ident: $iface:ident {$($rtti_name:expr => $impl_type:ident)*}) => {
-
-        #[::enum_dispatch::enum_dispatch($iface)]
-        #[derive(Debug, Clone)]
-        pub enum $name {
-            $($impl_type,)*
-        }
-
-        impl $name {
-            pub fn get(proc: &$crate::memory::ProcessRef, ptr: $crate::memory::RawPtr) -> ::std::io::Result<::std::option::Option<$name>> {
-                let vftable = ptr.read::<$crate::memory::Vftable>(proc)?;
-                Ok(match &vftable.get_rtti_name(proc)?[..] {
-                    $(
-                        $rtti_name => ::std::option::Option::Some($name::$impl_type(
-                            ptr.read::<$impl_type>(proc)?,
-                        )),
-                    )*
-                    x => {
-                        ::tracing::warn!("Unknown RTTI name: {x:?}");
-                        ::std::option::Option::None
-                    },
-                })
-            }
-        }
-    };
-}
-
 #[derive(FromBytes, IntoBytes, Debug, Clone)]
 #[repr(C)]
 pub struct ModDiskFileDeviceCaching {
@@ -448,6 +420,41 @@ pub trait IFileDevice {
         fs: &FileSystem,
         path: &str,
     ) -> io::Result<Option<Vec<u8>>>;
+}
+
+macro_rules! define_subclasses {
+    ($name:ident: $iface:ident {$($rtti_name:expr => $impl_type:ident)*}) => {
+
+        #[derive(Debug, Clone)]
+        pub enum $name {
+            $($impl_type($impl_type),)*
+        }
+
+        impl $name {
+            /// Praying this gets devirtualized ¯\_(ツ)_/¯
+            #[inline]
+            pub fn as_dyn(&self) -> &dyn $iface {
+                match self {
+                    $($name::$impl_type(x) => x as &dyn $iface,)*
+                }
+            }
+
+            pub fn get(proc: &$crate::memory::ProcessRef, ptr: $crate::memory::RawPtr) -> ::std::io::Result<::std::option::Option<$name>> {
+                let vftable = ptr.read::<$crate::memory::Vftable>(proc)?;
+                Ok(match vftable.get_rtti_name(proc)?.as_ref() {
+                    $(
+                        $rtti_name => ::std::option::Option::Some($name::$impl_type(
+                            ptr.read::<$impl_type>(proc)?,
+                        )),
+                    )*
+                    x => {
+                        ::tracing::warn!("Unknown RTTI name: {x:?}");
+                        ::std::option::Option::None
+                    },
+                })
+            }
+        }
+    };
 }
 
 define_subclasses!(FileDevice: IFileDevice {

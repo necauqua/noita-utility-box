@@ -1165,6 +1165,7 @@ dependencies = [
  "ahash",
  "egui",
  "enum-map",
+ "image",
  "log",
  "mime_guess2",
 ]
@@ -1246,18 +1247,6 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.85",
-]
-
-[[package]]
-name = "enum_dispatch"
-version = "0.3.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
-dependencies = [
- "once_cell",
  "proc-macro2",
  "quote",
  "syn 2.0.85",
@@ -2025,9 +2014,9 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.25.4"
+version = "0.25.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc144d44a31d753b02ce64093d532f55ff8dc4ebf2ffb8a63c0dda691385acae"
+checksum = "cd6f44aed642f18953a158afeb30206f4d50da59fbc66ecb53c66488de73563b"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
@@ -2452,12 +2441,12 @@ dependencies = [
  "egui-modal",
  "egui_extras",
  "egui_tiles",
- "enum_dispatch",
  "export-resolver",
  "fastrand",
  "futures",
  "fuzzy-matcher",
  "iced-x86",
+ "image",
  "lazy-regex",
  "libc",
  "memchr",

@@ -5,7 +5,7 @@ use derive_more::{derive::Display, Debug};
 use types::{
     cell_factory::{CellData, CellFactory},
     components::{Component, ComponentName},
-    platform::PlatformWin,
+    platform::{FileDevice, PlatformWin},
     ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
     TagManager, TranslationManager,
 };
@@ -168,6 +168,22 @@ impl Noita {
 
     pub fn read_platform(&self) -> io::Result<PlatformWin> {
         read_ptr!(self.platform)
+    }
+
+    pub fn read_file(&self, path: &str) -> io::Result<Option<Vec<u8>>> {
+        let fs = self.read_platform()?.file_system.read(&self.proc)?;
+        let devices = fs.devices.read(&self.proc)?;
+
+        for device in devices {
+            let Some(device) = FileDevice::get(&self.proc, device)? else {
+                continue;
+            };
+            if let Some(file) = device.as_dyn().get_file(&self.proc, &fs, path)? {
+                return Ok(Some(file));
+            }
+        }
+
+        Ok(None)
     }
 
     pub fn translations(&self) -> io::Result<CachedTranslations> {
