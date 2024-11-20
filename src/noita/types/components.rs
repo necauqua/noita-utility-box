@@ -1,8 +1,10 @@
 use zerocopy::{FromBytes, IntoBytes};
 
-use crate::memory::{Align4, ByteBool, CString, PadBool, StdString, StdVec, Vftable};
+use crate::memory::{
+    Align4, ByteBool, CString, PadBool, Ptr, StdMap, StdString, StdVec, Vftable, WithPad,
+};
 
-use super::{Bitset256, Vec2, Vec2i};
+use super::{Bitset256, Entity, Vec2, Vec2i};
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C, packed)]
@@ -239,3 +241,130 @@ pub struct ConfigDamagesByType {
     pub holy: f32,
 }
 const _: () = assert!(std::mem::size_of::<ConfigDamagesByType>() == 0x40);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct LensValueBool {
+    pub value: WithPad<ByteBool, 3>,
+    pub unknown: i32,
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C, packed)]
+pub struct LensValue<T> {
+    pub value: T,
+    pub _unknown2: u32,
+    pub unknown: i32,
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigPendingPortal {
+    pub vftable: Vftable,
+    pub position: Vec2,
+    pub target_position: Vec2,
+    pub id: u32,
+    pub target_id: u32,
+    pub is_at_home: WithPad<ByteBool, 3>,
+    pub target_biome_name: StdString,
+    pub entity: Ptr<Entity>,
+}
+const _: () = assert!(std::mem::size_of::<ConfigPendingPortal>() == 0x3c);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigNpcParty {
+    pub vftable: Vftable,
+    pub position: Vec2,
+    pub entities_exist: WithPad<ByteBool, 3>,
+    pub direction: i32,
+    pub speed: f32,
+    pub member_entities: StdVec<u32>,
+    pub member_files: StdVec<StdString>,
+}
+const _: () = assert!(std::mem::size_of::<ConfigNpcParty>() == 0x30);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigCutThroughWorld {
+    pub vftable: Vftable,
+    pub x: i32,
+    pub y_min: i32,
+    pub y_max: i32,
+    pub radius: i32,
+    pub edge_darkening_width: i32,
+    pub global_id: u32,
+}
+const _: () = assert!(std::mem::size_of::<ConfigCutThroughWorld>() == 0x1c);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct WorldStateComponent {
+    pub is_initialized: WithPad<ByteBool, 3>,
+    pub time: f32,
+    pub time_total: f32,
+    pub time_dt: f32,
+    pub day_count: i32,
+    pub rain: f32,
+    pub rain_target: f32,
+    pub fog: f32,
+    pub fog_target: f32,
+    pub intro_weather: WithPad<ByteBool, 3>,
+    pub wind: f32,
+    pub wind_speed: f32,
+    pub wind_speed_sin_t: f32,
+    pub wind_speed_sin: f32,
+    pub clouds_01_target: f32,
+    pub clouds_02_target: f32,
+    pub gradient_sky_alpha_target: f32,
+    pub sky_sunset_alpha_target: f32,
+    pub lightning_count: i32,
+    pub player_spawn_location: Vec2,
+    pub lua_globals: StdMap<StdString, StdString>,
+    pub pending_portals: StdVec<ConfigPendingPortal>,
+    pub next_portal_id: u32,
+    pub apparitions_per_level: StdVec<i32>,
+    pub npc_parties: StdVec<ConfigNpcParty>,
+    pub session_stat_file: StdString,
+    pub orbs_found_thisrun: StdVec<i32>,
+    pub flags: StdVec<StdString>,
+    pub changed_materials: StdVec<StdString>,
+    pub player_polymorph_count: i32,
+    pub player_polymorph_random_count: i32,
+    pub player_did_infinite_spell_count: i32,
+    pub player_did_damage_over_1milj: i32,
+    pub player_living_with_minus_hp: i32,
+    pub global_genome_relations_modifier: f32,
+    pub mods_have_been_active_during_this_run: ByteBool,
+    pub twitch_has_been_active_during_this_run: WithPad<ByteBool, 2>,
+    pub next_cut_through_world_id: u32,
+    pub cuts_through_world: StdVec<ConfigCutThroughWorld>,
+    pub gore_multiplier: LensValue<i32>,
+    pub trick_kill_gold_multiplier: LensValue<i32>,
+    pub damage_flash_multiplier: LensValue<f32>,
+    pub open_fog_of_war_everywhere: LensValueBool,
+    pub consume_actions: LensValueBool,
+    pub perk_infinite_spells: ByteBool,
+    pub perk_trick_kills_blood_money: WithPad<ByteBool, 2>,
+    pub perk_hp_drop_chance: i32,
+    pub perk_gold_is_forever: ByteBool,
+    pub perk_rats_player_friendly: ByteBool,
+    pub everything_to_gold: WithPad<ByteBool, 1>,
+    pub material_everything_to_gold: StdString,
+    pub material_everything_to_gold_static: StdString,
+    pub infinite_gold_happening: ByteBool,
+    pub ending_happiness_happening: WithPad<ByteBool, 2>,
+    pub ending_happiness_frames: i32,
+    pub ending_happiness: WithPad<ByteBool, 3>,
+    pub m_flash_alpha: f32,
+    pub debug_loaded_from_autosave: i32,
+    pub debug_loaded_from_old_version: i32,
+    pub rain_target_extra: f32,
+    pub fog_target_extra: f32,
+    pub perk_rats_player_friendly_prev: WithPad<ByteBool, 3>,
+}
+const _: () = assert!(std::mem::size_of::<WorldStateComponent>() == 0x180);
+
+impl ComponentName for WorldStateComponent {
+    const NAME: &str = "WorldStateComponent";
+}
