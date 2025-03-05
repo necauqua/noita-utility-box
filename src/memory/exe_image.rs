@@ -270,6 +270,10 @@ impl ExeImage {
         res
     }
 
+    pub fn text_offset_to_addr(&self, offset: usize) -> u32 {
+        (offset + self.header.text.start) as u32 + self.header.image_base
+    }
+
     /// Not guaranteed to end at the current function, as we only check for a few return opcodes and int3
     pub fn decode_fn(&self, addr: u32) -> impl Iterator<Item = Instruction> + '_ {
         Decoder::with_ip(

@@ -374,6 +374,7 @@ impl<K: MemoryStorage, V> StdMap<K, V> {
         self.get_raw(proc, key)?.map(|v| v.read(proc)).transpose()
     }
 
+    #[track_caller]
     pub fn get_raw<Q>(&self, proc: &ProcessRef, key: &Q) -> io::Result<Option<V>>
     where
         V: Pod,

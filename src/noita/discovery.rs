@@ -141,20 +141,14 @@ fn find_entity_manager_pointer(image: &ExeImage) -> Option<u32> {
         .map(|instr| instr.memory_displacement32())
 }
 
-/// Look for the `EntityHasTag` Lua API function and then look for the
-/// second to last `CALL rel32` again, which is a call that accepts the
-/// entity tag manager global in ECX
+/// Look for the `EntityTagManager` string only use, and then look for the
+/// following assignment to a global from EAX
 fn find_entity_tag_manager_pointer(image: &ExeImage) -> Option<u32> {
-    in_lua_api_fn(image, c"EntityHasTag")
-        .forced_rev()
-        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
-        .skip(1)
-        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
-        .find(|instr| {
-            instr.code() == Code::Mov_r32_rm32
-                && instr.op0_register() == Register::ECX
-                && instr.op1_kind() == OpKind::Memory
-        })
+    let offset = image.find_push_str_pos(c"EntityTagManager")?;
+    let addr = image.text_offset_to_addr(offset);
+    image
+        .decode_fn(addr)
+        .find(|instr| instr.code() == Code::Mov_moffs32_EAX)
         .map(|instr| instr.memory_displacement32())
 }
 

@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### BREAKING
+ - If you used the previous version to discover that `Jan 25 2025` (or newer) build of Noita is broken, you need to go into "Address Maps" (under the "+" button if it isn't there) and delete the mapping for that version - then restart to let it re-discover the mapping. You may notice that the value for `entity-tag-manager` is nonsensical - you could actually just update it to `0x1206fac` (for the jan 25 build) instead.
+
 ### Added
   - Orb radar can now also look for sampo positions
   - Orb radar now shows a "Searching..." spinner when looking for orbs
@@ -17,12 +20,13 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - Better and improved error reporting and UI
 
 ### Removed
-  - The settings checkbox to disable material pipette - just close the tab to hide it now it you don't need it
+  - The settings checkbox to disable material pipette - just close the tab to hide it now if you don't need it
 
 ### Fixed
   - Live stats resetting the stored OBS password when connected
   - Orb radar showing old orbs when seed/NG-count changes
   - Windows exe icon being blurry in some cases
+  - `entity-tag-manager` address discovery on new Noita builds
 
 ## [v0.2.1] 12024-10-22
 
