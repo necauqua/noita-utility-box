@@ -242,8 +242,6 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
 #[ignore]
 #[test]
 fn test() -> anyhow::Result<()> {
-    use crate::memory::exe_image::PeHeader;
-
     use super::*;
 
     use std::time::Instant;
@@ -270,13 +268,13 @@ fn test() -> anyhow::Result<()> {
         .context("Noita process not found")?;
 
     let proc = ProcessRef::connect(noita_pid.pid().as_u32())?;
-    let header = PeHeader::read(&proc)?;
+    let header = proc.header();
     if header.timestamp() != 0x66ba59d6 {
         bail!("Timestamp mismatch: 0x{:x}", header.timestamp());
     }
 
     let instant = Instant::now();
-    let image = header.read_image(&proc)?;
+    let image = ExeImage::read(&proc)?;
     println!("Image read in {:?}", instant.elapsed());
 
     let instant = Instant::now();

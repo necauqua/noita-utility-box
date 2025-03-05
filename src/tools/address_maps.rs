@@ -8,7 +8,7 @@ use eframe::egui::{
 };
 use egui_extras::{Column, TableBuilder};
 use noita_utility_box::{
-    memory::{exe_image::PeHeader, ProcessRef, Ptr},
+    memory::{exe_image::ExeImage, ProcessRef, Ptr},
     noita::{discovery, NoitaGlobals},
 };
 use serde::{Deserialize, Serialize};
@@ -266,7 +266,7 @@ impl AddressMapsData {
             .cloned()
     }
 
-    pub fn discover(&mut self, proc: &ProcessRef, header: &PeHeader) -> anyhow::Result<()> {
+    pub fn discover(&mut self, proc: &ProcessRef) -> anyhow::Result<()> {
         fn add_entry<T>(
             entries: &mut Vec<AddressEntry>,
             name: &str,
@@ -284,9 +284,7 @@ impl AddressMapsData {
             }
         }
 
-        let image = header
-            .clone()
-            .read_image(proc)
+        let image = ExeImage::read(proc)
             .context("Reading the entire EXE image of the game for discovery")?;
 
         let NoitaGlobals {
@@ -359,7 +357,7 @@ impl AddressMapsData {
             };
 
             self.maps
-                .push(AddressMap::new(name, header.timestamp(), entries));
+                .push(AddressMap::new(name, proc.header().timestamp(), entries));
         }
 
         Ok(())

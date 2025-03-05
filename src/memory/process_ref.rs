@@ -1,39 +1,55 @@
-use std::io;
+use std::{io, sync::Arc};
 use zerocopy::{FromBytes, IntoBytes};
 
+use super::exe_image::PeHeader;
+
 #[derive(Debug, Clone)]
-pub struct ProcessRef(platform::Handle);
+pub struct ProcessRef {
+    handle: platform::Handle,
+    pe_header: Option<Arc<PeHeader>>,
+}
 
 impl PartialEq for ProcessRef {
     fn eq(&self, other: &Self) -> bool {
-        self.0.pid() == other.0.pid()
+        self.handle.pid() == other.handle.pid()
     }
 }
 impl Eq for ProcessRef {}
 
 impl ProcessRef {
     pub fn connect(pid: u32) -> io::Result<Self> {
-        platform::Handle::connect(pid).map(Self)
+        let mut proc = Self {
+            handle: platform::Handle::connect(pid)?,
+            pe_header: None,
+        };
+        let pe_header = PeHeader::read(&proc).map_err(io::Error::other)?; // eh just wrap it into io::other for now
+        proc.pe_header = Some(Arc::new(pe_header));
+        Ok(proc)
+    }
+
+    pub fn header(&self) -> Arc<PeHeader> {
+        // The only path where this is None is PeHeader::read for obvious reasons
+        self.pe_header.as_ref().unwrap().clone()
     }
 
     pub fn pid(&self) -> u32 {
-        self.0.pid()
+        self.handle.pid()
     }
 
     #[cfg(target_os = "linux")]
     pub fn steam_compat_data_path(&self) -> &str {
-        self.0.steam_compat_data_path()
+        self.handle.steam_compat_data_path()
     }
 
     pub fn read_multiple<T: Pod>(&self, addr: u32, len: u32) -> io::Result<Vec<T>> {
         let mut v = T::new_vec_zeroed(len as usize).expect("alloc error");
-        self.0.read_memory(addr as usize, v.as_mut_bytes())?;
+        self.handle.read_memory(addr as usize, v.as_mut_bytes())?;
         Ok(v)
     }
 
     pub fn read<T: Pod>(&self, addr: u32) -> io::Result<T> {
         let mut t = T::new_zeroed();
-        self.0.read_memory(addr as usize, t.as_mut_bytes())?;
+        self.handle.read_memory(addr as usize, t.as_mut_bytes())?;
         Ok(t)
     }
 }

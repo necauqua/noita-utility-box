@@ -3,10 +3,7 @@ use derive_more::Debug;
 use eframe::egui::{
     text::LayoutJob, ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui,
 };
-use noita_utility_box::{
-    memory::{exe_image::PeHeader, ProcessRef},
-    noita::Noita,
-};
+use noita_utility_box::{memory::ProcessRef, noita::Noita};
 use smart_default::SmartDefault;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use thiserror::Error;
@@ -26,11 +23,10 @@ pub struct NoitaData {
 
 #[derive(Error, Debug)]
 enum NoitaError {
-    #[error("Unmapped Noita version (timestamp 0x{:x})", header.timestamp())]
+    #[error("Unmapped Noita version (timestamp 0x{:x})", proc.header().timestamp())]
     Unmapped {
         #[debug(skip)]
         proc: ProcessRef,
-        header: PeHeader,
     },
     #[error(transparent)]
     Contextual(#[from] anyhow::Error),
@@ -43,10 +39,8 @@ impl NoitaData {
         let proc = ProcessRef::connect(pid.as_u32())
             .with_context(|| format!("Couldn't open the process {pid}"))?;
 
-        let header =
-            PeHeader::read(&proc).with_context(|| format!("Couldn't read the process {pid}"))?;
-
         if state.settings.check_export_name {
+            let header = proc.header();
             let export_name = header.export_name();
             if export_name != b"wizard_physics.exe\0" {
                 let name = String::from_utf8_lossy(&export_name[..export_name.len() - 1]);
@@ -57,10 +51,10 @@ impl NoitaData {
             }
         }
 
-        let timestamp = header.timestamp();
+        let timestamp = proc.header().timestamp();
 
         let Some(address_map) = state.address_maps.get(timestamp) else {
-            return Err(NoitaError::Unmapped { proc, header });
+            return Err(NoitaError::Unmapped { proc });
         };
 
         let noita = Noita::new(proc, address_map.as_noita_globals());
@@ -211,9 +205,9 @@ impl Tool for ProcessPanel {
             Err(e) => {
                 ui.label(RichText::new(format!("{e:#}")).color(ui.style().visuals.error_fg_color));
 
-                if let NoitaError::Unmapped { proc, header } = e {
+                if let NoitaError::Unmapped { proc } = e {
                     if ui.button("Run auto-discovery").clicked() {
-                        if let Err(e) = state.address_maps.discover(proc, header) {
+                        if let Err(e) = state.address_maps.discover(proc) {
                             self.set_noita(ui.ctx(), state, Err(e.into()))
                         } else {
                             self.set_noita(ui.ctx(), state, Ok(None))

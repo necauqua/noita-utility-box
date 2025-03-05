@@ -1,4 +1,4 @@
-use std::{ffi::CStr, io, ops::Range};
+use std::{ffi::CStr, io, ops::Range, sync::Arc};
 
 use iced_x86::{Code, Decoder, DecoderOptions, Instruction};
 use memchr::memmem;
@@ -151,14 +151,25 @@ impl PeHeader {
             size_of_image: pe.size_of_image,
         })
     }
+}
 
+#[derive(Debug)]
+pub struct ExeImage {
+    header: Arc<PeHeader>,
+    image: Vec<u8>,
+    // cached_strings: HashMap<Vec<u8>, u32>,
+    // cached_string_pushes: HashMap<Vec<u8>, usize>,
+}
+
+impl ExeImage {
     /// This is relatively slow, as we read the entire executable (according to
     /// it's image size from the PE header) from the process memory
-    pub fn read_image(self, proc: &ProcessRef) -> Result<ExeImage, io::Error> {
-        let image = proc.read_multiple(self.image_base, self.size_of_image)?;
+    pub fn read(proc: &ProcessRef) -> Result<Self, io::Error> {
+        let header = proc.header();
+        let image = proc.read_multiple(header.image_base, header.size_of_image)?;
 
-        let image = ExeImage {
-            header: self,
+        let image = Self {
+            header,
             image,
             // cached_strings: HashMap::new(),
             // cached_string_pushes: HashMap::new(),
@@ -212,17 +223,7 @@ impl PeHeader {
 
         Ok(image)
     }
-}
 
-#[derive(Debug)]
-pub struct ExeImage {
-    header: PeHeader,
-    image: Vec<u8>,
-    // cached_strings: HashMap<Vec<u8>, u32>,
-    // cached_string_pushes: HashMap<Vec<u8>, usize>,
-}
-
-impl ExeImage {
     pub fn text(&self) -> &[u8] {
         &self.image[self.header.text.clone()]
     }
