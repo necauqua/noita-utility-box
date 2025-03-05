@@ -1,17 +1,12 @@
 [workspace]
 resolver = "2"
 
-[workspace.package]
-version = "0.2.1"
-edition = "2024"
-license = "MIT"
-
 [package]
 name = "noita-utility-box"
 description = "A collection of memory-reading utilities for the game Noita"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.2.1"
+edition = "2024"
+license = "MIT"
 
 [features]
 default = ["sneaky"]
@@ -20,7 +15,7 @@ sneaky = ["dep:export-resolver", "dep:str_crypter"]
 [dependencies]
 nub-macros = { path = "macros" }
 
-anyhow = "1"
+anyhow = { version = "1", features = ["backtrace"] }
 color-eyre = "0.6"
 convert_case = "0.8"
 derive_more = { version = "2", default-features = false, features = [
@@ -69,6 +64,8 @@ export-resolver = { version = "1", optional = true }
 str_crypter = { version = "1", optional = true }
 windows = { version = "0.60", default-features = false, features = [
     "Wdk_Foundation",
+    "Win32_Security",
+    "Win32_System_Console",
     "Win32_System_Threading",
     "Win32_System_Diagnostics_Debug",
     "Win32_System_WindowsProgramming",

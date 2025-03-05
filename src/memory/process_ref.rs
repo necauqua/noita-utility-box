@@ -308,19 +308,21 @@ mod platform {
             let ssn = SSN.expect("SSN not found");
 
             let status: i32;
-            asm!(
-                "mov r10, rcx",
-                "mov eax, {0:e}", // move the syscall number into EAX
-                "syscall",
-                in(reg) ssn, // input: Syscall number goes into EAX
-                // Order: https://web.archive.org/web/20170222171451/https://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
-                in("rcx") process_handle,   // passed to RCX (first argument)
-                in("rdx") desired_access,   // passed to RDX (second argument)
-                in("r8") object_attributes, // passed to R8 (third argument)
-                in("r9") client_id,         // passed to R9 (fourth argument)
-                lateout("rax") status,      // output: returned value of the syscall is placed in RAX
-                options(nostack),           // dont modify the stack pointer
-            );
+            unsafe {
+                asm!(
+                    "mov r10, rcx",
+                    "mov eax, {0:e}", // move the syscall number into EAX
+                    "syscall",
+                    in(reg) ssn, // input: Syscall number goes into EAX
+                    // Order: https://web.archive.org/web/20170222171451/https://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
+                    in("rcx") process_handle,   // passed to RCX (first argument)
+                    in("rdx") desired_access,   // passed to RDX (second argument)
+                    in("r8") object_attributes, // passed to R8 (third argument)
+                    in("r9") client_id,         // passed to R9 (fourth argument)
+                    lateout("rax") status,      // output: returned value of the syscall is placed in RAX
+                    options(nostack),           // dont modify the stack pointer
+                );
+            }
             NTSTATUS(status)
         }
     }

@@ -16,7 +16,16 @@ mod update_check;
 mod util;
 
 fn setup_logging() -> Result<WorkerGuard> {
+    // attempt to attach to parent console, so that we have panics/logs when
+    // started from cmd.exe regardless of windows_subsystem = "windows"
+    #[cfg(windows)]
+    unsafe {
+        use windows::Win32::System::Console::*;
+        _ = AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+
     let storage_dir = eframe::storage_dir(env!("CARGO_PKG_NAME")).context("No storage dir")?;
+    std::fs::create_dir_all(&storage_dir).context("Failed to create storage dir")?;
     let log_file = std::fs::OpenOptions::new()
         .create(true)
         .write(true)
