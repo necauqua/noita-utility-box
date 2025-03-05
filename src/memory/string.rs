@@ -100,7 +100,9 @@ impl StdWstring {
         if let Some(inline) = self.buf[..7].get(..self.len as usize) {
             DecodedStdWstring::Inline(inline)
         } else {
-            DecodedStdWstring::Heap(RawPtr::of((self.buf[1] as u32) << 16 | self.buf[0] as u32))
+            DecodedStdWstring::Heap(RawPtr::of(
+                ((self.buf[1] as u32) << 16) | self.buf[0] as u32,
+            ))
         }
     }
 }

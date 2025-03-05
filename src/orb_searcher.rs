@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use eframe::egui::{pos2, Context, Pos2};
-use noita_utility_box::noita::{rng::NoitaRng, Seed};
+use eframe::egui::{Context, Pos2, pos2};
+use noita_utility_box::noita::{Seed, rng::NoitaRng};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use smart_default::SmartDefault;
 use tracing::Instrument;
 
-use crate::util::{persist, Promise};
+use crate::util::{Promise, persist};
 
 #[derive(Debug, SmartDefault)]
 pub struct OrbSearcher {

@@ -44,15 +44,15 @@ impl NoitaRng {
 
 // wrapping_sub soup
 fn mix(a: i32, b: i32, c: u32) -> u32 {
-    let mut x = (a.wrapping_sub(b) as u32).wrapping_sub(c) ^ c >> 13;
-    let mut y = (b as u32).wrapping_sub(x).wrapping_sub(c) ^ x << 8;
-    let mut z = c.wrapping_sub(x).wrapping_sub(y) ^ y >> 13;
-    x = x.wrapping_sub(y).wrapping_sub(z) ^ z >> 12;
-    y = y.wrapping_sub(x).wrapping_sub(z) ^ x << 16;
-    z = z.wrapping_sub(x).wrapping_sub(y) ^ y >> 5;
-    x = x.wrapping_sub(y).wrapping_sub(z) ^ z >> 3;
-    y = y.wrapping_sub(x).wrapping_sub(z) ^ x << 10;
-    z.wrapping_sub(x).wrapping_sub(y) ^ y >> 15
+    let mut x = (a.wrapping_sub(b) as u32).wrapping_sub(c) ^ (c >> 13);
+    let mut y = (b as u32).wrapping_sub(x).wrapping_sub(c) ^ (x << 8);
+    let mut z = c.wrapping_sub(x).wrapping_sub(y) ^ (y >> 13);
+    x = x.wrapping_sub(y).wrapping_sub(z) ^ (z >> 12);
+    y = y.wrapping_sub(x).wrapping_sub(z) ^ (x << 16);
+    z = z.wrapping_sub(x).wrapping_sub(y) ^ (y >> 5);
+    x = x.wrapping_sub(y).wrapping_sub(z) ^ (z >> 3);
+    y = y.wrapping_sub(x).wrapping_sub(z) ^ (x << 10);
+    z.wrapping_sub(x).wrapping_sub(y) ^ (y >> 15)
 }
 
 // pretty sure this was some bog standard double->int conversion function of stl or something

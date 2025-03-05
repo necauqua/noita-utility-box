@@ -1,12 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use app::NoitaUtilityBox;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
+    EnvFilter,
     fmt::{self, format::FmtSpan},
     prelude::*,
-    EnvFilter,
 };
 
 mod app;

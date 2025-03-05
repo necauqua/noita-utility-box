@@ -246,7 +246,7 @@ fn test() -> anyhow::Result<()> {
 
     use std::time::Instant;
 
-    use anyhow::{bail, Context};
+    use anyhow::{Context, bail};
     use sysinfo::ProcessesToUpdate;
     use tracing::level_filters::LevelFilter;
     use tracing_subscriber::EnvFilter;

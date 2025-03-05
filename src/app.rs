@@ -1,8 +1,9 @@
 use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use eframe::{
+    NativeOptions,
     egui::{self, Frame, RichText, TextWrapMode, Ui, ViewportBuilder, WidgetText},
-    get_value, icon_data, set_value, NativeOptions,
+    get_value, icon_data, set_value,
 };
 use egui_tiles::{Container, Linear, LinearDir, SimplificationOptions, Tabs, Tile, TileId, Tiles};
 use noita_utility_box::noita::{Noita, Seed};
@@ -11,10 +12,10 @@ use smart_default::SmartDefault;
 
 use crate::{
     tools::{
-        address_maps::AddressMapsData, settings::SettingsData, Tool, ToolError, ToolInfo, TOOLS,
+        TOOLS, Tool, ToolError, ToolInfo, address_maps::AddressMapsData, settings::SettingsData,
     },
     update_check::UpdateChecker,
-    util::{persist, Tickable, UpdatableApp},
+    util::{Tickable, UpdatableApp, persist},
 };
 
 #[derive(Default)]

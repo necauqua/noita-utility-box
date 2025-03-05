@@ -2,7 +2,13 @@
 _default:
     @just -l
 
-release version:
+check:
+    cargo fmt --check
+    cargo clippy --all-targets --all-features -- -D warnings
+    cargo doc --no-deps --all-features
+    cargo test --all-features
+
+release version: check
     #!/usr/bin/env bash
     set -euo pipefail
 

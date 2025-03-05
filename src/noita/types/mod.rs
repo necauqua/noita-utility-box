@@ -28,7 +28,7 @@ impl<const N: usize> Index<usize> for Bitset<N> {
     type Output = bool;
 
     fn index(&self, index: usize) -> &Self::Output {
-        if self.0[(index / 8) as usize] & (1 << (index % 8)) != 0 {
+        if self.0[index / 8] & (1 << (index % 8)) != 0 {
             &true
         } else {
             &false
