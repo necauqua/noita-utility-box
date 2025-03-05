@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - '**/Cargo.*'
-      - '**.rs'
+      - "**/Cargo.*"
+      - "**.rs"
   pull_request:
     branches:
       - main
     paths:
-      - '**/Cargo.*'
-      - '**.rs'
+      - "**/Cargo.*"
+      - "**.rs"
   merge_group:
     types: [checks_requested]
 
@@ -54,7 +54,7 @@ jobs:
 
       - name: Test
         run: nix develop --command -- cargo test --all-features
-        timeout-minutes: 5
+        timeout-minutes: 15
 
       # the default package does run the tests
       - name: Build
