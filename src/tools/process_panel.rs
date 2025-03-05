@@ -141,7 +141,7 @@ impl ProcessPanel {
             self.system_info.refresh_processes_specifics(
                 ProcessesToUpdate::All,
                 true,
-                ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
+                ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
             );
         }
 
@@ -171,7 +171,7 @@ impl Tool for ProcessPanel {
         self.system_info.refresh_processes_specifics(
             ProcessesToUpdate::All,
             true,
-            ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
+            ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
         );
 
         if let Some(noita) = noita {

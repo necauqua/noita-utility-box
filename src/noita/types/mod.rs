@@ -41,7 +41,7 @@ impl Index<Option<u8>> for Bitset256 {
     }
 }
 
-impl Debug for Bitset256 {
+impl std::fmt::Debug for Bitset256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = String::with_capacity(256);
         for b in &self.0 {
@@ -59,7 +59,7 @@ pub struct Vec2 {
     pub y: f32,
 }
 
-impl Debug for Vec2 {
+impl std::fmt::Debug for Vec2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
@@ -72,7 +72,7 @@ pub struct Vec2i {
     pub y: i32,
 }
 
-impl Debug for Vec2i {
+impl std::fmt::Debug for Vec2i {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }

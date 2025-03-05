@@ -20,7 +20,7 @@ use super::{Result, Tool};
 enum ObsState {
     #[default]
     NotConnected,
-    Connecting(#[debug(skip)] Promise<obws::Result<obws::Client>>),
+    Connecting(#[debug(skip)] Promise<obws::error::Result<obws::Client>>),
     Connected(#[debug(skip)] Arc<obws::Client>, Promise<()>),
     Error(String),
 }

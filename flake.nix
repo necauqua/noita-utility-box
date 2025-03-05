@@ -68,6 +68,8 @@
             xorg.libXcursor
             xorg.libXi
             xorg.libXrandr
+
+            openssl
           ];
 
           buildPackage = attrs: naersk-lib.buildPackage (
@@ -197,4 +199,3 @@
         }
       );
 }
-

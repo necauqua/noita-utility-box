@@ -175,7 +175,7 @@ pub struct MaterialId {
     pub id: i32,
 }
 
-impl Debug for MaterialId {
+impl std::fmt::Debug for MaterialId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.name.is_empty() {
             match self.id {
@@ -220,7 +220,7 @@ impl From<Color> for eframe::egui::Color32 {
     }
 }
 
-impl Debug for Color {
+impl std::fmt::Debug for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let [r, g, b, a] = self.0.to_le_bytes();
         write!(f, "#{a:02x}{r:02x}{g:02x}{b:02x}")
