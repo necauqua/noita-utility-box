@@ -10,6 +10,7 @@ use std::{
 };
 
 use lazy_regex::regex_replace_all;
+use nub_macros::PtrReadable;
 use zerocopy::{FromBytes, IntoBytes};
 
 mod process_ref;
@@ -127,14 +128,10 @@ pub trait MemoryStorage: Pod {
     type Value;
 
     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value>;
-
-    fn bind(self, proc: ProcessRef) -> Remote<Self>
-    where
-        Self: Sized,
-    {
-        Remote::new(proc, self)
-    }
 }
+
+/// Marker trait for types that can be read from behind a pointer
+pub trait PtrReadable: Pod {}
 
 // specialization (where the default is passthrough like this and only few
 // select types actually read foreign memory) would've been nice
@@ -156,6 +153,9 @@ macro_rules! primitives {
                     Ok(*self)
                 }
             }
+
+            impl PtrReadable for $t {}
+            impl<const N: usize> PtrReadable for [$t; N] {}
         )*
     };
 }
@@ -191,7 +191,7 @@ pub fn set_debug_process(proc: ProcessRef) {
     DEBUG_PROCESS.set(Some(proc));
 }
 
-#[derive(FromBytes, IntoBytes)]
+#[derive(PtrReadable)]
 #[repr(C, packed)]
 pub struct StdVec<T> {
     start: Ptr<T>,
@@ -236,7 +236,7 @@ impl<T> StdVec<T> {
 
     pub fn read_at(&self, index: u32, proc: &ProcessRef) -> io::Result<Option<T>>
     where
-        T: Pod,
+        T: PtrReadable,
     {
         self.get(index).map(|p| p.read(proc)).transpose()
     }
@@ -259,7 +259,7 @@ where
     }
 }
 
-impl<T: MemoryStorage> StdVec<T> {
+impl<T: MemoryStorage + PtrReadable> StdVec<T> {
     pub fn read_storage(&self, proc: &ProcessRef) -> io::Result<Vec<T::Value>> {
         let len = self.len();
         let mut vec = Vec::with_capacity(len as usize);
@@ -288,6 +288,8 @@ pub struct StdMapNode<K, V> {
     key: K,
     value: V,
 }
+
+impl<K: Pod, V: Pod> PtrReadable for StdMapNode<K, V> {}
 
 #[derive(FromBytes, IntoBytes, Clone)]
 #[repr(C, packed)]
@@ -407,26 +409,6 @@ impl<K: MemoryStorage, V> StdMap<K, V> {
         Ok(None)
     }
 }
-
-#[derive(Debug)]
-pub struct Remote<T> {
-    proc: ProcessRef,
-    thing: T,
-}
-
-impl<T> Remote<T> {
-    pub const fn new(proc: ProcessRef, thing: T) -> Self {
-        Self { proc, thing }
-    }
-}
-
-impl<T: MemoryStorage> Remote<T> {
-    pub fn read(&self) -> io::Result<T::Value> {
-        self.thing.read(&self.proc)
-    }
-}
-
-pub type RemotePtr<T> = Remote<Ptr<T>>;
 
 pub(crate) fn debug_type<T>() -> Cow<'static, str> {
     regex_replace_all!(r"(?:\w+::)+", type_name::<T>(), "")

@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio::sync::oneshot::{self, error::TryRecvError, Receiver};
+use tokio::sync::oneshot::{self, Receiver, error::TryRecvError};
 
 /// A variant of poll-promise that can be used as storage. Uses tokio.
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl<T> Promise<T> {
                 Err(TryRecvError::Empty) => None,
                 Err(TryRecvError::Closed) => no_sender(),
             },
-            Promise::Done(ref t) => Some(t.borrow()),
+            &mut Promise::Done(ref t) => Some(t.borrow()),
             Promise::Taken => panic!("Promise was taken"),
         }
     }

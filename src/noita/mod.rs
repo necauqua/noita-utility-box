@@ -1,13 +1,13 @@
 use std::{borrow::Cow, collections::HashMap, io, marker::PhantomData};
 
 use convert_case::{Case, Casing};
-use derive_more::{derive::Display, Debug};
+use derive_more::{Debug, derive::Display};
 use types::{
+    ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
+    TagManager, TranslationManager,
     cell_factory::{CellData, CellFactory},
     components::{Component, ComponentName},
     platform::{FileDevice, PlatformWin},
-    ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
-    TagManager, TranslationManager,
 };
 
 use crate::memory::{MemoryStorage, Pod, ProcessRef, Ptr};
@@ -21,7 +21,7 @@ pub struct Noita {
     proc: ProcessRef,
     g: NoitaGlobals,
 
-    entity_tag_cache: HashMap<String, Option<u8>>,
+    entity_tag_cache: HashMap<String, Option<usize>>,
     no_player_not_polied: bool,
 
     materials: Vec<String>,
@@ -97,23 +97,23 @@ macro_rules! deep_read {
 }
 
 pub trait TagRef {
-    fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<u8>>;
+    fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<usize>>;
 }
 
 impl TagRef for str {
-    fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<u8>> {
+    fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<usize>> {
         noita.get_entity_tag_index(self)
     }
 }
 
-impl TagRef for u8 {
-    fn get_tag_index(&self, _: &mut Noita) -> io::Result<Option<u8>> {
+impl TagRef for usize {
+    fn get_tag_index(&self, _: &mut Noita) -> io::Result<Option<usize>> {
         Ok(Some(*self))
     }
 }
 
-impl TagRef for Option<u8> {
-    fn get_tag_index(&self, _: &mut Noita) -> io::Result<Option<u8>> {
+impl TagRef for Option<usize> {
+    fn get_tag_index(&self, _: &mut Noita) -> io::Result<Option<usize>> {
         Ok(*self)
     }
 }
@@ -249,7 +249,7 @@ impl Noita {
 
     /// Can store the index and check entity bitset directly to avoid hashmap
     /// lookups
-    pub fn get_entity_tag_index(&mut self, tag: &str) -> io::Result<Option<u8>> {
+    pub fn get_entity_tag_index(&mut self, tag: &str) -> io::Result<Option<usize>> {
         let cache_entry = self.entity_tag_cache.get(tag).copied();
         if let Some(idx) = cache_entry.flatten() {
             return Ok(Some(idx));
@@ -257,7 +257,8 @@ impl Noita {
 
         let idx = deep_read!(self.entity_tag_manager)?
             .tag_indices
-            .get(&self.proc, tag)?;
+            .get(&self.proc, tag)?
+            .map(|idx| idx as usize);
 
         self.entity_tag_cache.insert(tag.to_string(), idx);
 

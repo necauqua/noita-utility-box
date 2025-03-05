@@ -1,7 +1,8 @@
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
-    Align4, ByteBool, CString, PadBool, Ptr, StdMap, StdString, StdVec, Vftable, WithPad,
+    Align4, ByteBool, CString, PadBool, Pod, Ptr, PtrReadable, StdMap, StdString, StdVec, Vftable,
+    WithPad,
 };
 
 use super::{Bitset256, Entity, Vec2, Vec2i};
@@ -20,6 +21,8 @@ pub struct Component<D> {
     _field_0x44: u32,
     pub data: D,
 }
+
+impl<D: Pod> PtrReadable for Component<D> {}
 
 pub trait ComponentName {
     const NAME: &str;

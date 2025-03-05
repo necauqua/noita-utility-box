@@ -5,12 +5,13 @@ use crate::memory::{
     Vftable,
 };
 use derive_more::Debug;
+use nub_macros::PtrReadable;
 use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
 
 use super::Vec2;
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct CellFactory {
     field_0x0: u32,
@@ -386,7 +387,7 @@ pub enum ReactionDir {
     Right,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct CellReaction {
     pub fast_reaction: PadBool<3>,
@@ -452,7 +453,7 @@ impl CellReaction {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct CellReactionBuf {
     base: Ptr<CellReaction>,

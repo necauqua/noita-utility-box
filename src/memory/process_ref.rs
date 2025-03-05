@@ -57,6 +57,7 @@ impl ProcessRef {
 /// A shortcut for the zerocopy traits and sanity bounds
 pub trait Pod: IntoBytes + FromBytes + Sized + 'static {}
 
+/// Allows us to auto-implement Pod too
 impl<T: IntoBytes + FromBytes + Sized + 'static> Pod for T {}
 
 #[cfg(target_os = "linux")]
@@ -123,7 +124,7 @@ mod platform {
 
     mod threadsafe_handle {
         use std::ops::Deref;
-        use windows::{core::Owned, Win32::Foundation::HANDLE};
+        use windows::{Win32::Foundation::HANDLE, core::Owned};
 
         /// I'm pretty sure the kernel does not care which thread calls
         /// ReadProcessMemory, as long as it's from the same process.

@@ -1,15 +1,25 @@
+[workspace]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.1"
+edition = "2024"
+license = "MIT"
+
 [package]
 name = "noita-utility-box"
 description = "A collection of memory-reading utilities for the game Noita"
-version = "0.2.1"
-license = "MIT"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [features]
 default = ["sneaky"]
 sneaky = ["dep:export-resolver", "dep:str_crypter"]
 
 [dependencies]
+nub-macros = { path = "macros" }
+
 anyhow = "1"
 color-eyre = "0.6"
 convert_case = "0.8"

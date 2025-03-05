@@ -1,5 +1,6 @@
 use std::io;
 
+use nub_macros::PtrReadable;
 use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -8,9 +9,9 @@ use crate::memory::{
     StdWstring, Vftable, WithPad,
 };
 
-use super::{cell_factory::CSafeArray, Vec2};
+use super::{Vec2, cell_factory::CSafeArray};
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct PlatformWin {
     pub vftable: Vftable,
@@ -215,7 +216,7 @@ pub struct WizardAppConfig {
 }
 const _: () = assert!(std::mem::size_of::<WizardAppConfig>() == 0xed0);
 
-#[derive(FromBytes, IntoBytes, derive_more::Debug, Clone)]
+#[derive(derive_more::Debug, Clone, PtrReadable)]
 #[repr(C)]
 pub struct FileSystem {
     pub devices: StdVec<RawPtr>,
@@ -342,7 +343,7 @@ impl IFileDevice for WizardPakFileDevice {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug, Clone)]
+#[derive(Debug, Clone, PtrReadable)]
 #[repr(C)]
 pub struct ModDiskFileDevice {
     pub vftable: Vftable,
@@ -366,7 +367,7 @@ impl IFileDevice for ModDiskFileDevice {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug, Clone)]
+#[derive(Debug, Clone, PtrReadable)]
 #[repr(C)]
 pub struct DiskFileDevice {
     pub vftable: Vftable,

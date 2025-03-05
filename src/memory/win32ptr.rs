@@ -7,7 +7,7 @@ use crate::memory::debug_type;
 
 use super::*;
 
-#[derive(FromBytes, IntoBytes, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PtrReadable)]
 #[repr(transparent)]
 pub struct RawPtr(u32);
 
@@ -133,7 +133,10 @@ impl<T, const BASE: u32> From<u32> for Ptr<T, BASE> {
     }
 }
 
-impl<T: Pod, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
+// pointers themselves are readable through pointers
+impl<T: 'static, const BASE: u32> PtrReadable for Ptr<T, BASE> {}
+
+impl<T: PtrReadable, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
     type Value = T;
 
     #[track_caller]

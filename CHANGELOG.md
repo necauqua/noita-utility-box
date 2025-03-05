@@ -27,6 +27,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - Orb radar showing old orbs when seed/NG-count changes
   - Windows exe icon being blurry in some cases
   - `entity-tag-manager` address discovery on new Noita builds
+  - Fix the new 512 tag limit breaking most of the things
 
 ## [v0.2.1] 12024-10-22
 

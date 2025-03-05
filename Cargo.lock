@@ -2548,6 +2548,7 @@ dependencies = [
  "lazy-regex",
  "libc",
  "memchr",
+ "nub-macros",
  "obws",
  "open-enum",
  "rayon",
@@ -2585,6 +2586,15 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
+]
+
+[[package]]
+name = "nub-macros"
+version = "0.2.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

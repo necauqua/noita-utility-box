@@ -1,5 +1,6 @@
 use cell_factory::CellFactory;
 use derive_more::Debug;
+use nub_macros::PtrReadable;
 use std::{
     fmt::{self, Write as _},
     io,
@@ -18,13 +19,15 @@ pub mod platform;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
-pub struct Bitset256([u8; 32]);
+pub struct Bitset<const N: usize>([u8; N]);
 
-impl Index<u8> for Bitset256 {
+pub type Bitset256 = Bitset<32>;
+pub type Bitset512 = Bitset<64>;
+
+impl<const N: usize> Index<usize> for Bitset<N> {
     type Output = bool;
 
-    // this actually never fails
-    fn index(&self, index: u8) -> &Self::Output {
+    fn index(&self, index: usize) -> &Self::Output {
         if self.0[(index / 8) as usize] & (1 << (index % 8)) != 0 {
             &true
         } else {
@@ -33,17 +36,17 @@ impl Index<u8> for Bitset256 {
     }
 }
 
-impl Index<Option<u8>> for Bitset256 {
+impl<const N: usize> Index<Option<usize>> for Bitset<N> {
     type Output = bool;
 
-    fn index(&self, index: Option<u8>) -> &Self::Output {
+    fn index(&self, index: Option<usize>) -> &Self::Output {
         index.map_or(&false, |i| &self[i])
     }
 }
 
-impl std::fmt::Debug for Bitset256 {
+impl<const N: usize> std::fmt::Debug for Bitset<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut res = String::with_capacity(256);
+        let mut res = String::with_capacity(N);
         for b in &self.0 {
             write!(&mut res, "{:08b}", b)?;
         }
@@ -97,13 +100,59 @@ pub struct Entity {
     field_0x10: u32,
     pub name: StdString,
     field_0x2c: u32,
-    pub tags: Bitset256,
+    pub tags: Bitset512,
     pub transform: EntityTransform,
     pub children: Ptr<StdVec<Ptr<Entity>>>,
     pub parent: Ptr<Entity>,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+impl MemoryStorage for Ptr<Entity> {
+    type Value = Entity;
+
+    #[track_caller]
+    fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
+        // build 2025-01-25 updated the tag bitset to 512
+        if proc.header().timestamp() >= 0x6794ee3c {
+            return self.raw().read(proc);
+        }
+
+        #[derive(FromBytes, IntoBytes)]
+        #[repr(C)]
+        pub struct OldEntity {
+            pub id: u32,
+            pub comp_idx: u32,
+            pub filename_idx: u32,
+            pub dead: PadBool<3>,
+            field_0x10: u32,
+            pub name: StdString,
+            field_0x2c: u32,
+            pub tags: Bitset256,
+            pub transform: EntityTransform,
+            pub children: Ptr<StdVec<Ptr<Entity>>>,
+            pub parent: Ptr<Entity>,
+        }
+
+        let old: OldEntity = self.raw().read(proc)?;
+        let mut tags = Bitset([0; 64]);
+        tags.0[..32].copy_from_slice(&old.tags.0);
+
+        Ok(Entity {
+            id: old.id,
+            comp_idx: old.comp_idx,
+            filename_idx: old.filename_idx,
+            dead: old.dead,
+            field_0x10: old.field_0x10,
+            name: old.name,
+            field_0x2c: old.field_0x2c,
+            tags,
+            transform: old.transform,
+            children: old.children,
+            parent: old.parent,
+        })
+    }
+}
+
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct EntityManager {
     pub vftable: Vftable,
@@ -130,16 +179,16 @@ impl EntityManager {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct TagManager {
     pub tags: StdVec<StdString>,
-    pub tag_indices: StdMap<StdString, u8>,
-    pub max_tag_count: u32, // this is always 256 lul (and can't really be more cuz both bitset<256> and entity bucked idx being a byte)
+    pub tag_indices: StdMap<StdString, u8>, // hmm, tag indices could be >256 now, we're truncating them..
+    pub max_tag_count: u32,
     pub name: StdString,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct GameGlobal {
     pub frame_counter: u32,
@@ -149,14 +198,14 @@ pub struct GameGlobal {
 }
 const _: () = assert!(std::mem::size_of::<GameGlobal>() == 0x1a0);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct ComponentTypeManager {
     pub next_id: u32,
     pub component_indices: StdMap<StdString, u32>,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct ComponentBuffer {
     pub vftable: Vftable,
@@ -167,7 +216,7 @@ pub struct ComponentBuffer {
     pub storage: StdVec<RawPtr>,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct GlobalStats {
     pub vftable: Vftable,
@@ -217,7 +266,7 @@ pub struct GameStats {
     field_0xc4: u32, // same?
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct TranslationManager {
     pub vftable: Vftable,
@@ -233,7 +282,7 @@ pub struct TranslationManager {
     pub unknown_map: StdMap<StdString, StdString>,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct Language {
     pub id: StdString,

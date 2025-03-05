@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(FromBytes, IntoBytes, Clone, Copy)]
+#[derive(Clone, Copy, PtrReadable)]
 #[repr(C)]
 pub struct StdString {
     buf: [u8; 16],
