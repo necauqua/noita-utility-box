@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.3.0] 12025-03-06
+
 ### BREAKING
  - If you used the previous version to discover that `Jan 25 2025` (or newer) build of Noita is broken, you need to go into "Address Maps" (under the "+" button if it isn't there) and delete the mapping for that version - then restart to let it re-discover the mapping. You may notice that the value for `entity-tag-manager` is nonsensical - you could actually just update it to `0x1206fac` (for the jan 25 build) instead.
 
@@ -55,7 +57,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.2.1...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.3.0
 [v0.2.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.0
 [v0.1.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.1.0
