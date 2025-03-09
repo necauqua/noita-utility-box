@@ -3,13 +3,13 @@ use std::sync::{Arc, Mutex};
 use anyhow::Context as _;
 use derive_more::Debug;
 use eframe::egui::{
-    collapsing_header::CollapsingState, Align, Button, CollapsingHeader, Id, TextEdit, Ui, Vec2,
-    Widget,
+    Align, Button, CollapsingHeader, Id, TextEdit, Ui, Vec2, Widget,
+    collapsing_header::CollapsingState,
 };
 use egui_extras::{Column, TableBuilder};
-use noita_utility_box::{
-    memory::{exe_image::ExeImage, ProcessRef, Ptr},
-    noita::{discovery, NoitaGlobals},
+use noita_engine_reader::{
+    memory::{ProcessRef, Ptr, exe_image::ExeImage},
+    noita::{NoitaGlobals, discovery},
 };
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;

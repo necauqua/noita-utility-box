@@ -2,15 +2,15 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
 use eframe::egui::{ComboBox, Context, DragValue, Grid, RichText, TextEdit, Ui};
-use futures::{pin_mut, StreamExt};
-use noita_utility_box::memory::MemoryStorage;
+use futures::{StreamExt, pin_mut};
+use noita_engine_reader::memory::MemoryStorage;
 use obws::{events::Event, requests::inputs::SetSettings, responses::inputs::InputId};
 use smart_default::SmartDefault;
 use strfmt::{FmtError, Format};
 
 use crate::{
     app::AppState,
-    util::{persist, Promise},
+    util::{Promise, persist},
 };
 use derive_more::Debug;
 

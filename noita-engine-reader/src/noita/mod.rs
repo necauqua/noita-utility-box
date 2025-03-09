@@ -4,7 +4,7 @@ use convert_case::{Case, Casing};
 use derive_more::{Debug, derive::Display};
 use types::{
     ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
-    TagManager, TranslationManager,
+    TagManager, TranslationManager, Vec2,
     cell_factory::{CellData, CellFactory},
     components::{Component, ComponentName},
     platform::{FileDevice, PlatformWin},
@@ -42,7 +42,7 @@ pub struct NoitaGlobals {
 }
 
 impl NoitaGlobals {
-    pub fn debug() -> Self {
+    pub fn v12024_08_12() -> Self {
         Self {
             world_seed: Some(Ptr::of(0x1202fe4)),
             ng_count: Some(Ptr::of(0x1203004)),
@@ -339,6 +339,32 @@ impl Noita {
             buffer,
             _marker: PhantomData,
         })
+    }
+
+    pub fn get_camera_pos(&self) -> io::Result<Vec2> {
+        let game_global = self.read_game_global()?;
+        let camera = game_global.camera.read(&self.proc)?;
+        Ok(camera.get_pos())
+    }
+}
+
+#[cfg(feature = "lookup")]
+impl Noita {
+    pub fn lookup(globals: NoitaGlobals) -> io::Result<Option<Self>> {
+        use sysinfo::{ProcessesToUpdate, System};
+
+        let mut system = System::new();
+        system.refresh_processes(ProcessesToUpdate::All, true);
+
+        let Some(process) = system
+            .processes_by_exact_name("noita.exe".as_ref())
+            .find(|p| p.thread_kind().is_none())
+        else {
+            return Ok(None);
+        };
+
+        let proc = ProcessRef::connect(process.pid().as_u32())?;
+        Ok(Some(Self::new(proc, globals)))
     }
 }
 

@@ -1,9 +1,9 @@
-use anyhow::{anyhow, Context as _};
+use anyhow::{Context as _, anyhow};
 use derive_more::Debug;
 use eframe::egui::{
-    text::LayoutJob, ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui,
+    ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui, text::LayoutJob,
 };
-use noita_utility_box::{memory::ProcessRef, noita::Noita};
+use noita_engine_reader::{Noita, memory::ProcessRef};
 use smart_default::SmartDefault;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use thiserror::Error;

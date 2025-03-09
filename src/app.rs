@@ -6,7 +6,7 @@ use eframe::{
     get_value, icon_data, set_value,
 };
 use egui_tiles::{Container, Linear, LinearDir, SimplificationOptions, Tabs, Tile, TileId, Tiles};
-use noita_utility_box::noita::{Noita, Seed};
+use noita_engine_reader::{Noita, Seed};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 

@@ -1,12 +1,11 @@
 use std::io;
 
-use nub_macros::PtrReadable;
 use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
-    Align4, ByteBool, MemoryStorage, ProcessRef, Ptr, Raw, RawPtr, StdMap, StdString, StdVec,
-    StdWstring, Vftable, WithPad,
+    Align4, ByteBool, MemoryStorage, ProcessRef, Ptr, PtrReadable, Raw, RawPtr, StdMap, StdString,
+    StdVec, StdWstring, Vftable, WithPad,
 };
 
 use super::{Vec2, cell_factory::CSafeArray};

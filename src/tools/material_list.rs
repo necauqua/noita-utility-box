@@ -2,20 +2,19 @@ use std::{
     borrow::Cow,
     io,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
 use derive_more::derive::Debug;
 use eframe::egui::{
-    self, text::LayoutJob, Grid, Image, Label, Link, ScrollArea, TextFormat, TextureOptions, Ui,
-    ViewportBuilder, ViewportId, Widget,
+    self, Grid, Image, Label, Link, ScrollArea, TextFormat, TextureOptions, Ui, ViewportBuilder,
+    ViewportId, Widget, text::LayoutJob,
 };
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-use noita_utility_box::{
-    memory::MemoryStorage,
-    noita::{types::cell_factory::CellData, CachedTranslations, Noita},
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use noita_engine_reader::{
+    CachedTranslations, Noita, memory::MemoryStorage, types::cell_factory::CellData,
 };
 use smart_default::SmartDefault;
 
@@ -119,7 +118,11 @@ impl Widget for &MaterialView {
                         ui.widget(
                             "texture",
                             Image::new(texture.clone())
-                                .tint(self.cell_data.graphics.color)
+                                .tint({
+                                    let [r, g, b, a] =
+                                        self.cell_data.graphics.color.0.to_le_bytes();
+                                    egui::Color32::from_rgba_premultiplied(r, g, b, a)
+                                })
                                 .texture_options(TextureOptions::NEAREST),
                         );
                     }

@@ -3,7 +3,7 @@ use std::{borrow::Cow, ffi::CStr};
 use iced_x86::{Code, Instruction, OpKind, Register};
 use memchr::memmem;
 
-use crate::memory::exe_image::ExeImage;
+use crate::memory::{Ptr, exe_image::ExeImage};
 
 use super::NoitaGlobals;
 
@@ -238,73 +238,53 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
     g
 }
 
-#[cfg(test)]
-#[ignore]
-#[test]
-fn test() -> anyhow::Result<()> {
-    use super::*;
+#[allow(non_camel_case_types)]
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum KnownBuild {
+    v2024_08_12 = 0x66ba59d6,
+    v2025_01_25 = 0x6794ee3c,
+}
 
-    use std::time::Instant;
-
-    use anyhow::{Context, bail};
-    use sysinfo::ProcessesToUpdate;
-    use tracing::level_filters::LevelFilter;
-    use tracing_subscriber::EnvFilter;
-
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::DEBUG.into())
-                .from_env()?,
-        )
-        .try_init();
-
-    let mut system = sysinfo::System::new();
-    system.refresh_processes(ProcessesToUpdate::All, true);
-
-    let noita_pid = system
-        .processes_by_exact_name("noita.exe".as_ref())
-        .find(|p| p.thread_kind().is_none())
-        .context("Noita process not found")?;
-
-    let proc = ProcessRef::connect(noita_pid.pid().as_u32())?;
-    let header = proc.header();
-    if header.timestamp() != 0x66ba59d6 {
-        bail!("Timestamp mismatch: 0x{:x}", header.timestamp());
+impl KnownBuild {
+    pub fn last() -> Self {
+        Self::v2025_01_25
     }
 
-    let instant = Instant::now();
-    let image = ExeImage::read(&proc)?;
-    println!("Image read in {:?}", instant.elapsed());
+    pub fn from_timestamp(timestamp: u32) -> Option<Self> {
+        Some(Self::v2024_08_12).filter(|b| *b as u32 == timestamp)?;
+        Some(Self::v2025_01_25).filter(|b| *b as u32 == timestamp)?;
+        None
+    }
 
-    let instant = Instant::now();
-    let globals = run(&image);
-    println!("Pointers found in {:?}", instant.elapsed());
+    pub fn timestamp(self) -> u32 {
+        self as u32
+    }
 
-    println!("{globals:#?}");
-
-    // destructure so we know to update this when growing the list lol
-    let NoitaGlobals {
-        world_seed,
-        ng_count,
-        global_stats,
-        game_global,
-        entity_manager,
-        entity_tag_manager,
-        component_type_manager,
-        translation_manager,
-        platform,
-    } = NoitaGlobals::debug();
-
-    assert_eq!(globals.world_seed, world_seed);
-    assert_eq!(globals.ng_count, ng_count);
-    assert_eq!(globals.global_stats, global_stats);
-    assert_eq!(globals.game_global, game_global);
-    assert_eq!(globals.entity_manager, entity_manager);
-    assert_eq!(globals.entity_tag_manager, entity_tag_manager);
-    assert_eq!(globals.component_type_manager, component_type_manager);
-    assert_eq!(globals.translation_manager, translation_manager);
-    assert_eq!(globals.platform, platform);
-
-    Ok(())
+    pub fn map(self) -> NoitaGlobals {
+        match self {
+            KnownBuild::v2024_08_12 => NoitaGlobals {
+                world_seed: Some(Ptr::of(0x1202fe4)),
+                ng_count: Some(Ptr::of(0x1203004)),
+                global_stats: Some(Ptr::of(0x1206920)),
+                game_global: Some(Ptr::of(0x0122172c)),
+                entity_manager: Some(Ptr::of(0x1202b78)),
+                entity_tag_manager: Some(Ptr::of(0x1204fbc)),
+                component_type_manager: Some(Ptr::of(0x01221c08)),
+                translation_manager: Some(Ptr::of(0x01205c08)),
+                platform: Some(Ptr::of(0x0121fba0)),
+            },
+            KnownBuild::v2025_01_25 => NoitaGlobals {
+                world_seed: Some(Ptr::of(0x1205004)),
+                ng_count: Some(Ptr::of(0x1205024)),
+                global_stats: Some(Ptr::of(0x1208940)),
+                game_global: Some(Ptr::of(0x122374c)),
+                entity_manager: Some(Ptr::of(0x1204b98)),
+                entity_tag_manager: Some(Ptr::of(0x1206fac)),
+                component_type_manager: Some(Ptr::of(0x1223c88)),
+                translation_manager: Some(Ptr::of(0x1207c28)),
+                platform: Some(Ptr::of(0x1221bc0)),
+            },
+        }
+    }
 }

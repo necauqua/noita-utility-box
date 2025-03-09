@@ -9,15 +9,13 @@ edition = "2024"
 license = "MIT"
 
 [features]
-default = ["sneaky"]
-sneaky = ["dep:export-resolver", "dep:str_crypter"]
+default = ["noita-engine-reader/sneaky"]
 
 [dependencies]
-nub-macros = { path = "macros" }
+noita-engine-reader = { path = "noita-engine-reader" }
 
 anyhow = { version = "1", features = ["backtrace"] }
 color-eyre = "0.6"
-convert_case = "0.8"
 derive_more = { version = "2", default-features = false, features = [
     "debug",
     "deref",
@@ -30,15 +28,11 @@ egui_tiles = "0.11"
 fastrand = "2"
 futures = "0.3"
 fuzzy-matcher = "0.3"
-iced-x86 = "1"
 image = { version = "0.25", default-features = false, features = [
     "png",
     "bmp",
 ] }
-lazy-regex = "3"
-memchr = "2"
 obws = { version = "0.14", features = ["events"] }
-open-enum = "0.5"
 rayon = "1"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
@@ -47,29 +41,10 @@ strfmt = "0.2"
 sysinfo = "0.33"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread"] }
-tracing = "0.1"
+tracing = { version = "0.1", features = ["log"] }
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typetag = "0.2"
-zerocopy = { version = "0.8", default-features = false, features = [
-    "alloc",
-    "derive",
-] }
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-export-resolver = { version = "1", optional = true }
-str_crypter = { version = "1", optional = true }
-windows = { version = "0.60", default-features = false, features = [
-    "Wdk_Foundation",
-    "Win32_Security",
-    "Win32_System_Console",
-    "Win32_System_Threading",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_WindowsProgramming",
-] }
 
 [build-dependencies]
 winresource = { version = "0.1", default-features = false }

@@ -2531,34 +2531,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
+name = "noita-engine-reader"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "convert_case",
+ "derive_more",
+ "export-resolver",
+ "iced-x86",
+ "lazy-regex",
+ "libc",
+ "memchr",
+ "noita-engine-reader-macros",
+ "open-enum",
+ "str_crypter",
+ "sysinfo",
+ "thiserror 2.0.12",
+ "tracing",
+ "tracing-subscriber",
+ "windows 0.60.0",
+ "zerocopy 0.8.21",
+]
+
+[[package]]
+name = "noita-engine-reader-macros"
+version = "0.3.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "noita-utility-box"
 version = "0.3.0"
 dependencies = [
  "anyhow",
  "color-eyre",
- "convert_case",
  "derive_more",
  "eframe",
  "egui-modal",
  "egui_extras",
  "egui_tiles",
- "export-resolver",
  "fastrand",
  "futures",
  "fuzzy-matcher",
- "iced-x86",
  "image",
- "lazy-regex",
- "libc",
- "memchr",
- "nub-macros",
+ "noita-engine-reader",
  "obws",
- "open-enum",
  "rayon",
  "reqwest",
  "serde",
  "smart-default",
- "str_crypter",
  "strfmt",
  "sysinfo",
  "thiserror 2.0.12",
@@ -2567,9 +2591,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "typetag",
- "windows 0.60.0",
  "winresource",
- "zerocopy 0.8.21",
 ]
 
 [[package]]
@@ -2589,15 +2611,6 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
-]
-
-[[package]]
-name = "nub-macros"
-version = "0.3.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -4157,6 +4170,7 @@ version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

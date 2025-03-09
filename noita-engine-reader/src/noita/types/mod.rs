@@ -1,21 +1,21 @@
 use cell_factory::CellFactory;
 use derive_more::Debug;
-use nub_macros::PtrReadable;
 use std::{
     fmt::{self, Write as _},
     io,
     ops::Index,
 };
 
-use zerocopy::{FromBytes, IntoBytes};
-
 use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec, Vftable,
+    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, PtrReadable, RawPtr, StdMap, StdString,
+    StdVec, Vftable,
 };
+use zerocopy::{FromBytes, IntoBytes};
 
 pub mod cell_factory;
 pub mod components;
 pub mod platform;
+pub mod spells;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C)]
@@ -192,11 +192,33 @@ pub struct TagManager {
 #[repr(C)]
 pub struct GameGlobal {
     pub frame_counter: u32,
-    _skip: [u32; 5],
+    _skip: [u32; 2],
+    pub camera: Ptr<GameCamera>,
+    _skip2: [u32; 2],
     pub cell_factory: Ptr<CellFactory>,
-    _skip2: [u32; 97],
+    _skip3: [u32; 97],
 }
 const _: () = assert!(std::mem::size_of::<GameGlobal>() == 0x1a0);
+
+#[derive(Debug, PtrReadable)]
+#[repr(C)]
+pub struct GameCamera {
+    pub x1: f32,
+    pub y1: f32,
+    pub x2: f32,
+    pub y2: f32,
+    // .. a lot more stuff
+}
+
+impl GameCamera {
+    /// No idea what happens there, we just mimic what GameGetCameraPos does
+    pub fn get_pos(&self) -> Vec2 {
+        Vec2 {
+            x: self.x2 * 0.5 + self.x1,
+            y: self.y2 * 0.5 + self.y1,
+        }
+    }
+}
 
 #[derive(Debug, PtrReadable)]
 #[repr(C)]

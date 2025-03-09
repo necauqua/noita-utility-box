@@ -10,7 +10,6 @@ use std::{
 };
 
 use lazy_regex::regex_replace_all;
-use nub_macros::PtrReadable;
 use zerocopy::{FromBytes, IntoBytes};
 
 mod process_ref;
@@ -22,6 +21,8 @@ pub mod exe_image;
 pub use process_ref::*;
 pub use string::*;
 pub use win32ptr::*;
+
+pub use noita_engine_reader_macros::PtrReadable;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(C, packed)]

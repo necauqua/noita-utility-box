@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use anyhow::Context;
 use eframe::egui::{CollapsingHeader, Grid, ScrollArea, Ui};
-use noita_utility_box::{
+use noita_engine_reader::{
     memory::MemoryStorage,
-    noita::types::components::{ItemComponent, MaterialInventoryComponent},
+    types::components::{ItemComponent, MaterialInventoryComponent},
 };
 use serde::{Deserialize, Serialize};
 

@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::{quote, quote_spanned};
-use syn::{Data, spanned::Spanned};
+use syn::{Data, Ident, spanned::Spanned};
 
 /// Destroys an item it's attached to.
 ///
@@ -33,9 +34,10 @@ pub fn derive_macro(item: TokenStream) -> TokenStream {
         syn::GenericParam::Const(c) => quote!(#c),
     });
 
+    let macro_crate = Ident::new(env!("CARGO_CRATE_NAME"), Span::mixed_site());
     quote! {
         #[derive(::zerocopy::FromBytes, ::zerocopy::IntoBytes)]
-        #[::nub_macros::__derive_stub]
+        #[::#macro_crate::__derive_stub]
         #derive_input
 
         impl <#(#generic_defs),*> crate::memory::PtrReadable for #ident #generics {}

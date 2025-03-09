@@ -2,9 +2,9 @@ use std::fmt::Write as _;
 
 use crate::{app::AppState, orb_searcher::OrbSearcher};
 use eframe::egui::{
-    pos2, vec2, Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, Ui,
+    Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, Ui, pos2, vec2,
 };
-use noita_utility_box::noita::Seed;
+use noita_engine_reader::Seed;
 use serde::{Deserialize, Serialize};
 
 use super::{Result, Tool};

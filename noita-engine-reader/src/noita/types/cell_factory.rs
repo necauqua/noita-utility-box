@@ -5,11 +5,11 @@ use crate::memory::{
     Vftable,
 };
 use derive_more::Debug;
-use nub_macros::PtrReadable;
 use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
 
 use super::Vec2;
+use crate::memory::PtrReadable;
 
 #[derive(Debug, PtrReadable)]
 #[repr(C)]
@@ -66,9 +66,9 @@ pub struct CellData {
     pub initial_id: i32,
     pub cell_type: CellType,
     pub platform_type: i32,
-    pub wang_color: Color,
+    pub wang_color: CellColor,
     pub gfx_glow: i32,
-    pub gfx_glow_color: Color,
+    pub gfx_glow_color: CellColor,
     pub graphics: CellGraphics,
     pub cell_holes_in_texture: ByteBool,
     pub stainable: ByteBool,
@@ -107,7 +107,7 @@ pub struct CellData {
     pub liquid_gravity: f32,
     pub liquid_viscosity: i32,
     pub liquid_stains: i32,
-    pub liquid_stains_custom_color: Color,
+    pub liquid_stains_custom_color: CellColor,
     pub liquid_sprite_stain_shaken_drop_chance: f32,
     pub liquid_sprite_stain_ignited_drop_chance: f32,
     pub liquid_sprite_stains_check_offset: u8,
@@ -212,16 +212,9 @@ pub enum CellType {
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(transparent)]
-pub struct Color(pub u32);
+pub struct CellColor(pub u32);
 
-impl From<Color> for eframe::egui::Color32 {
-    fn from(value: Color) -> Self {
-        let [r, g, b, a] = value.0.to_le_bytes();
-        Self::from_rgba_premultiplied(r, g, b, a)
-    }
-}
-
-impl std::fmt::Debug for Color {
+impl std::fmt::Debug for CellColor {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let [r, g, b, a] = self.0.to_le_bytes();
         write!(f, "#{a:02x}{r:02x}{g:02x}{b:02x}")
@@ -232,7 +225,7 @@ impl std::fmt::Debug for Color {
 #[repr(C)]
 pub struct CellGraphics {
     pub texture_file: StdString,
-    pub color: Color,
+    pub color: CellColor,
     pub fire_colors_index: u32,
     pub randomize_colors: ByteBool,
     pub normal_mapped: ByteBool,
@@ -359,7 +352,7 @@ pub struct ParticleConfig {
     pub m_material_id: i32,
     pub vel: Vec2,
     pub vel_random: Aabb,
-    pub color: Color,
+    pub color: CellColor,
     pub lifetime: ValueRange,
     pub gravity: Vec2,
     pub cosmetic_force_create: ByteBool,

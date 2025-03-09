@@ -30,3 +30,6 @@ release version: check
 
     read -p $'Push it? [y/N]\n' -n 1 -r
     if [[ "$REPLY" =~ ^[Yy]$ ]]; then jj git push && git push --tags; fi
+
+play:
+    cargo test --workspace --package playground::test -- --ignored --nocapture

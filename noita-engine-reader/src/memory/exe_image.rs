@@ -2,10 +2,11 @@ use std::{ffi::CStr, io, ops::Range, sync::Arc};
 
 use iced_x86::{Code, Decoder, DecoderOptions, Instruction};
 use memchr::memmem;
-use nub_macros::PtrReadable;
 use thiserror::Error;
 
 use crate::memory::{Ibo, MemoryStorage, ProcessRef};
+
+use super::PtrReadable;
 
 #[derive(Error, Debug)]
 pub enum ReadImageError {
