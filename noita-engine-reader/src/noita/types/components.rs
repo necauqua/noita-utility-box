@@ -92,6 +92,16 @@ impl ComponentName for ItemComponent {
 
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
+pub struct ItemActionComponent {
+    pub action_id: StdString,
+}
+
+impl ComponentName for ItemActionComponent {
+    const NAME: &str = "ItemActionComponent";
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
 pub struct MaterialInventoryComponent {
     pub drop_as_item: ByteBool,
     pub on_death_spill: ByteBool,
@@ -221,6 +231,163 @@ const _: () = assert!(std::mem::size_of::<DamageModelComponent>() == 0x294);
 
 impl ComponentName for DamageModelComponent {
     const NAME: &str = "DamageModelComponent";
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct UIIconComponent {
+    pub icon_sprite_file: StdString,
+    pub name: StdString,
+    pub description: StdString,
+    pub display_above_head: ByteBool,
+    pub display_in_hud: ByteBool,
+    pub is_perk: PadBool<1>,
+}
+
+impl ComponentName for UIIconComponent {
+    const NAME: &str = "UIIconComponent";
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigGun {
+    pub vftable: Vftable,
+    pub actions_per_round: i32,
+    pub shuffle_deck_when_empty: PadBool<3>,
+    pub reload_time: i32,
+    pub deck_capacity: i32,
+}
+const _: () = assert!(std::mem::size_of::<ConfigGun>() == 0x14);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigGunActionInfo {
+    pub vftable: Vftable,
+    pub action_id: StdString,
+    pub action_name: StdString,
+    pub action_description: StdString,
+    pub action_sprite_filename: StdString,
+    pub action_unidentified_sprite_filename: StdString,
+    pub action_type: i32,
+    pub action_spawn_level: StdString,
+    pub action_spawn_probability: StdString,
+    pub action_spawn_requires_flag: StdString,
+    pub action_spawn_manual_unlock: PadBool<3>,
+    pub action_max_uses: i32,
+    pub custom_xml_file: StdString,
+    pub action_mana_drain: f32,
+    pub action_is_dangerous_blast: PadBool<3>,
+    pub action_draw_many_count: i32,
+    pub action_ai_never_uses: ByteBool,
+    pub action_never_unlimited: ByteBool,
+    pub state_shuffled: PadBool<1>,
+    pub state_cards_drawn: i32,
+    pub state_discarded_action: ByteBool,
+    pub state_destroyed_action: PadBool<2>,
+    pub fire_rate_wait: i32,
+    pub speed_multiplier: f32,
+    pub child_speed_multiplier: f32,
+    pub dampening: f32,
+    pub explosion_radius: f32,
+    pub spread_degrees: f32,
+    pub pattern_degrees: f32,
+    pub screenshake: f32,
+    pub recoil: f32,
+    pub damage_melee_add: f32,
+    pub damage_projectile_add: f32,
+    pub damage_electricity_add: f32,
+    pub damage_fire_add: f32,
+    pub damage_explosion_add: f32,
+    pub damage_ice_add: f32,
+    pub damage_slice_add: f32,
+    pub damage_healing_add: f32,
+    pub damage_curse_add: f32,
+    pub damage_drill_add: f32,
+    pub damage_null_all: f32,
+    pub damage_critical_chance: i32,
+    pub damage_critical_multiplier: f32,
+    pub explosion_damage_to_materials: f32,
+    pub knockback_force: f32,
+    pub reload_time: i32,
+    pub lightning_count: i32,
+    pub material: StdString,
+    pub material_amount: i32,
+    pub trail_material: StdString,
+    pub trail_material_amount: i32,
+    pub bounces: i32,
+    pub gravity: f32,
+    pub light: f32,
+    pub blood_count_multiplier: f32,
+    pub gore_particles: i32,
+    pub ragdoll_fx: i32,
+    pub friendly_fire: PadBool<3>,
+    pub physics_impulse_coeff: f32,
+    pub lifetime_add: i32,
+    pub sprite: StdString,
+    pub extra_entities: StdString,
+    pub game_effect_entities: StdString,
+    pub sound_loop_tag: StdString,
+    pub projectile_file: StdString,
+}
+const _: () = assert!(std::mem::size_of::<ConfigGunActionInfo>() == 0x23c);
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct AbilityComponent {
+    pub cooldown_frames: i32,
+    pub entity_file: StdString,
+    pub sprite_file: StdString,
+    pub entity_count: i32,
+    pub never_reload: PadBool<3>,
+    pub reload_time_frames: i32,
+    pub mana: f32,
+    pub mana_max: f32,
+    pub mana_charge_speed: f32,
+    pub rotate_in_hand: PadBool<3>,
+    pub rotate_in_hand_amount: f32,
+    pub rotate_hand_amount: f32,
+    pub fast_projectile: PadBool<3>,
+    pub swim_propel_amount: f32,
+    pub max_charged_actions: i32,
+    pub charge_wait_frames: i32,
+    pub item_recoil_recovery_speed: f32,
+    pub item_recoil_max: f32,
+    pub item_recoil_offset_coeff: f32,
+    pub item_recoil_rotation_coeff: f32,
+    pub base_item_file: StdString,
+    pub use_entity_file_as_projectile_info_proxy: ByteBool,
+    pub click_to_use: PadBool<2>,
+    pub stat_times_player_has_shot: i32,
+    pub stat_times_player_has_edited: i32,
+    pub shooting_reduces_amount_in_inventory: ByteBool,
+    pub throw_as_item: ByteBool,
+    pub simulate_throw_as_item: PadBool<1>,
+    pub max_amount_in_inventory: i32,
+    pub amount_in_inventory: i32,
+    pub drop_as_item_on_death: PadBool<3>,
+    pub ui_name: StdString,
+    pub use_gun_script: ByteBool,
+    pub is_petris_gun: PadBool<2>,
+    pub gun_config: ConfigGun,
+    pub gunaction_config: ConfigGunActionInfo,
+    pub gun_level: i32,
+    pub add_these_child_actions: StdString,
+    pub current_slot_durability: i32,
+    pub slot_consumption_function: StdString,
+    pub m_next_frame_usable: i32,
+    pub m_cast_delay_start_frame: i32,
+    pub m_ammo_left: i32,
+    pub m_reload_frames_left: i32,
+    pub m_reload_next_frame_usable: i32,
+    pub m_charge_count: i32,
+    pub m_next_charge_frame: i32,
+    pub m_item_recoil: f32,
+    pub m_is_initialized: PadBool<3>,
+}
+const _: () = assert!(std::mem::size_of::<AbilityComponent>() == 0x374);
+
+impl ComponentName for AbilityComponent {
+    const NAME: &str = "AbilityComponent";
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]

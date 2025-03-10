@@ -41,22 +41,6 @@ pub struct NoitaGlobals {
     pub platform: Option<Ptr<PlatformWin>>,
 }
 
-impl NoitaGlobals {
-    pub fn v12024_08_12() -> Self {
-        Self {
-            world_seed: Some(Ptr::of(0x1202fe4)),
-            ng_count: Some(Ptr::of(0x1203004)),
-            global_stats: Some(Ptr::of(0x1206920)),
-            game_global: Some(Ptr::of(0x0122172c)),
-            entity_manager: Some(Ptr::of(0x1202b78)),
-            entity_tag_manager: Some(Ptr::of(0x1204fbc)),
-            component_type_manager: Some(Ptr::of(0x01221c08)),
-            translation_manager: Some(Ptr::of(0x01205c08)),
-            platform: Some(Ptr::of(0x0121fba0)),
-        }
-    }
-}
-
 macro_rules! not_found {
     ($($args:tt)*) => {
         || ::std::io::Error::new(::std::io::ErrorKind::NotFound, format!($($args)*))
@@ -272,6 +256,14 @@ impl Noita {
         Ok(idx)
     }
 
+    pub fn read_entity_manager(&self) -> io::Result<EntityManager> {
+        deep_read!(self.entity_manager)
+    }
+
+    pub fn read_entity_tag_manager(&self) -> io::Result<TagManager> {
+        deep_read!(self.entity_tag_manager)
+    }
+
     pub fn has_tag(&mut self, entity: &Entity, tag: impl TagRef) -> io::Result<bool> {
         Ok(entity.tags[tag.get_tag_index(self)?])
     }
@@ -316,6 +308,10 @@ impl Noita {
         Ok(self.material_ui_names.get(index as usize).cloned())
     }
 
+    pub fn read_component_type_manager(&self) -> io::Result<ComponentTypeManager> {
+        read_ptr!(self.component_type_manager)
+    }
+
     pub fn component_store<T: ComponentName>(&self) -> io::Result<ComponentStore<T>> {
         let index = read_ptr!(self.component_type_manager)?
             .component_indices
@@ -342,9 +338,12 @@ impl Noita {
     }
 
     pub fn get_camera_pos(&self) -> io::Result<Vec2> {
-        let game_global = self.read_game_global()?;
-        let camera = game_global.camera.read(&self.proc)?;
-        Ok(camera.get_pos())
+        Ok(deep_read!(self.game_global.camera)?.get_pos())
+    }
+
+    pub fn get_camera_bounds(&self) -> io::Result<[i32; 4]> {
+        let bounds = deep_read!(self.game_global.camera.bounds)?;
+        Ok([bounds.x, bounds.y, bounds.w, bounds.h])
     }
 }
 

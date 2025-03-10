@@ -196,7 +196,11 @@ pub struct GameGlobal {
     pub camera: Ptr<GameCamera>,
     _skip2: [u32; 2],
     pub cell_factory: Ptr<CellFactory>,
-    _skip3: [u32; 97],
+    _skip3: [u32; 11],
+    pub pause_flags: Ptr<u32>,
+    _skip4: [u32; 5],
+    pub inventory_open: u32,
+    _skip5: [u32; 79],
 }
 const _: () = assert!(std::mem::size_of::<GameGlobal>() == 0x1a0);
 
@@ -207,7 +211,19 @@ pub struct GameCamera {
     pub y1: f32,
     pub x2: f32,
     pub y2: f32,
-    // .. a lot more stuff
+    _skip: [u32; 13],
+    pub bounds: Ptr<CameraBounds>,
+    // .. other stuff?.
+}
+
+#[derive(Debug, PtrReadable)]
+#[repr(C)]
+pub struct CameraBounds {
+    _skip: [u32; 294], // YUP THIS STRUCT IS AT LEAST >1KB
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
 }
 
 impl GameCamera {

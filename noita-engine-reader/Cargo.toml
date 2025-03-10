@@ -30,6 +30,8 @@ zerocopy = { version = "0.8", default-features = false, features = [
     "alloc",
     "derive",
 ] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140", features = ["preserve_order"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -48,5 +50,6 @@ windows = { version = "0.60", default-features = false, features = [
 
 [dev-dependencies]
 anyhow = "1"
+rayon = "1.10.0"
 sysinfo = "0.33"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

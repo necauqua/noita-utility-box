@@ -237,7 +237,7 @@ pub struct CellGraphics {
 }
 const _: () = assert!(std::mem::size_of::<CellGraphics>() == 0x40);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct ConfigExplosion {
     pub vftable: Vftable,

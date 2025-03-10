@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use noita_engine_reader::{Noita, discovery::KnownBuild};
-use sysinfo::ProcessesToUpdate;
+use noita_engine_reader::{Noita, discovery::KnownBuild, memory::set_debug_process};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
@@ -13,8 +12,8 @@ pub fn setup() -> Result<Noita> {
         )
         .try_init();
 
-    let mut system = sysinfo::System::new();
-    system.refresh_processes(ProcessesToUpdate::All, true);
+    let noita = Noita::lookup(KnownBuild::last().map())?.context("Noita process not found")?;
+    set_debug_process(noita.proc().clone());
 
-    Ok(Noita::lookup(KnownBuild::last().map())?.context("Noita process not found")?)
+    Ok(noita)
 }

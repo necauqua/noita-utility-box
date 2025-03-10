@@ -1,17 +1,33 @@
 #[derive(Debug, Clone)]
-pub struct NoitaRng(i64);
+pub struct NoitaRng(f64);
 
 impl NoitaRng {
-    /// The random function itself is super standard, the secret sauce was
-    /// getting the state from the world seed and position
-    pub fn random(&mut self) -> f64 {
-        let hi = self.0 / 127773;
-        let lo = self.0 - hi * 127773;
-        self.0 = lo * 16807 - hi * 2836;
-        if self.0 <= 0 {
-            self.0 += 0x7fffffff;
+    /// The random function itself is a super standard LCG, the secret sauce
+    /// was getting the state from the world seed and position
+    fn next(&mut self) -> f64 {
+        let mut next = (self.0 as i32)
+            .wrapping_mul(0x41a7)
+            .wrapping_add(((self.0 as i32) / 0x1f31d).wrapping_mul(-0x7fffffff));
+        if next < 1 {
+            next += 0x7fffffff;
         }
-        self.0 as f64 * 4.656612875e-10
+        self.0 = next as _;
+        self.0
+    }
+
+    /// Corresponds to the `Random()` Lua function
+    pub fn random(&mut self) -> f64 {
+        // weird `as f32 as f64` probably doesn't matter, but matches exactly
+        // how the random number is generated, cast to float, and cast back to
+        // double when passed to Lua;
+        // multiplying by ~1/2^31 to get the [0, 1) range
+        (self.next() * 4.656612875e-10) as f32 as _
+    }
+
+    /// Corresponds to the `Random(min, max)` Lua function
+    pub fn in_range(&mut self, min: i32, max: i32) -> i32 {
+        // don't use self.random() because of the precision limiting thing
+        min - ((max - min + 1) as f64 * (self.next() * -4.656612875e-10)) as i32
     }
 
     pub fn from_pos(seed_plus_ng: u32, x: f64, y: f64) -> Self {
@@ -32,11 +48,11 @@ impl NoitaRng {
             state *= 0.5;
         }
 
-        let mut rng = Self(state as i64);
-        rng.random();
+        let mut rng = Self(state);
+        rng.next();
 
         for _ in 0..(seed_plus_ng & 3) {
-            rng.random();
+            rng.next();
         }
         rng
     }
