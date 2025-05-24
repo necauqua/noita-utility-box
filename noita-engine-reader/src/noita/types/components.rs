@@ -1,3 +1,4 @@
+use open_enum::open_enum;
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
@@ -537,4 +538,67 @@ const _: () = assert!(std::mem::size_of::<WorldStateComponent>() == 0x180);
 
 impl ComponentName for WorldStateComponent {
     const NAME: &str = "WorldStateComponent";
+}
+
+#[open_enum]
+#[repr(u32)]
+#[derive(FromBytes, IntoBytes, Debug)]
+pub enum LuaVmType {
+    SharedByManyComponents,
+    CreateNewEveryExecution,
+    OnePerComponentInstance,
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct LuaComponent {
+    pub script_source_file: StdString,
+    pub vm_type: LuaVmType,
+    pub execute_on_added: ByteBool,
+    pub execute_on_removed: PadBool<2>,
+    pub execute_every_n_frame: i32,
+    pub execute_times: i32,
+    pub limit_how_many_times_per_frame: i32,
+    pub limit_to_every_n_frame: i32,
+    pub limit_all_callbacks: ByteBool,
+    pub remove_after_executed: ByteBool,
+    pub enable_coroutines: ByteBool,
+    pub call_init_function: ByteBool,
+    pub script_enabled_changed: StdString,
+    pub script_damage_received: StdString,
+    pub script_damage_about_to_be_received: StdString,
+    pub script_item_picked_up: StdString,
+    pub script_shot: StdString,
+    pub script_collision_trigger_hit: StdString,
+    pub script_collision_trigger_timer_finished: StdString,
+    pub script_physics_body_modified: StdString,
+    pub script_pressure_plate_change: StdString,
+    pub script_inhaled_material: StdString,
+    pub script_death: StdString,
+    pub script_throw_item: StdString,
+    pub script_material_area_checker_failed: StdString,
+    pub script_material_area_checker_success: StdString,
+    pub script_electricity_receiver_switched: StdString,
+    pub script_electricity_receiver_electrified: StdString,
+    pub script_kick: StdString,
+    pub script_interacting: StdString,
+    pub script_audio_event_dead: StdString,
+    pub script_wand_fired: StdString,
+    pub script_teleported: StdString,
+    pub script_portal_teleport_used: StdString,
+    pub script_polymorphing_to: StdString,
+    pub script_biome_entered: StdString,
+    pub m_last_execution_frame: i32,
+    pub m_times_executed_this_frame: i32,
+    pub m_mod_appends_done: PadBool<3>,
+    pub m_next_execution_time: i32,
+    pub m_times_executed: i32,
+    pub m_lua_manager: u32, // undefined
+    pub m_persistent_values: i32,
+}
+
+const _: () = assert!(std::mem::size_of::<LuaComponent>() == 0x2d8 - 0x48);
+
+impl ComponentName for LuaComponent {
+    const NAME: &str = "LuaComponent";
 }

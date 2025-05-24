@@ -4,7 +4,7 @@ use crate::{app::AppState, orb_searcher::OrbSearcher};
 use eframe::egui::{
     Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, Ui, pos2, vec2,
 };
-use noita_engine_reader::Seed;
+use noita_engine_reader::{PlayerState, Seed};
 use serde::{Deserialize, Serialize};
 
 use super::{Result, Tool};
@@ -107,11 +107,16 @@ impl OrbRadar {
 
                 return;
             };
-            if p {
+            let popup = match p {
+                PlayerState::Normal => "",
+                PlayerState::Polymorphed => "POLYMORPHED LOL",
+                PlayerState::Cessated => "Cessated",
+            };
+            if !popup.is_empty() {
                 painter.text(
                     rect.left_top() + vec2(5.0, 5.0),
                     Align2::LEFT_TOP,
-                    "POLYMORPHED LOL",
+                    popup,
                     FontId::proportional(16.0),
                     ui.style().visuals.strong_text_color(),
                 );

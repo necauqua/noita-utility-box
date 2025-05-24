@@ -62,6 +62,12 @@ pub struct ByteBool(u8);
 
 pub type PadBool<const PAD: usize> = WithPad<ByteBool, PAD>;
 
+impl<const PAD: usize> PadBool<PAD> {
+    pub fn as_bool(&self) -> bool {
+        self.0.as_bool()
+    }
+}
+
 impl ByteBool {
     pub fn as_bool(&self) -> bool {
         debug_assert!(self.0 == 0 || self.0 == 1, "Invalid boolean: {self:?}");

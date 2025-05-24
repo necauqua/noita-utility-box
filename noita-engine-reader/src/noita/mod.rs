@@ -6,7 +6,7 @@ use types::{
     ComponentBuffer, ComponentTypeManager, Entity, EntityManager, GameGlobal, GlobalStats,
     TagManager, TranslationManager, Vec2,
     cell_factory::{CellData, CellFactory},
-    components::{Component, ComponentName},
+    components::{Component, ComponentName, WorldStateComponent},
     platform::{FileDevice, PlatformWin},
 };
 
@@ -84,7 +84,7 @@ pub trait TagRef {
     fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<usize>>;
 }
 
-impl TagRef for str {
+impl TagRef for &str {
     fn get_tag_index(&self, noita: &mut Noita) -> io::Result<Option<usize>> {
         noita.get_entity_tag_index(self)
     }
@@ -100,6 +100,13 @@ impl TagRef for Option<usize> {
     fn get_tag_index(&self, _: &mut Noita) -> io::Result<Option<usize>> {
         Ok(*self)
     }
+}
+
+#[derive(Debug)]
+pub enum PlayerState {
+    Normal,
+    Polymorphed,
+    Cessated,
 }
 
 impl Noita {
@@ -185,7 +192,18 @@ impl Noita {
         })
     }
 
-    pub fn get_player(&mut self) -> io::Result<Option<(Entity, bool)>> {
+    // could also discover the static world state pointer
+    pub fn get_world_state(&mut self) -> io::Result<Option<WorldStateComponent>> {
+        let Some(world_state_idx) = self.get_entity_tag_index("world_state")? else {
+            return Ok(None);
+        };
+        let Some(entity) = self.get_first_tagged_entity(world_state_idx)? else {
+            return Ok(None);
+        };
+        self.component_store::<WorldStateComponent>()?.get(&entity)
+    }
+
+    pub fn get_player(&mut self) -> io::Result<Option<(Entity, PlayerState)>> {
         let Some(player_unit_idx) = self.get_entity_tag_index("player_unit")? else {
             // no player_unit means definitely no player
             return Ok(None);
@@ -193,7 +211,7 @@ impl Noita {
 
         if let Some(player) = self.get_first_tagged_entity(player_unit_idx)? {
             self.no_player_not_polied = false;
-            return Ok(Some((player, false)));
+            return Ok(Some((player, PlayerState::Normal)));
         }
 
         // avoid repeatedly trying to look up the polymorphed_player tag if it wasn't created yet
@@ -201,15 +219,15 @@ impl Noita {
             return Ok(None);
         }
 
-        let Some(polymorphed_player_idx) = self.get_entity_tag_index("polymorphed_player")? else {
-            // no polymorphed_player means player was never polymorphed,
-            // and without a player it means there's no player lol
-            self.no_player_not_polied = true;
-            return Ok(None);
-        };
-        Ok(self
-            .get_first_tagged_entity(polymorphed_player_idx)?
-            .map(|p| (p, true)))
+        if let Some(e) = self.get_first_tagged_entity("polymorphed_player")? {
+            return Ok(Some((e, PlayerState::Polymorphed)));
+        }
+        if let Some(e) = self.get_first_tagged_entity("polymorphed_cessation")? {
+            return Ok(Some((e, PlayerState::Cessated)));
+        }
+
+        self.no_player_not_polied = true;
+        Ok(None)
     }
 
     pub fn get_first_tagged_entity(&mut self, tag: impl TagRef) -> io::Result<Option<Entity>> {
@@ -221,14 +239,13 @@ impl Noita {
         let Some(bucket) = entity_manager.entity_buckets.get(tag_idx as u32) else {
             return Ok(None);
         };
-        let Some(entity) = bucket.read(&self.proc)?.get(0) else {
-            return Ok(None);
-        };
-        let entity = entity.read(&self.proc)?;
-        if entity.is_null() {
-            return Ok(None);
-        }
-        Ok(Some(entity.read(&self.proc)?))
+        bucket
+            .read(&self.proc)?
+            .read(&self.proc)?
+            .iter()
+            .find(|e| !e.is_null())
+            .map(|e| e.read(&self.proc))
+            .transpose()
     }
 
     /// Can store the index and check entity bitset directly to avoid hashmap

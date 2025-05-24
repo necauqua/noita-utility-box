@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Orb radar can now find the player whe cessated.
+
 ## [v0.3.0] 12025-03-06
 
 ### BREAKING

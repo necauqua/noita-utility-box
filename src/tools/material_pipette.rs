@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use anyhow::Context;
 use eframe::egui::{CollapsingHeader, Grid, ScrollArea, Ui};
 use noita_engine_reader::{
+    PlayerState,
     memory::MemoryStorage,
     types::components::{ItemComponent, MaterialInventoryComponent},
 };
@@ -34,11 +35,11 @@ impl Tool for MaterialPipette {
 
         // just do it all on every redraw, whatever (todo add at least a timer here lol)
         let player = match noita.get_player()? {
-            Some((player, false)) => player,
-            Some((_, true)) => {
+            Some((_, PlayerState::Polymorphed)) => {
                 ui.label("Polymorphed LOL");
                 return Ok(());
             }
+            Some((player, _)) => player,
             None => return ToolError::retry("Player entity not found"),
         };
 

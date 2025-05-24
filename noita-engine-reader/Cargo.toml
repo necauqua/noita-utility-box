@@ -17,7 +17,7 @@ iced-x86 = "1"
 lazy-regex = "3"
 memchr = "2"
 open-enum = "0.5"
-sysinfo = { version = "0.33", optional = true }
+sysinfo = { version = "0.35", optional = true }
 thiserror = "2"
 tracing = { version = "0.1", features = ["log"] }
 
@@ -39,7 +39,7 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 export-resolver = { version = "1", optional = true }
 str_crypter = { version = "1", optional = true }
-windows = { version = "0.60", default-features = false, features = [
+windows = { version = "0.61", default-features = false, features = [
     "Wdk_Foundation",
     "Win32_Security",
     "Win32_System_Console",
@@ -51,5 +51,5 @@ windows = { version = "0.60", default-features = false, features = [
 [dev-dependencies]
 anyhow = "1"
 rayon = "1.10.0"
-sysinfo = "0.33"
+sysinfo = "0.35"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
