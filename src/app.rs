@@ -2,7 +2,10 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use eframe::{
     NativeOptions,
-    egui::{self, Frame, RichText, TextWrapMode, Ui, ViewportBuilder, WidgetText},
+    egui::{
+        self, Frame, RichText, TextWrapMode, Ui, ViewportBuilder, WidgetText,
+        containers::menu::MenuButton,
+    },
     get_value, icon_data, set_value,
 };
 use egui_tiles::{Container, Linear, LinearDir, SimplificationOptions, Tabs, Tile, TileId, Tiles};
@@ -149,7 +152,7 @@ impl egui_tiles::Behavior<Pane> for AppState {
         if self.hidden_tools.is_empty() {
             return;
         }
-        egui::menu::menu_button(ui, "➕", |ui| {
+        MenuButton::new("➕").ui(ui, |ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Extend);
             let mut clicked = None;
             for (i, closed) in self.hidden_tools.iter().enumerate() {
@@ -246,7 +249,7 @@ impl eframe::App for NoitaUtilityBox {
 
         egui::CentralPanel::default()
             // remove margin
-            .frame(Frame::none().fill(ctx.style().visuals.panel_fill))
+            .frame(Frame::new().fill(ctx.style().visuals.panel_fill))
             .show(ctx, |ui| {
                 self.tree.ui(&mut self.state, ui);
 

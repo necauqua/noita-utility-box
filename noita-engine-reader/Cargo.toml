@@ -17,7 +17,7 @@ iced-x86 = "1"
 lazy-regex = "3"
 memchr = "2"
 open-enum = "0.5"
-sysinfo = { version = "0.35", optional = true }
+sysinfo = { version = "0.36", optional = true }
 thiserror = "2"
 tracing = { version = "0.1", features = ["log"] }
 
@@ -31,7 +31,7 @@ zerocopy = { version = "0.8", default-features = false, features = [
     "derive",
 ] }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140", features = ["preserve_order"] }
+serde_json = { version = "1.0.141", features = ["preserve_order"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -50,5 +50,5 @@ windows = { version = "0.61", default-features = false, features = [
 [dev-dependencies]
 anyhow = "1"
 rayon = "1.10.0"
-sysinfo = "0.35"
+sysinfo = "0.36"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

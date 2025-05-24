@@ -1,6 +1,10 @@
+use std::mem;
+
 use anyhow::Result;
-use eframe::egui::{Align, Context, Frame, Layout, OpenUrl, ScrollArea};
-use egui_modal::Modal;
+use eframe::egui::{
+    Align, Context, Id, Layout, Modal, OpenUrl, Response, RichText, ScrollArea, Sense, TextStyle,
+    Ui, Widget, style::ScrollStyle, vec2,
+};
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -22,7 +26,16 @@ async fn fetch_newer_release() -> Result<Option<UpdateInfo>> {
         return Ok(Some(UpdateInfo {
             html_url: "ez{`b(<;ba`6`uuuwaa+ehe&}jxnf0f,}[s E]AKRA1".chars().enumerate().map(|(i, ch)| (ch as u8 ^ ((13 + i as u8) % 27)) as char).collect(),
             tag_name: "v0.0.0a".into(),
-            body: "This is a test update notice, since you're running a debug build with github env vars set".into(),
+            body: r"
+                ### Added
+                    - This is a test update notice, since you're running a debug build with github env vars set
+                    - Here we have some `inline code` and some **bold** text, as well as some _italics_
+                ### Changed
+                    - Made it way better better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way
+                    - Also made it support [links](https://necauq.ua)?
+                ### Removed
+                    - Removed Herobrine
+            ".into(),
             prerelease: false,
         }));
     }
@@ -46,37 +59,75 @@ async fn fetch_newer_release() -> Result<Option<UpdateInfo>> {
         .filter(|r| r.tag_name != RELEASE_VERSION.unwrap_or_default()))
 }
 
+#[derive(Debug, Default)]
+pub struct UpdateChecker {
+    update_task: Promise<Option<UpdateInfo>>,
+}
+
+// stole that from egui examples
+fn bullet_point(ui: &mut Ui, width: f32, height: f32) -> Response {
+    let (rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::empty());
+    ui.painter().circle_filled(
+        rect.center(),
+        rect.height() / 8.0,
+        ui.visuals().strong_text_color(),
+    );
+    response
+}
+
+fn draw_a_tiny_subset_of_markdown(ui: &mut Ui, text: &str) {
+    for line in text.lines() {
+        if let Some(line) = line.trim().strip_prefix("###") {
+            ui.strong(line.trim());
+            continue;
+        }
+        if let Some(line) = line.trim().strip_prefix("-") {
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                let row_height = ui.text_style_height(&TextStyle::Small);
+                ui.set_row_height(row_height);
+                bullet_point(ui, row_height, row_height);
+                ui.horizontal_wrapped(|ui| {
+                    ui.set_row_height(row_height);
+                    ui.spacing_mut().item_spacing.x = 1.0;
+                    for f in InlineMarkdownFragment::parse(line.trim()) {
+                        f.ui(ui);
+                    }
+                });
+            });
+        }
+    }
+}
+
 fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppState) -> bool {
     if !state.settings.notify_when_outdated {
         return false;
     }
 
-    let modal = Modal::new(ctx, "update").with_close_on_outside_click(true);
-    modal.open();
-    modal.show(|ui| {
-        let pre_title_rest = ui.available_height();
-        modal.title(ui, "An update is available");
-        let title_height = pre_title_rest - ui.available_height();
+    let mut close = false;
 
-        let max_height = ui.ctx().input(|i| i.screen_rect.height()) - title_height * 6.0; // idk lol
+    let response = Modal::new(Id::new("update")).show(ctx, |ui| {
+        let screen_rect = ui.ctx().input(|i| i.screen_rect);
+        ui.set_max_width(screen_rect.width() * 0.8);
+        ui.set_max_height(screen_rect.height() * 0.6);
 
-        // modal.frame(ui, |ui| {
-        ui.with_layout(Layout::top_down(Align::Min), |ui| {
-            Frame::none().inner_margin(5.0).show(ui, |ui| {
-                ui.label(format!(
-                    "Version {} was released\n\nChangelog:",
-                    update_info.tag_name
-                ));
+        ui.label(RichText::new("An update is available").heading().strong());
 
-                ScrollArea::vertical()
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        ui.label(&update_info.body);
-                    });
-            });
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.label("You are running version ");
+            ui.monospace(RELEASE_VERSION.unwrap_or("<unknown>"));
+            ui.label(", the newest is ");
+            ui.monospace(&update_info.tag_name);
         });
-        // });
 
+        ui.label("Changelog:");
+
+        ui.separator();
+        ui.spacing_mut().scroll = ScrollStyle::thin();
+        ScrollArea::vertical().show(ui, |ui| {
+            draw_a_tiny_subset_of_markdown(ui, &update_info.body);
+        });
         ui.separator();
 
         ui.vertical(|ui| {
@@ -90,20 +141,16 @@ fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppSta
                         url: update_info.html_url.clone(),
                         new_tab: true,
                     });
-                    modal.close();
+                    close = true;
                 }
                 if ui.button("Dismiss").clicked() {
-                    modal.close();
+                    close = true;
                 }
             })
         })
     });
-    modal.is_open()
-}
 
-#[derive(Debug, Default)]
-pub struct UpdateChecker {
-    update_task: Promise<Option<UpdateInfo>>,
+    !(close || response.should_close())
 }
 
 impl UpdateChecker {
@@ -151,5 +198,162 @@ impl UpdateChecker {
                 None => {}
             },
         }
+    }
+}
+
+enum InlineMarkdownFragment {
+    Text(String),
+    Code(String),
+    Bold(String),
+    Italic(String),
+    Link(String, String),
+}
+
+impl Widget for InlineMarkdownFragment {
+    fn ui(self, ui: &mut Ui) -> Response {
+        match self {
+            Self::Text(text) => ui.label(RichText::new(text)),
+            Self::Code(text) => ui.label(RichText::new(text).code()),
+            Self::Bold(text) => ui.label(RichText::new(text).strong()),
+            Self::Italic(text) => ui.label(RichText::new(text).italics()),
+            Self::Link(text, url) => ui.hyperlink_to(RichText::new(text), url),
+        }
+    }
+}
+
+impl InlineMarkdownFragment {
+    fn parse(line: &str) -> Vec<Self> {
+        #[derive(Clone)]
+        enum State {
+            Text,
+            Code,
+            Italic(char),
+            Bold(char),
+            LinkText,
+            LinkUrl(String),
+        }
+
+        let mut fragments = Vec::new();
+        let mut current = String::new();
+        let mut state = State::Text;
+        let mut chars = line.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                if let Some(&next_c) = chars.peek() {
+                    current.push(next_c);
+                    chars.next();
+                }
+                continue;
+            }
+
+            match &mut state {
+                State::Text => {
+                    if c == '`' {
+                        if !current.is_empty() {
+                            fragments.push(Self::Text(mem::take(&mut current)));
+                        }
+                        state = State::Code;
+                        continue;
+                    }
+                    if c == '*' || c == '_' {
+                        let next = chars.peek();
+                        if let Some(&nc) = next
+                            && nc == c
+                        {
+                            chars.next();
+                            if !current.is_empty() {
+                                fragments.push(Self::Text(mem::take(&mut current)));
+                            }
+                            state = State::Bold(c);
+                            continue;
+                        }
+                        if !current.is_empty() {
+                            fragments.push(Self::Text(mem::take(&mut current)));
+                        }
+                        state = State::Italic(c);
+                        continue;
+                    }
+                    if c == '[' {
+                        if !current.is_empty() {
+                            fragments.push(Self::Text(mem::take(&mut current)));
+                        }
+                        state = State::LinkText;
+                        continue;
+                    }
+                    current.push(c);
+                }
+                State::Code => {
+                    if c == '`' {
+                        fragments.push(Self::Code(mem::take(&mut current)));
+                        state = State::Text;
+                        continue;
+                    }
+                    current.push(c);
+                }
+                State::Italic(delim) => {
+                    if c == *delim {
+                        fragments.push(Self::Italic(mem::take(&mut current)));
+                        state = State::Text;
+                        continue;
+                    }
+                    current.push(c);
+                }
+                State::Bold(delim) => {
+                    if c == *delim
+                        && let Some(&nc) = chars.peek()
+                        && nc == *delim
+                    {
+                        chars.next();
+                        fragments.push(Self::Bold(mem::take(&mut current)));
+                        state = State::Text;
+                        continue;
+                    }
+                    current.push(c);
+                }
+                State::LinkText => {
+                    if c == ']' {
+                        let link_text = mem::take(&mut current);
+                        if let Some(&'(') = chars.peek() {
+                            chars.next();
+                            state = State::LinkUrl(link_text);
+                            continue;
+                        }
+                        current.push('[');
+                        current.push_str(&link_text);
+                        current.push(']');
+                        state = State::Text;
+                        continue;
+                    }
+                    current.push(c);
+                }
+                State::LinkUrl(link_text) => {
+                    if c == ')' {
+                        fragments.push(Self::Link(mem::take(link_text), mem::take(&mut current)));
+                        state = State::Text;
+                        continue;
+                    }
+                    current.push(c);
+                }
+            }
+        }
+
+        if !current.is_empty() {
+            match state {
+                State::Text => fragments.push(Self::Text(current)),
+                State::Code => fragments.push(Self::Code(current)),
+                State::Italic(_) => fragments.push(Self::Italic(current)),
+                State::Bold(_) => fragments.push(Self::Bold(current)),
+                State::LinkText => {
+                    current.insert(0, '[');
+                    fragments.push(Self::Text(current));
+                }
+                State::LinkUrl(link_text) => {
+                    fragments.push(Self::Text(format!("[{link_text}]({current}")));
+                }
+            }
+        }
+
+        fragments
     }
 }

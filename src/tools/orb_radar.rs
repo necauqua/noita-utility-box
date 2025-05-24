@@ -6,8 +6,12 @@ use crate::{
     tools::ToolError,
 };
 use anyhow::Context;
-use eframe::egui::{
-    Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, TextStyle, Ui, pos2, vec2,
+use eframe::{
+    egui::{
+        Align, Align2, Color32, CornerRadius, FontId, Layout, Pos2, Rect, Stroke, StrokeKind,
+        TextStyle, Ui, pos2, vec2,
+    },
+    emath::GuiRounding,
 };
 use noita_engine_reader::{Noita, PlayerState, Seed};
 use serde::{Deserialize, Serialize};
@@ -76,9 +80,10 @@ impl Tool for OrbRadar {
             let rect = rect.shrink(stroke.width);
             painter.rect(
                 rect,
-                Rounding::same(0.0),
+                CornerRadius::ZERO,
                 ui.style().visuals.extreme_bg_color,
                 stroke,
+                StrokeKind::Middle,
             );
             painter.set_clip_rect(rect);
 
@@ -183,9 +188,10 @@ impl Tool for OrbRadar {
                     painter.circle_stroke(pos, 6.0, Stroke::new(1.0, color));
                     painter.rect(
                         Rect::from_center_size(pos, vec2(2.0, 2.0)),
-                        Rounding::same(0.0),
+                        CornerRadius::ZERO,
                         color,
                         Stroke::NONE,
+                        StrokeKind::Middle,
                     );
                 } else if self.orb_searcher.look_for_sampo_instead {
                     continue;
@@ -217,7 +223,7 @@ impl Tool for OrbRadar {
             }
 
             // Crosshair
-            let r = |p| painter.round_pos_to_pixels(p);
+            let r = |p: Pos2| p.round_to_pixels(painter.pixels_per_point());
             let c = rect.center();
             let c_from = 2.0;
             let c_to = 5.0;
