@@ -1,5 +1,6 @@
 use cell_factory::CellFactory;
 use derive_more::Debug;
+use serde::Serialize;
 use std::{
     fmt::{self, Write as _},
     io,
@@ -55,7 +56,7 @@ impl<const N: usize> std::fmt::Debug for Bitset<N> {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Clone, Copy)]
+#[derive(FromBytes, IntoBytes, Clone, Copy, Serialize)]
 #[repr(C)]
 pub struct Vec2 {
     pub x: f32,

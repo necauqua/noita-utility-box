@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{fmt::Debug, io, marker::PhantomData, mem::size_of, panic::Location};
 
+use serde::ser::{Serialize, Serializer};
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::debug_type;
@@ -124,6 +125,32 @@ impl<T, const BASE: u32> Debug for Ptr<T, BASE> {
         } else {
             write!(f, "0x{BASE:08x}+{:?} as {}", self.raw, debug_type::<T>())
         }
+    }
+}
+
+impl<T, const BASE: u32> Serialize for Ptr<T, BASE>
+where
+    T: PtrReadable + Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Only try to dereference if we have a process context and pointer is not null
+        crate::memory::DEBUG_PROCESS.with_borrow(|proc| {
+            if let Some(proc) = proc.as_ref() {
+                if BASE == 0 && self.raw.is_null() {
+                    serializer.serialize_none()
+                } else {
+                    match self.read(proc) {
+                        Ok(val) => val.serialize(serializer),
+                        Err(_) => serializer.serialize_none(),
+                    }
+                }
+            } else {
+                serializer.serialize_u32(self.raw.addr())
+            }
+        })
     }
 }
 

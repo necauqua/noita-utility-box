@@ -10,6 +10,7 @@ use std::{
 };
 
 use lazy_regex::regex_replace_all;
+use serde::{Serialize, Serializer};
 use zerocopy::{FromBytes, IntoBytes};
 
 mod process_ref;
@@ -65,6 +66,24 @@ pub type PadBool<const PAD: usize> = WithPad<ByteBool, PAD>;
 impl<const PAD: usize> PadBool<PAD> {
     pub fn as_bool(&self) -> bool {
         self.0.as_bool()
+    }
+}
+
+impl<T: Serialize + Copy, const PAD: usize> Serialize for WithPad<T, PAD> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.get().serialize(serializer)
+    }
+}
+
+impl Serialize for ByteBool {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_bool(self.as_bool())
     }
 }
 
@@ -174,6 +193,8 @@ primitives!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
 #[repr(transparent)]
 pub struct Raw<T>(T);
 
+impl<T: PtrReadable> PtrReadable for Raw<T> {}
+
 impl<T: Pod + Clone> MemoryStorage for Raw<T> {
     type Value = T;
 
@@ -185,6 +206,15 @@ impl<T: Pod + Clone> MemoryStorage for Raw<T> {
 impl<T: Debug> Debug for Raw<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Debug::fmt(&self.0, f)
+    }
+}
+
+impl<T: Serialize> Serialize for Raw<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
     }
 }
 
@@ -263,6 +293,25 @@ where
             }
         }
         write!(f, "StdVec[{} * {}]", self.len(), debug_type::<T>())
+    }
+}
+
+impl<T> Serialize for StdVec<T>
+where
+    T: MemoryStorage + PtrReadable + Serialize,
+    <T as MemoryStorage>::Value: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(vec) =
+            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read_storage(h).ok()))
+        {
+            vec.serialize(serializer)
+        } else {
+            serializer.serialize_none()
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+use serde::ser::{Serialize, Serializer};
 
 #[derive(Clone, Copy, PtrReadable)]
 #[repr(C)]
@@ -69,6 +70,26 @@ impl MemoryStorage for StdString {
                 String::from_utf8(proc.read_multiple(ptr.addr(), self.len)?)
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
             }
+        }
+    }
+}
+
+impl Serialize for StdString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(s) =
+            DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
+        {
+            return serializer.serialize_str(&s);
+        }
+        match self.decode() {
+            DecodedStdString::Inline(b) => match std::str::from_utf8(b) {
+                Ok(s) => serializer.serialize_str(s),
+                Err(_) => serializer.serialize_none(),
+            },
+            DecodedStdString::Heap(_) => serializer.serialize_none(),
         }
     }
 }

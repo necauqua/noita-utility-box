@@ -4,13 +4,36 @@ use std::{collections::HashMap, time::Duration};
 
 use anyhow::{Context, Result};
 use noita_engine_reader::{
-    memory::{MemoryStorage, RawPtr, StdString, StdVec, set_debug_process},
+    memory::{MemoryStorage, Ptr, RawPtr, StdString, StdVec},
     rng::NoitaRng,
-    types::components::{DamageModelComponent, ItemComponent, LuaComponent, UIIconComponent},
+    types::{
+        components::{
+            AbilityComponent, DamageModelComponent, ItemComponent, LuaComponent, UIIconComponent,
+        },
+        platform::FileDevice,
+    },
 };
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator, ParallelIterator};
 
 mod common;
+
+#[test]
+#[ignore]
+fn read_hp() -> Result<()> {
+    let mut noita = common::setup()?;
+    let store = noita.component_store::<DamageModelComponent>()?;
+    let (player, _) = noita.get_player()?.context("no player")?;
+
+    println!("hp: -");
+
+    loop {
+        let dmc = store.get(&player)?.context("no DMC")?;
+
+        println!("\x1b[1F\x1b[2Jhp: {}", dmc.hp.get() * 25.0);
+
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
 
 #[test]
 #[ignore]
@@ -32,13 +55,19 @@ fn read_inventory() -> Result<()> {
     let inv_quick = inv_quick.context("Player has no inventory?")?;
 
     let store = noita.component_store::<ItemComponent>()?;
+    let ac_store = noita.component_store::<AbilityComponent>()?;
 
     for child in inv_quick.children.read(&p)?.read(&p)? {
         let child = child.read(&p)?;
 
+        if let Some(wand) = ac_store.get(&child)? {
+            println!("{}", wand.sprite_file.read(&p)?);
+        }
+
         let Some(item_comp) = store.get(&child)? else {
             continue;
         };
+        println!("{:?}", item_comp.inventory_slot);
         let name = item_comp.item_name.read(&p)?;
         if name == "$booktitle_tree" {
             println!("best tablet detected");
@@ -52,20 +81,26 @@ fn read_inventory() -> Result<()> {
 
 #[test]
 #[ignore]
-fn read_hp() -> Result<()> {
-    let mut noita = common::setup()?;
-    let store = noita.component_store::<DamageModelComponent>()?;
-    let (player, _) = noita.get_player()?.context("no player")?;
+fn read_poly_pools() -> Result<()> {
+    let noita = common::setup()?;
 
-    println!("hp: -");
+    let normal_pool = Ptr::<StdVec<StdString>>::of(0x012094dc);
+    let rare_pool = Ptr::<StdVec<StdString>>::of(0x012219c8);
 
-    loop {
-        let dmc = store.get(&player)?.context("no DMC")?;
+    let normal_pool = normal_pool.read(noita.proc())?.read_storage(noita.proc())?;
+    let rare_pool = rare_pool.read(noita.proc())?.read_storage(noita.proc())?;
 
-        println!("\x1b[1F\x1b[2Jhp: {}", dmc.hp.get() * 25.0);
-
-        std::thread::sleep(Duration::from_millis(50));
+    println!("NORMAL:");
+    for s in normal_pool {
+        println!("  {s}")
     }
+
+    println!("RARE:");
+    for s in rare_pool {
+        println!("  {s}")
+    }
+
+    Ok(())
 }
 
 #[test]
@@ -173,13 +208,30 @@ fn read_shifts() -> Result<()> {
 
     let state = noita.get_world_state()?.context("no world state")?;
     let changed_materials = state.changed_materials.read_storage(noita.proc())?;
+
+    let mut res: Vec<(Vec<String>, String)> = vec![];
+
     for (a, b) in changed_materials
         .iter()
         .step_by(2)
         .zip(changed_materials.iter().skip(1).step_by(2))
     {
-        print!("{a} -> {b}, ");
+        if let Some((from, to)) = res.last_mut() {
+            if to == b {
+                from.push(a.clone());
+                continue;
+            }
+        }
+        res.push((vec![a.clone()], b.clone()));
     }
+
+    for (from, to) in res {
+        println!("{} -> {to}", from.join(","));
+    }
+
+    // let mut lua_globals = state.lua_globals.read(noita.proc())?;
+    // lua_globals.retain(|k, _| !k.starts_with("TEMPLE_ACTIVE_") && !k.starts_with("PERK_PICKED_"));
+    // println!("{lua_globals:#?}");
 
     Ok(())
 }
@@ -278,10 +330,35 @@ fn read_entities() -> Result<()> {
 }
 
 #[test]
+#[ignore]
+fn fs_things() -> Result<()> {
+    let noita = common::setup()?;
+
+    let platform = noita.read_platform()?;
+
+    let test = platform.working_dir.read(noita.proc())?;
+    println!("wd: {test}");
+
+    let fs = platform.file_system.read(noita.proc())?;
+    let devices = fs.devices.read(noita.proc())?;
+
+    for device in devices {
+        let Some(device) = FileDevice::get(noita.proc(), device)? else {
+            continue;
+        };
+        println!("{device:#?}");
+        // if let Some(file) = device.as_dyn().get_file(&self.proc, &fs, path)? {
+        //     println!("found idk");
+        // }
+    }
+
+    Ok(())
+}
+
+#[test]
 #[ignore] // manual
 fn process_disconnect() -> Result<()> {
     let noita = common::setup()?;
-    set_debug_process(noita.proc().clone());
 
     println!("noita pid: {}", noita.proc().pid());
     std::thread::sleep(Duration::from_secs(10));
@@ -300,10 +377,28 @@ fn process_disconnect() -> Result<()> {
 }
 
 #[test]
+#[ignore]
+fn materials_for_wuote() -> Result<()> {
+    let noita = common::setup()?;
+    let cf = noita.read_cell_factory()?.context("no cell factory")?;
+
+    let materials = cf.material_ids.read_storage(noita.proc())?;
+    let cell_data = cf.cell_data.read(noita.proc())?;
+
+    let mut map = serde_json::Map::new();
+    for (name, cell_data) in materials.into_iter().zip(cell_data.into_iter()) {
+        map.insert(name, serde_json::to_value(cell_data)?);
+    }
+
+    println!("{}", serde_json::to_string_pretty(&map)?);
+
+    Ok(())
+}
+
+#[test]
 #[ignore] // manual
 fn cell_reactions_for_wuote() -> Result<()> {
     let noita = common::setup()?;
-    set_debug_process(noita.proc().clone());
 
     // let ws = Ptr::<Ptr<Component<WorldStateComponent>>>::of(0x01202ff0);
     // println!("{:#?}", { ws.read(&proc)?.read(&proc)?.data });

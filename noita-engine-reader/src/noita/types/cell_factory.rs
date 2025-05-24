@@ -1,11 +1,12 @@
 use std::io;
 
 use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, Pod, ProcessRef, Ptr, RawPtr, StdMap, StdString, StdVec,
-    Vftable,
+    ByteBool, MemoryStorage, PadBool, Pod, ProcessRef, Ptr, Raw, RawPtr, StdMap, StdString, StdVec,
+    Vftable, WithPad,
 };
 use derive_more::Debug;
 use open_enum::open_enum;
+use serde::{Serialize, Serializer};
 use zerocopy::{FromBytes, IntoBytes};
 
 use super::Vec2;
@@ -14,7 +15,7 @@ use crate::memory::PtrReadable;
 #[derive(Debug, PtrReadable)]
 #[repr(C)]
 pub struct CellFactory {
-    field_0x0: u32,
+    pub vftable: Vftable,
     pub material_ids: StdVec<StdString>,
     pub material_id_indices: StdMap<StdString, u32>,
     pub cell_data: StdVec<CellData>,
@@ -57,7 +58,7 @@ impl CellFactory {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug, Clone)]
+#[derive(FromBytes, IntoBytes, Debug, Clone, Serialize)]
 #[repr(C)]
 pub struct CellData {
     pub name: StdString,
@@ -110,9 +111,7 @@ pub struct CellData {
     pub liquid_stains_custom_color: CellColor,
     pub liquid_sprite_stain_shaken_drop_chance: f32,
     pub liquid_sprite_stain_ignited_drop_chance: f32,
-    pub liquid_sprite_stains_check_offset: u8,
-    #[debug(skip)]
-    _pad: [u8; 3],
+    pub liquid_sprite_stains_check_offset: WithPad<u8, 3>,
     pub liquid_sprite_stains_status_threshold: f32,
     pub liquid_damping: f32,
     pub liquid_flow_speed: f32,
@@ -151,8 +150,8 @@ pub struct CellData {
     pub danger_radioactive: ByteBool,
     pub danger_poison: ByteBool,
     pub danger_water: ByteBool,
-    pub stain_effects: StdVec<StatusEffect>,
-    pub ingestion_effects: StdVec<StatusEffect>,
+    pub stain_effects: StdVec<Raw<StatusEffect>>,
+    pub ingestion_effects: StdVec<Raw<StatusEffect>>,
     pub always_ignites_damagemodel: ByteBool,
     pub ignore_self_reaction_warning: PadBool<2>,
     pub audio_physics_material_event_idx: i32,
@@ -176,6 +175,21 @@ pub struct MaterialId {
     pub id: i32,
 }
 
+impl Serialize for MaterialId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if !self.name.is_empty() {
+            self.name.serialize(serializer)
+        } else if self.id == -1 {
+            serializer.serialize_none()
+        } else {
+            serializer.serialize_i32(self.id)
+        }
+    }
+}
+
 impl std::fmt::Debug for MaterialId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.name.is_empty() {
@@ -193,7 +207,7 @@ impl std::fmt::Debug for MaterialId {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(PtrReadable, Debug, Clone, Serialize)]
 #[repr(C)]
 pub struct StatusEffect {
     pub id: i32,
@@ -210,6 +224,18 @@ pub enum CellType {
     Fire,
 }
 
+impl Serialize for CellType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use std::fmt::Write;
+        let mut buf = String::new();
+        write!(&mut buf, "{:?}", self).unwrap();
+        serializer.serialize_str(&buf.to_lowercase())
+    }
+}
+
 #[derive(FromBytes, IntoBytes, Clone, Copy)]
 #[repr(transparent)]
 pub struct CellColor(pub u32);
@@ -221,7 +247,22 @@ impl std::fmt::Debug for CellColor {
     }
 }
 
-#[derive(FromBytes, IntoBytes, Debug, Clone)]
+impl Serialize for CellColor {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.0 == 0 {
+            return serializer.serialize_none();
+        }
+        use std::fmt::Write;
+        let mut buf = String::new();
+        write!(&mut buf, "{:?}", self).unwrap();
+        serializer.serialize_str(&buf)
+    }
+}
+
+#[derive(FromBytes, IntoBytes, Debug, Clone, Serialize)]
 #[repr(C)]
 pub struct CellGraphics {
     pub texture_file: StdString,
@@ -231,15 +272,18 @@ pub struct CellGraphics {
     pub normal_mapped: ByteBool,
     pub is_grass: ByteBool,
     pub is_grass_hashed: ByteBool,
+    #[serde(skip)]
     pub pixel_info: RawPtr,
     #[debug(skip)]
+    #[serde(skip)]
     _unknown: [u8; 0x18],
 }
 const _: () = assert!(std::mem::size_of::<CellGraphics>() == 0x40);
 
-#[derive(Debug, PtrReadable)]
+#[derive(Debug, PtrReadable, Serialize)]
 #[repr(C)]
 pub struct ConfigExplosion {
+    #[serde(skip)]
     pub vftable: Vftable,
     pub never_cache: PadBool<3>,
     pub explosion_radius: f32,
@@ -314,9 +358,10 @@ pub struct ConfigExplosion {
 }
 const _: () = assert!(std::mem::size_of::<ConfigExplosion>() == 0x174);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
 pub struct ConfigDamageCritical {
+    #[serde(skip)]
     pub vftable: Vftable,
     pub chance: i32,
     pub damage_multiplier: f32,
@@ -324,30 +369,31 @@ pub struct ConfigDamageCritical {
 }
 const _: () = assert!(std::mem::size_of::<ConfigDamageCritical>() == 0x10);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
 pub struct ValueRange {
     pub min: f32,
     pub max: f32,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
 pub struct ValueRangeInt {
     pub min: i32,
     pub max: i32,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
 pub struct Aabb {
     pub start: Vec2,
     pub end: Vec2,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(PtrReadable, Debug, Serialize)]
 #[repr(C)]
 pub struct ParticleConfig {
+    #[serde(skip)]
     pub vftable: Vftable,
     pub m_material_id: i32,
     pub vel: Vec2,
