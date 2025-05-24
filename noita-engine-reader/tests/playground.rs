@@ -1,15 +1,12 @@
 #![recursion_limit = "256"]
 
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::{Context, Result};
 use noita_engine_reader::{
     memory::{MemoryStorage, RawPtr, StdString, StdVec, set_debug_process},
     rng::NoitaRng,
-    types::components::{ItemComponent, UIIconComponent},
+    types::components::{ItemComponent, LuaComponent, UIIconComponent},
 };
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator, ParallelIterator};
 
@@ -150,6 +147,27 @@ fn ui_bitfield() -> Result<()> {
 
 #[test]
 #[ignore]
+fn read_shifts() -> Result<()> {
+    let mut noita = common::setup()?;
+
+    let seed = noita.read_seed()?.context("no seed")?;
+    println!("{seed}");
+
+    let state = noita.get_world_state()?.context("no world state")?;
+    let changed_materials = state.changed_materials.read_storage(noita.proc())?;
+    for (a, b) in changed_materials
+        .iter()
+        .step_by(2)
+        .zip(changed_materials.iter().skip(1).step_by(2))
+    {
+        print!("{a} -> {b}, ");
+    }
+
+    Ok(())
+}
+
+#[test]
+#[ignore]
 fn read_entities() -> Result<()> {
     let mut noita = common::setup()?;
 
@@ -162,6 +180,8 @@ fn read_entities() -> Result<()> {
     let entities = em.entities.read(noita.proc())?;
     println!("total: {}", entities.len());
 
+    let lua_comp_store = noita.component_store::<LuaComponent>()?;
+
     let ctm = noita.read_component_type_manager()?;
     let component_names = ctm.component_indices.read(noita.proc())?;
 
@@ -172,11 +192,13 @@ fn read_entities() -> Result<()> {
 
     let comps = em.component_buffers.read(noita.proc())?;
 
-    let dist = 200;
-    let dist_sq = (dist * dist) as f32;
+    // let dist = 1000_f32;
+    // let dist_sq = dist * dist;
     let mut count = 0;
 
     println!("player: {p:#?}");
+
+    let mut nuggies = 0;
 
     for e in entities {
         if e.is_null() {
@@ -184,42 +206,55 @@ fn read_entities() -> Result<()> {
         }
         let e = e.read(noita.proc())?;
 
-        let r_sq = (e.transform.pos.x - p.transform.pos.x).powi(2)
-            + (e.transform.pos.y - p.transform.pos.y).powi(2);
-        if r_sq < dist_sq && e.transform.pos.x > p.transform.pos.x {
-            let mut tags = Vec::new();
-            for (i, name) in all_tags.iter().enumerate() {
-                if e.tags[i] {
-                    tags.push(name.clone());
-                }
-            }
-            if tags
-                .iter()
-                .any(|t| t == "perk_entity" || t == "card_action")
-            {
-                continue;
-            }
-            if tags.iter().any(|t| t.contains("projectile")) {
-                println!("tags: {}", tags.join(", "));
-                count += 1;
-                println!("{count}: {e:#?}");
-                let mut cnames = Vec::new();
-                for (i, buf) in comps.iter().enumerate() {
-                    if buf.is_null() {
-                        continue;
-                    }
-                    let buf = buf.read(noita.proc())?;
-                    let idx = buf.indices.read_at(e.comp_idx, noita.proc())?;
-                    if let Some(idx) = idx {
-                        if idx != buf.default_index {
-                            cnames.push(idx_to_name[&(i as _)].clone());
-                        }
-                    }
-                }
-                println!("components: {}", cnames.join(", "));
+        // let r_sq = (e.transform.pos.x - p.transform.pos.x).powi(2)
+        //     + (e.transform.pos.y - p.transform.pos.y).powi(2);
+
+        // if r_sq > dist_sq {
+        //     continue;
+        // }
+
+        let mut tags = Vec::new();
+        for (i, name) in all_tags.iter().enumerate() {
+            if e.tags[i] {
+                tags.push(name.clone());
             }
         }
+        if tags.iter().any(|t| t == "gold_nugget") {
+            nuggies += 1;
+            continue;
+        }
+        if tags.iter().any(|t| {
+            t == "perk_entity"
+                || t == "card_action"
+                || t == "wand"
+                || t == "evil_eye"
+                || t == "seed_b"
+        }) {
+            continue;
+        }
+        count += 1;
+        let mut cnames = Vec::new();
+        for (i, buf) in comps.iter().enumerate() {
+            if buf.is_null() {
+                continue;
+            }
+            let buf = buf.read(noita.proc())?;
+            let idx = buf.indices.read_at(e.comp_idx, noita.proc())?;
+            if let Some(idx) = idx {
+                if idx != buf.default_index {
+                    cnames.push(idx_to_name[&(i as _)].clone());
+                }
+            }
+        }
+        if let Some(lua_c) = lua_comp_store.get(&e)? {
+            println!("lua: {lua_c:?}");
+            println!("tags: {}", tags.join(", "));
+            println!("{count}: {e:#?}");
+            println!("components: {}", cnames.join(", "));
+        }
     }
+
+    println!("nuggies: {nuggies}");
 
     Ok(())
 }

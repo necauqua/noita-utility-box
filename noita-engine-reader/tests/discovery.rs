@@ -19,7 +19,7 @@ fn test() -> Result<()> {
     }
 
     let instant = Instant::now();
-    let image = ExeImage::read(&noita.proc())?;
+    let image = ExeImage::read(noita.proc())?;
     println!("Image read in {:?}", instant.elapsed());
 
     let instant = Instant::now();
