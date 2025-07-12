@@ -39,6 +39,21 @@ There are plans for more stuff to come, some low handing fruits like hitless
 checker, less low ones like modless streamer wands, I want to do a git backup
 manager, a mod update manager, etc etc
 
+##### Orb Radar
+There is much room for improvements, being functionality or readability:
+
+- [x] Display current world orb rooms in NG & NG+
+- [ ] Filter orbs that are already taken
+- [ ] Better accessibility features for the radar
+
+##### Ingame overlay
+For peoples like @Larandar that don't have a second screen, inject in one way
+of another on top of fullscreen Noita some informations:
+
+- [ ] Orb radar
+- [ ] Coords
+- [ ] Arbitrary entity component informations?
+
 ## License
 It's MIT, please have a copy of the LICENSE file in your derivatives so that my
 name is there lol

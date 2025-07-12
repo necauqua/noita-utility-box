@@ -56,6 +56,13 @@ impl NoitaRng {
         }
         rng
     }
+
+    /// Skip N steps
+    pub fn skip(&mut self, n: usize) {
+        for _ in 0..n {
+            self.next();
+        }
+    }
 }
 
 // wrapping_sub soup

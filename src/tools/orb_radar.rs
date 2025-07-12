@@ -1,8 +1,11 @@
 use std::fmt::Write as _;
 
-use crate::{app::AppState, orb_searcher::OrbSearcher};
+use crate::{
+    app::AppState,
+    orb_searcher::{CHUNK_SIZE, Orb, OrbSearcher, OrbSource},
+};
 use eframe::egui::{
-    Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, Ui, pos2, vec2,
+    Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, TextStyle, Ui, pos2, vec2,
 };
 use noita_engine_reader::{PlayerState, Seed};
 use serde::{Deserialize, Serialize};
@@ -82,7 +85,7 @@ impl OrbRadar {
             );
             painter.set_clip_rect(rect);
 
-            let pos = state.noita.as_mut().and_then(|n| {
+            let player = state.noita.as_mut().and_then(|n| {
                 n.get_player()
                     .map_err(|e| {
                         tracing::warn!(%e, "failed to read player pos");
@@ -96,18 +99,25 @@ impl OrbRadar {
                     })
             });
 
-            let Some(((pos, p), seed)) = pos.zip(state.seed) else {
+            let heading_font = ui
+                .style()
+                .text_styles
+                .get(&TextStyle::Heading)
+                .cloned()
+                .unwrap_or(FontId::proportional(16.0));
+
+            let Some(((pos, player_state), seed)) = player.zip(state.seed) else {
                 painter.text(
                     rect.center(),
                     Align2::CENTER_CENTER,
                     "NO DATA",
-                    FontId::monospace(16.0),
+                    heading_font,
                     ui.style().visuals.warn_fg_color,
                 );
 
                 return;
             };
-            let popup = match p {
+            let popup = match player_state {
                 PlayerState::Normal => "",
                 PlayerState::Polymorphed => "POLYMORPHED LOL",
                 PlayerState::Cessated => "Cessated",
@@ -117,33 +127,47 @@ impl OrbRadar {
                     rect.left_top() + vec2(5.0, 5.0),
                     Align2::LEFT_TOP,
                     popup,
-                    FontId::proportional(16.0),
+                    heading_font.clone(),
                     ui.style().visuals.strong_text_color(),
                 );
             }
 
             self.orb_searcher.poll_search(ui.ctx(), seed, pos);
 
-            let Some(first_orb) = self.orb_searcher.known_orbs().first() else {
+            let mut displayed_orbs: Vec<Orb> = self
+                .orb_searcher
+                .known_rooms()
+                .iter()
+                .chain(self.orb_searcher.known_orbs())
+                // TODO: Filter already picked orbs using the orb id
+                .cloned()
+                .collect();
+
+            displayed_orbs.sort_by_key(|orb| {
+                let dir = orb.pos - pos;
+                dir.length_sq() as i32
+            });
+
+            let Some(first_orb) = displayed_orbs.first() else {
                 return;
             };
 
-            let dir_to_first = *first_orb - pos;
+            let dir_to_first = first_orb.pos - pos;
             let dist_to_first = dir_to_first.length();
 
             let alpha = ((dist_to_first - 25.0) * 2.0 / (rect.width().min(rect.height()) - 25.0))
                 .clamp(0.0, 1.0);
 
-            for (i, orb) in self.orb_searcher.known_orbs().iter().enumerate() {
-                let dir = *orb - pos;
+            for (i, orb) in displayed_orbs.iter().enumerate() {
+                let dir = orb.pos - pos;
                 let pos = rect.center() + dir;
+                let orb_color = self.orb_color(ui, orb);
 
                 if rect.contains(pos) {
-                    let color = ui.style().visuals.strong_text_color();
                     let color = if i == 0 {
-                        color
+                        orb_color
                     } else {
-                        color.linear_multiply(alpha)
+                        orb_color.linear_multiply(alpha)
                     };
 
                     painter.circle_stroke(pos, 6.0, Stroke::new(1.0, color));
@@ -162,7 +186,7 @@ impl OrbRadar {
 
                 if dist > 25.0 {
                     let mut tracer = if i == 0 { tracer_bright } else { tracer };
-                    tracer.color = tracer.color.linear_multiply(alpha);
+                    tracer.color = orb_color.linear_multiply(alpha);
                     painter.line_segment([rect.center() + dir * 10.0, pos], tracer);
                 }
 
@@ -172,8 +196,12 @@ impl OrbRadar {
                         rect.center() + dir * offset,
                         Align2::CENTER_CENTER,
                         format!("{dist:.1} px"),
-                        FontId::monospace(6.0),
-                        text_color.linear_multiply(alpha),
+                        ui.style()
+                            .text_styles
+                            .get(&TextStyle::Monospace)
+                            .cloned()
+                            .unwrap_or(FontId::monospace(6.0)),
+                        orb_color.linear_multiply(alpha),
                     );
                 }
             }
@@ -195,44 +223,69 @@ impl OrbRadar {
                 pos.x,
                 pos.y,
                 self.orb_searcher.searched_chunks(),
-                self.orb_searcher.chunk_size(),
+                CHUNK_SIZE,
                 self.orb_searcher.known_orbs().len(),
             );
 
             let text_pos = rect.right_top() + vec2(-5.0, 5.0);
-            let font = FontId::monospace(6.0);
-            let limit = (rect.height() / ui.fonts(|f| f.row_height(&font))) as usize / 2;
+            let text_font = ui
+                .style()
+                .text_styles
+                .get(&TextStyle::Monospace)
+                .cloned()
+                .unwrap_or(FontId::monospace(12.0));
+            let limit = (rect.height() / ui.fonts(|f| f.row_height(&text_font))) as usize / 2;
             let orbs = self.orb_searcher.known_orbs();
             for orb in orbs.iter().take(limit) {
-                writeln!(&mut text, "  ({: >5.0}, {: >5.0})", orb.x, orb.y).unwrap();
+                // NOTE: EGUI does not support rendering UTF-8 emojis... Sadge
+                writeln!(&mut text, "  ({: >5.0}, {: >5.0})", orb.pos.x, orb.pos.y).unwrap();
             }
             if orbs.len() > limit {
                 writeln!(&mut text, "  ..{} more", orbs.len() - limit).unwrap();
             }
             let color = ui.style().visuals.weak_text_color();
-            painter.text(text_pos, Align2::RIGHT_TOP, text, font, color);
+            painter.text(text_pos, Align2::RIGHT_TOP, text, text_font.clone(), color);
 
-            let diameter = 25.0;
-            let offset = 10.0;
-
+            let diameter = text_font.size * 2.0; // Diameter relative to the text size
             let radius = diameter / 2.0;
-            let circle_pos = rect.left_bottom() + vec2(radius + offset, -radius - offset);
 
-            if pos.x.round() == first_orb.x.round() && pos.y.round() == first_orb.y.round() {
+            let padding = 10.0; // Padding from the sides to the circle
+
+            let circle_pos = rect.left_bottom() + vec2(radius + padding, -radius - padding);
+
+            if pos.x.round() == first_orb.pos.x.round() && pos.y.round() == first_orb.pos.y.round()
+            {
                 painter.circle(circle_pos, radius, Color32::from_rgb(40, 255, 40), stroke);
                 return;
             }
             painter.circle_stroke(circle_pos, radius, stroke);
             let arrow = dir_to_first * (diameter - 10.0) / dist_to_first;
-            painter.arrow(circle_pos - arrow / 2.0, arrow, stroke);
+            painter.arrow(
+                circle_pos - arrow / 2.0,
+                arrow,
+                Stroke::new(stroke.width, self.orb_color(ui, first_orb)),
+            );
 
             painter.text(
-                circle_pos + vec2(radius + offset, 0.0),
+                circle_pos + vec2(radius + padding, 0.0),
                 Align2::LEFT_CENTER,
                 format!("{dist_to_first:.1} px"),
-                FontId::monospace(8.0),
-                text_color,
+                text_font,
+                self.orb_color(ui, first_orb),
             );
         });
+    }
+
+    fn orb_color(&self, ui: &mut Ui, orb: &Orb) -> Color32 {
+        match orb.source {
+            OrbSource::Room => {
+                if !orb.corrupted {
+                    ui.style().visuals.hyperlink_color
+                } else {
+                    ui.style().visuals.error_fg_color
+                }
+            }
+            OrbSource::Chest => ui.style().visuals.warn_fg_color,
+        }
     }
 }
