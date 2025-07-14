@@ -46,5 +46,10 @@ tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typetag = "0.2"
 
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.60", default-features = false, features = [
+    "Win32_System_Console",
+] }
+
 [build-dependencies]
 winresource = { version = "0.1", default-features = false }
