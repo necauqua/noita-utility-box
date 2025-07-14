@@ -15,6 +15,7 @@ use super::{Result, Tool};
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct OrbRadar {
     realtime: bool,
+    show_rooms: bool,
     orb_searcher: OrbSearcher,
     #[serde(skip)]
     prev_seed: Option<Seed>,
@@ -38,6 +39,7 @@ impl OrbRadar {
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.realtime, "Realtime");
+                ui.checkbox(&mut self.show_rooms, "Show orb rooms");
 
                 if ui
                     .checkbox(
@@ -134,14 +136,18 @@ impl OrbRadar {
 
             self.orb_searcher.poll_search(ui.ctx(), seed, pos);
 
-            let mut displayed_orbs: Vec<Orb> = self
-                .orb_searcher
-                .known_rooms()
-                .iter()
-                .chain(self.orb_searcher.known_orbs())
-                // TODO: Filter already picked orbs using the orb id
-                .cloned()
-                .collect();
+            let mut displayed_orbs: Vec<Orb> = if self.show_rooms {
+                self.orb_searcher
+                    .known_orbs()
+                    .iter()
+                    .chain(self.orb_searcher.known_rooms())
+                    .cloned()
+                    .collect()
+            } else {
+                self.orb_searcher.known_orbs().to_vec()
+            };
+
+            // TODO: Filter already picked orbs using the orb id
 
             displayed_orbs.sort_by_key(|orb| {
                 let dir = orb.pos - pos;
