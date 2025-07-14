@@ -71,6 +71,7 @@ impl OrbSearcher {
     }
 
     pub fn reset(&mut self) {
+        self.known_rooms.clear();
         self.known_orbs.clear();
         self.searched_chunks.clear();
         self.search_task = Promise::Taken;
@@ -261,7 +262,6 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32
     // Shorthand to jump the RNG state
     fn pain_cave(rng: &mut NoitaRng, length: i32) {
         for i in 1..=length {
-            #[allow(clippy::needless_if)]
             if i > 4 {
                 rng.skip(1);
             }
