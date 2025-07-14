@@ -1,6 +1,6 @@
 use eframe::egui::{
-    self, Checkbox, CollapsingHeader, DragValue, FontId, Grid, Label, RichText, ScrollArea,
-    TextStyle, Ui,
+    self, Checkbox, CollapsingHeader, Color32, DragValue, FontId, Grid, Label, RichText,
+    ScrollArea, TextStyle, Ui,
 };
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
@@ -23,6 +23,11 @@ pub struct SettingsData {
     pub notify_when_outdated: bool,
     #[default(true)]
     pub check_export_name: bool,
+
+    #[default(Color32::GOLD)]
+    pub color_orb_chests: Color32,
+    #[default(Color32::BLUE)]
+    pub color_orb_rooms: Color32,
 
     #[serde(skip)]
     pub newest_version: Option<String>,
@@ -71,6 +76,8 @@ impl Settings {
         ui.separator();
 
         ScrollArea::vertical().show(ui, |ui| {
+            ui.heading("Settings");
+            ui.end_row();
             ui.label("Note: You can permanently scale the UI with Ctrl+- and Ctrl+=");
 
             ui.horizontal(|ui| {
@@ -80,7 +87,10 @@ impl Settings {
 
             ui.separator();
 
-            Grid::new("settings").show(ui, |ui| {
+            Grid::new("general_settings").show(ui, |ui| {
+                ui.heading("General Settings");
+                ui.end_row();
+
                 ui.label("Background updates interval")
                     .on_hover_text("How often the background updates run (used by live stats and noita process auto-detection)");
                 ui.add(
@@ -112,6 +122,24 @@ impl Settings {
                     .on_hover_text("When detecting noita, check that the executable export name is 'wizard_physics.exe'");
                 ui.end_row();
             });
+
+            ui.separator();
+
+            Grid::new("radar_settings").show(ui, |ui| {
+                ui.heading("Radar Settings");
+                ui.end_row();
+
+                ui.label("Greater Chest Orbs color:")
+                    .on_hover_text("Only apply if 'Show orb rooms' is enabled");
+                ui.color_edit_button_srgba(&mut s.color_orb_chests);
+                ui.end_row();
+
+                ui.label("Orb rooms color:");
+                ui.color_edit_button_srgba(&mut s.color_orb_rooms);
+                ui.end_row();
+            });
+
+            ui.separator();
 
             CollapsingHeader::new("egui").show(ui, |ui| {
                 let prev_options = ui.ctx().options(|o| o.clone());

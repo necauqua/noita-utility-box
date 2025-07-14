@@ -22,6 +22,7 @@ pub struct Orb {
     pub id: u32,
     pub pos: Pos2,
     pub source: OrbSource,
+    #[allow(unused)]
     pub corrupted: bool,
 }
 

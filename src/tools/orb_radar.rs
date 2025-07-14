@@ -167,7 +167,7 @@ impl OrbRadar {
             for (i, orb) in displayed_orbs.iter().enumerate() {
                 let dir = orb.pos - pos;
                 let pos = rect.center() + dir;
-                let orb_color = self.orb_color(ui, orb);
+                let orb_color = self.orb_color(ui, orb, state);
 
                 if rect.contains(pos) {
                     let color = if i == 0 {
@@ -269,7 +269,7 @@ impl OrbRadar {
             painter.arrow(
                 circle_pos - arrow / 2.0,
                 arrow,
-                Stroke::new(stroke.width, self.orb_color(ui, first_orb)),
+                Stroke::new(stroke.width, self.orb_color(ui, first_orb, state)),
             );
 
             painter.text(
@@ -277,21 +277,18 @@ impl OrbRadar {
                 Align2::LEFT_CENTER,
                 format!("{dist_to_first:.1} px"),
                 text_font,
-                self.orb_color(ui, first_orb),
+                self.orb_color(ui, first_orb, state),
             );
         });
     }
 
-    fn orb_color(&self, ui: &mut Ui, orb: &Orb) -> Color32 {
+    fn orb_color(&self, ui: &Ui, orb: &Orb, state: &AppState) -> Color32 {
+        if !self.show_rooms {
+            return ui.style().visuals.text_color();
+        }
         match orb.source {
-            OrbSource::Room => {
-                if !orb.corrupted {
-                    ui.style().visuals.hyperlink_color
-                } else {
-                    ui.style().visuals.error_fg_color
-                }
-            }
-            OrbSource::Chest => ui.style().visuals.warn_fg_color,
+            OrbSource::Room => state.settings.color_orb_rooms,
+            OrbSource::Chest => state.settings.color_orb_chests,
         }
     }
 }
