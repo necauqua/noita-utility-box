@@ -133,12 +133,7 @@ impl OrbSearcher {
             return self.poll_search(ctx, seed, pos);
         }
 
-        // Since the search grid is not the same size as the Noita tiles, we only search on
-        // even chunks.
-        if let Some((chunk_x, chunk_y)) = self.next_chunk(pos)
-            && chunk_x % 2 == 0
-            && chunk_y % 2 == 0
-        {
+        if let Some((chunk_x, chunk_y)) = self.next_chunk(pos) {
             let (x, y) = (chunk_x * CHUNK_SIZE, chunk_y * CHUNK_SIZE);
             let ctx = ctx.clone();
             let sampo = self.look_for_sampo_instead;
@@ -179,16 +174,13 @@ fn parallel_world(ng_count: u32, pos: &Pos2) -> i32 {
     }
 }
 
-/// Find all chests producing a Greater Chest Orb or Sampo in a 1024x1024 square
-///
-/// This actually search in a 2x2 chunks square, therefore should be called only on even tiles
-/// if no duplicates are wanted.
+/// Find all chests producing a Greater Chest Orb or Sampo in the chunk given
 fn find_chest_orbs(world_seed: u32, x: i32, y: i32, sampo: bool) -> Vec<(i32, i32)> {
-    (0..CHUNK_SIZE * CHUNK_SIZE * 4)
+    (0..CHUNK_SIZE * CHUNK_SIZE)
         .into_par_iter()
         .filter_map(|i| {
-            let xi = x + (i % (CHUNK_SIZE * 2));
-            let yi = y + (i / (CHUNK_SIZE * 2));
+            let xi = x + (i % CHUNK_SIZE);
+            let yi = y + (i / CHUNK_SIZE);
 
             let mut rng = NoitaRng::from_pos(world_seed, xi as f64, yi as f64);
 
