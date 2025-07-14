@@ -8,13 +8,19 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Added
+  - Orb radar can now show Orb Room both in NG and NG+ (Checkbox at the bottom of the radar).
+
+### Changed
+- Searching algorithm now work in a spiral pattern around the player.
+
 ### Fixed
   - Orb radar can now find the player whe cessated.
 
 ## [v0.3.0] 12025-03-06
 
 ### BREAKING
- - If you used the previous version to discover that `Jan 25 2025` (or newer) build of Noita is broken, you need to go into "Address Maps" (under the "+" button if it isn't there) and delete the mapping for that version - then restart to let it re-discover the mapping. You may notice that the value for `entity-tag-manager` is nonsensical - you could actually just update it to `0x1206fac` (for the jan 25 build) instead.
+  - If you used the previous version to discover that `Jan 25 2025` (or newer) build of Noita is broken, you need to go into "Address Maps" (under the "+" button if it isn't there) and delete the mapping for that version - then restart to let it re-discover the mapping. You may notice that the value for `entity-tag-manager` is nonsensical - you could actually just update it to `0x1206fac` (for the jan 25 build) instead.
 
 ### Added
   - Orb radar can now also look for sampo positions
