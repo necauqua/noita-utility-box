@@ -10,7 +10,7 @@ use noita_engine_reader::{Seed, rng::NoitaRng};
 
 pub const CHUNK_SIZE: i32 = 512;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum OrbSource {
     Room,
     Chest,
@@ -19,7 +19,7 @@ pub enum OrbSource {
 #[derive(Debug, Clone, Copy)]
 pub struct Orb {
     #[allow(unused)]
-    pub id: u32,
+    pub id: i32,
     pub pos: Pos2,
     pub source: OrbSource,
     #[allow(unused)]
@@ -27,7 +27,7 @@ pub struct Orb {
 }
 
 impl Orb {
-    pub fn parallel_world_id(id: u32, parallel_world: i32) -> u32 {
+    pub fn parallel_world_id(id: i32, parallel_world: i32) -> i32 {
         id + match parallel_world.cmp(&0) {
             Ordering::Equal => 0,
             Ordering::Less => 128,
@@ -202,7 +202,7 @@ fn find_chest_orbs(world_seed: u32, x: i32, y: i32, sampo: bool) -> Vec<(i32, i3
 }
 
 /// In the main NG world the rooms are fixed.
-const KNOWN_ORB_ROOMS: &[(u32, (i32, i32))] = &[
+const KNOWN_ORB_ROOMS: &[(i32, (i32, i32))] = &[
     (0, (1, -3)),   // Altar => Sea of Lava
     (1, (19, -3)),  // Pyramid => Earthquake
     (2, (-20, 5)),  // Frozen Vault => Tentacles
@@ -252,8 +252,8 @@ fn list_orb_rooms(world_seed: u32, ng_count: u32, parallel_world: i32) -> Vec<Or
 }
 
 /// Find the orb rooms for the current world_seed, ng_count, parallel_world.
-fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32))> {
-    let mut rooms: Vec<(u32, (i32, i32))> = Vec::new();
+fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(i32, (i32, i32))> {
+    let mut rooms: Vec<(i32, (i32, i32))> = Vec::new();
 
     // This function is lifted from kaliuresis/noa (noita-orb-atlas)
     // Source: https://github.com/kaliuresis/noa > orbs.js#L163
@@ -325,9 +325,9 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32
     // was 2 different mixing commented...
 
     // Altar => Sea of Lava
-    rooms.push((0, KNOWN_ORB_ROOMS[1].1)); // Altar in NG+ has ID 1?
+    rooms.push(KNOWN_ORB_ROOMS[0]);
     // Pyramid => Earthquake
-    rooms.push((1, KNOWN_ORB_ROOMS[0].1)); // Pyramd in NG+ has ID 0?
+    rooms.push(KNOWN_ORB_ROOMS[1]);
 
     // Frozen Vault => Tentacles
     // > x = Random( 0, 5 ) + 10; y = Random( 0, 2 ) + 18;

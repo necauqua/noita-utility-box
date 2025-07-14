@@ -9,10 +9,12 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Added
-  - Orb radar can now show Orb Room both in NG and NG+ (Checkbox at the bottom of the radar).
+  - Orb radar can now show Orb Rooms in both NG and NG+ (new checkbox at the bottom of the radar). @Larandar
+  - Orb radar now filter collected Orbs (i.e. current PW Greater Chest Orbs, or Orb Rooms). @Larandar
 
 ### Changed
-- Searching algorithm now work in a spiral pattern around the player.
+  - Searching algorithm now processes chunks in a spiral pattern around the player. @Larandar
+  - Searching algorithm now works on noita chunks instead of custom internal 1024x1024 chunks to avoid confusion. @Larandar
 
 ### Fixed
   - Orb radar can now find the player whe cessated.

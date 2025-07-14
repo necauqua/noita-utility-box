@@ -1,4 +1,4 @@
-use std::fmt::Write as _;
+use std::{collections::HashSet, fmt::Write as _};
 
 use crate::{
     app::AppState,
@@ -16,6 +16,7 @@ use super::{Result, Tool};
 pub struct OrbRadar {
     realtime: bool,
     show_rooms: bool,
+    filter_collected_orbs: bool,
     orb_searcher: OrbSearcher,
     #[serde(skip)]
     prev_seed: Option<Seed>,
@@ -40,6 +41,7 @@ impl OrbRadar {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut self.realtime, "Realtime");
                 ui.checkbox(&mut self.show_rooms, "Show orb rooms");
+                ui.checkbox(&mut self.filter_collected_orbs, "Filter collected orbs");
 
                 if ui
                     .checkbox(
@@ -136,7 +138,7 @@ impl OrbRadar {
 
             self.orb_searcher.poll_search(ui.ctx(), seed, pos);
 
-            let mut displayed_orbs: Vec<Orb> = if self.show_rooms {
+            let known_orbs: Vec<Orb> = if self.show_rooms {
                 self.orb_searcher
                     .known_orbs()
                     .iter()
@@ -147,7 +149,16 @@ impl OrbRadar {
                 self.orb_searcher.known_orbs().to_vec()
             };
 
-            // TODO: Filter already picked orbs using the orb id
+            let collected_orbs = OrbRadar::collected_orbs(state);
+            let mut displayed_orbs = if self.filter_collected_orbs {
+                known_orbs
+                    .iter()
+                    .filter(|orb: &&Orb| !collected_orbs.contains(&orb.id))
+                    .cloned()
+                    .collect::<Vec<Orb>>()
+            } else {
+                known_orbs
+            };
 
             displayed_orbs.sort_by_key(|orb| {
                 let dir = orb.pos - pos;
@@ -290,5 +301,23 @@ impl OrbRadar {
             OrbSource::Room => state.settings.color_orb_rooms,
             OrbSource::Chest => state.settings.color_orb_chests,
         }
+    }
+
+    fn collected_orbs(state: &mut AppState) -> HashSet<i32> {
+        let world = state
+            .noita
+            .as_mut()
+            .and_then(|n| n.get_world_state().unwrap_or(None));
+        let Some(world) = world else {
+            return HashSet::new();
+        };
+
+        let Ok(collected_orbs) = world
+            .orbs_found_thisrun
+            .read_storage(state.noita.as_mut().unwrap().proc())
+        else {
+            return HashSet::new();
+        };
+        collected_orbs.iter().copied().collect()
     }
 }
