@@ -228,138 +228,7 @@ fn list_orb_rooms(world_seed: u32, ng_count: u32, parallel_world: i32) -> Vec<Or
             .cloned()
             .collect::<Vec<_>>()
     } else {
-        let mut rooms: Vec<(u32, (i32, i32))> = Vec::new();
-
-        // This function is lifted from kaliuresis/noa (noita-orb-atlas)
-        // Source: https://github.com/kaliuresis/noa > orbs.js#L163
-        let mut rng = NoitaRng::from_pos(world_seed + ng_count, 4573.0, 4621.0);
-
-        // Shorthand to jump the RNG state
-        fn pain_cave(rng: &mut NoitaRng, length: i32) {
-            for i in 1..=length {
-                #[allow(clippy::needless_if)]
-                if i > 4 {
-                    rng.skip(1);
-                }
-
-                if i > 3 {
-                    rng.skip(1);
-                }
-
-                if i > 6 {
-                    rng.skip(4);
-                }
-            }
-        }
-
-        fn paint_biome_area_split(
-            rng: &mut NoitaRng,
-            x: i32,
-            _y: i32,
-            w: i32,
-            _h: i32,
-            buffer: i32,
-        ) {
-            let extra_width = rng.in_range(0, buffer);
-            let x = x - extra_width;
-            let w = w + extra_width + rng.in_range(0, buffer);
-
-            rng.skip(1);
-            for _ in x..x + w {
-                rng.skip(1);
-            }
-        }
-
-        // NG+3,6,... biomes
-        if ng_count % 3 == 0 {
-            rng.skip(12);
-        }
-
-        // Roll to swap biomes
-        rng.skip(6);
-
-        // Biomes suffs
-        // NOTE: Compared to the JS code a lot of stuffs are omitted as they have no side effects
-        for _ in 0..4 {
-            if rng.in_range(0, 100) < 65 {
-                let length = rng.in_range(4, 50);
-                pain_cave(&mut rng, length);
-            }
-        }
-        for _ in 0..4 {
-            if rng.in_range(0, 100) < 65 {
-                rng.skip(1);
-                let length = rng.in_range(5, 50);
-                pain_cave(&mut rng, length);
-            }
-        }
-
-        rng.skip(6);
-
-        paint_biome_area_split(&mut rng, 28, 20, 7, 6, 3);
-        paint_biome_area_split(&mut rng, 28, 27, 7, 4, 4);
-        paint_biome_area_split(&mut rng, 28, 29, 7, 5, 4);
-
-        rng.skip(2);
-
-        if ng_count % 5 == 0 {
-            rng.skip(6);
-        }
-
-        // NOTE: The magic number are from the original JS code.
-        // All generated numbers are offset by (32, 14) chunks in the code, and then later edited.
-        // Therefore here the math is pre-computed and it match the online map ranges.
-
-        // WARNING: I'm really not sure about the IDs in NG+, the JS code was mixing them and there
-        // was 2 different mixing commented...
-
-        // Altar => Sea of Lava
-        rooms.push((0, KNOWN_ORB_ROOMS[1].1)); // Altar in NG+ has ID 1?
-        // Pyramid => Earthquake
-        rooms.push((1, KNOWN_ORB_ROOMS[0].1)); // Pyramd in NG+ has ID 0?
-
-        // Frozen Vault => Tentacles
-        // > x = Random( 0, 5 ) + 10; y = Random( 0, 2 ) + 18;
-        rooms.push((2, (rng.in_range(0, 5) - 22, rng.in_range(0, 2) + 4)));
-
-        // Sandcaves => Necromancy
-        // > x = Random( 0, 5 ) + 49; y = Random( 0, 3 ) + 17;
-        rooms.push((4, (rng.in_range(0, 5) + 17, rng.in_range(0, 3) + 3)));
-
-        // Hell => Fireworks
-        // > x = Random( 0, 9 ) + 27, y = Random( 0, 2 ) + 44
-        // > if( ng == 3 || ng >= 25 ) { y = 47 }
-        let mut hell_orb = (8, (rng.in_range(0, 9) - 5, rng.in_range(0, 2) + 30));
-        if ng_count == 3 || ng_count >= 25 {
-            hell_orb.1.1 = 33
-        }
-        rooms.push(hell_orb);
-
-        // Snowy Chasm => Summon Deercoy
-        // > x = Random( 0, 6 ) + 12; y = Random( 0, 3 ) + 40;
-        rooms.push((9, (rng.in_range(0, 6) - 20, rng.in_range(0, 3) + 26)));
-
-        // Wizard's Den => Cement
-        // > x = Random( 0, 4 ) + 51; y = Random( 0, 5 ) + 41;
-        rooms.push((10, (rng.in_range(0, 4) + 19, rng.in_range(0, 5) + 27)));
-
-        // Lava Lake => Nuke
-        // > x = Random( 0, 5 ) + 58; y = Random( 0, 5 ) + 34;
-        rooms.push((3, (rng.in_range(0, 5) + 26, rng.in_range(0, 5) + 20)));
-
-        // Magical Temple => Holy Bomb
-        // > x = Random( 0, 9 ) + 40; y = Random( 0, 11 ) + 21;
-        rooms.push((5, (rng.in_range(0, 9) + 8, rng.in_range(0, 11) + 7)));
-
-        // Luki Lair => Spiral Shot
-        // > x = Random( 0, 7 ) + 17; y = Random( 0, 8 ) + 21;
-        rooms.push((6, (rng.in_range(0, 7) - 15, rng.in_range(0, 8) + 7)));
-
-        // Lake Orb => Thundercloud
-        // > x = Random( 0, 7 ) + 1; y = Random( 0, 9 ) + 24;
-        rooms.push((7, (rng.in_range(0, 7) - 31, rng.in_range(0, 9) + 10)));
-
-        rooms
+        list_orb_rooms_ng_plus(world_seed, ng_count)
     };
 
     rooms
@@ -386,4 +255,133 @@ fn list_orb_rooms(world_seed: u32, ng_count: u32, parallel_world: i32) -> Vec<Or
             corrupted: parallel_world != 0,
         })
         .collect()
+}
+
+/// Find the orb rooms for the current world_seed, ng_count, parallel_world.
+fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32))> {
+    let mut rooms: Vec<(u32, (i32, i32))> = Vec::new();
+
+    // This function is lifted from kaliuresis/noa (noita-orb-atlas)
+    // Source: https://github.com/kaliuresis/noa > orbs.js#L163
+    let mut rng = NoitaRng::from_pos(world_seed + ng_count, 4573.0, 4621.0);
+
+    // Shorthand to jump the RNG state
+    fn pain_cave(rng: &mut NoitaRng, length: i32) {
+        for i in 1..=length {
+            #[allow(clippy::needless_if)]
+            if i > 4 {
+                rng.skip(1);
+            }
+
+            if i > 3 {
+                rng.skip(1);
+            }
+
+            if i > 6 {
+                rng.skip(4);
+            }
+        }
+    }
+
+    fn paint_biome_area_split(rng: &mut NoitaRng, x: i32, _y: i32, w: i32, _h: i32, buffer: i32) {
+        let extra_width = rng.in_range(0, buffer);
+        let x = x - extra_width;
+        let w = w + extra_width + rng.in_range(0, buffer);
+
+        rng.skip(1);
+        for _ in x..x + w {
+            rng.skip(1);
+        }
+    }
+
+    // NG+3,6,... biomes
+    if ng_count % 3 == 0 {
+        rng.skip(12);
+    }
+
+    // Roll to swap biomes
+    rng.skip(6);
+
+    // Biomes suffs
+    // NOTE: Compared to the JS code a lot of stuffs are omitted as they have no side effects
+    for _ in 0..4 {
+        if rng.in_range(0, 100) < 65 {
+            let length = rng.in_range(4, 50);
+            pain_cave(&mut rng, length);
+        }
+    }
+    for _ in 0..4 {
+        if rng.in_range(0, 100) < 65 {
+            rng.skip(1);
+            let length = rng.in_range(5, 50);
+            pain_cave(&mut rng, length);
+        }
+    }
+
+    rng.skip(6);
+
+    paint_biome_area_split(&mut rng, 28, 20, 7, 6, 3);
+    paint_biome_area_split(&mut rng, 28, 27, 7, 4, 4);
+    paint_biome_area_split(&mut rng, 28, 29, 7, 5, 4);
+
+    rng.skip(2);
+
+    if ng_count % 5 == 0 {
+        rng.skip(6);
+    }
+
+    // NOTE: The magic number are from the original JS code.
+    // All generated numbers are offset by (32, 14) chunks in the code, and then later edited.
+    // Therefore here the math is pre-computed and it match the online map ranges.
+
+    // WARNING: I'm really not sure about the IDs in NG+, the JS code was mixing them and there
+    // was 2 different mixing commented...
+
+    // Altar => Sea of Lava
+    rooms.push((0, KNOWN_ORB_ROOMS[1].1)); // Altar in NG+ has ID 1?
+    // Pyramid => Earthquake
+    rooms.push((1, KNOWN_ORB_ROOMS[0].1)); // Pyramd in NG+ has ID 0?
+
+    // Frozen Vault => Tentacles
+    // > x = Random( 0, 5 ) + 10; y = Random( 0, 2 ) + 18;
+    rooms.push((2, (rng.in_range(0, 5) - 22, rng.in_range(0, 2) + 4)));
+
+    // Sandcaves => Necromancy
+    // > x = Random( 0, 5 ) + 49; y = Random( 0, 3 ) + 17;
+    rooms.push((4, (rng.in_range(0, 5) + 17, rng.in_range(0, 3) + 3)));
+
+    // Hell => Fireworks
+    // > x = Random( 0, 9 ) + 27, y = Random( 0, 2 ) + 44
+    // > if( ng == 3 || ng >= 25 ) { y = 47 }
+    let mut hell_orb = (8, (rng.in_range(0, 9) - 5, rng.in_range(0, 2) + 30));
+    if ng_count == 3 || ng_count >= 25 {
+        hell_orb.1.1 = 33
+    }
+    rooms.push(hell_orb);
+
+    // Snowy Chasm => Summon Deercoy
+    // > x = Random( 0, 6 ) + 12; y = Random( 0, 3 ) + 40;
+    rooms.push((9, (rng.in_range(0, 6) - 20, rng.in_range(0, 3) + 26)));
+
+    // Wizard's Den => Cement
+    // > x = Random( 0, 4 ) + 51; y = Random( 0, 5 ) + 41;
+    rooms.push((10, (rng.in_range(0, 4) + 19, rng.in_range(0, 5) + 27)));
+
+    // Lava Lake => Nuke
+    // > x = Random( 0, 5 ) + 58; y = Random( 0, 5 ) + 34;
+    rooms.push((3, (rng.in_range(0, 5) + 26, rng.in_range(0, 5) + 20)));
+
+    // Magical Temple => Holy Bomb
+    // > x = Random( 0, 9 ) + 40; y = Random( 0, 11 ) + 21;
+    rooms.push((5, (rng.in_range(0, 9) + 8, rng.in_range(0, 11) + 7)));
+
+    // Luki Lair => Spiral Shot
+    // > x = Random( 0, 7 ) + 17; y = Random( 0, 8 ) + 21;
+    rooms.push((6, (rng.in_range(0, 7) - 15, rng.in_range(0, 8) + 7)));
+
+    // Lake Orb => Thundercloud
+    // > x = Random( 0, 7 ) + 1; y = Random( 0, 9 ) + 24;
+    rooms.push((7, (rng.in_range(0, 7) - 31, rng.in_range(0, 9) + 10)));
+
+    rooms
 }
