@@ -54,6 +54,22 @@ of another on top of fullscreen Noita some informations:
 - [ ] Coords
 - [ ] Arbitrary entity component informations?
 
+## Development
+
+### Building from sources
+
+Building require [Nix](https://nixos.org/download/), with the 3 targets `.#windows`,
+`.#linux` and `.#deb`:
+
+- `nix build . .#{{target}}`
+
+As a helper a `justfile` provide the following commands:
+
+- `just check` will check for formatting and clippy errors
+- `just build (windows|linux|deb)` to build a specific artefact
+- `just build-all` to build all three artefacts
+
+
 ## License
 It's MIT, please have a copy of the LICENSE file in your derivatives so that my
 name is there lol

@@ -8,6 +8,12 @@ check:
     cargo doc --no-deps --all-features
     cargo test --all-features
 
+build target:
+    nix build . ".#{{target}}"
+
+build-all:
+    nix build . ".#windows" ".#linux" ".#deb"
+
 release version: check
     #!/usr/bin/env bash
     set -euo pipefail
