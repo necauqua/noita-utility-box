@@ -2,7 +2,7 @@
 [![Release](https://img.shields.io/github/v/release/necauqua/noita-utility-box)](https://github.com/necauqua/noita-utility-box/releases/latest)
 [![CI](https://github.com/necauqua/noita-utility-box/actions/workflows/ci.yml/badge.svg)](https://github.com/necauqua/noita-utility-box/actions/workflows/ci.yml)
 ![License](https://img.shields.io/github/license/necauqua/noita-utility-box)
-[![discord link](https://img.shields.io/discord/587713408841940993)](https://discord.com/invite/pZrbJNb)
+[![discord link](https://img.shields.io/discord/1346986932244054016)](https://discord.gg/RDdRT8Z8j9)
 
 This is a cheatengine-style memory reader that reads useful data
 directly from a running instance of [Noita](https://noitagame.com).
