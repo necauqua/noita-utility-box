@@ -48,7 +48,7 @@ impl<const N: usize> std::fmt::Debug for Bitset<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut res = String::with_capacity(N);
         for b in &self.0 {
-            write!(&mut res, "{:08b}", b)?;
+            write!(&mut res, "{b:08b}")?;
         }
         let cut = res.bytes().rposition(|b| b != b'0').unwrap_or(0);
         write!(f, "{}", &res[..=cut])

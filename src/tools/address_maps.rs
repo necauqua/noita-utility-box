@@ -84,7 +84,7 @@ impl AddressMap {
 
 fn hex_input(value: &mut u32) -> impl Widget + '_ {
     move |ui: &mut Ui| {
-        let mut ts = format!("0x{:x}", value);
+        let mut ts = format!("0x{value:x}");
         let response = ui.add(
             TextEdit::singleline(&mut ts)
                 .horizontal_align(Align::Center)

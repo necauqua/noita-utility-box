@@ -122,7 +122,7 @@ impl Tool for MaterialPipette {
                                                 format!("unknown material (index {idx})")
                                             });
                                         ui.label(format!("{name:?}"));
-                                        ui.label(format!("{:.2}", amount));
+                                        ui.label(format!("{amount:.2}"));
                                         ui.end_row();
 
                                         if self.auto_check {
