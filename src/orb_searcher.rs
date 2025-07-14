@@ -276,15 +276,9 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32
         }
     }
 
-    fn paint_biome_area_split(rng: &mut NoitaRng, x: i32, _y: i32, w: i32, _h: i32, buffer: i32) {
-        let extra_width = rng.in_range(0, buffer);
-        let x = x - extra_width;
-        let w = w + extra_width + rng.in_range(0, buffer);
-
-        rng.skip(1);
-        for _ in x..x + w {
-            rng.skip(1);
-        }
+    fn paint_biome_area_split(rng: &mut NoitaRng, width: usize, buffer: i32) {
+        let extra_width = rng.in_range(0, buffer) + rng.in_range(0, buffer) + 1;
+        rng.skip(width + extra_width as usize);
     }
 
     // NG+3,6,... biomes
@@ -313,9 +307,9 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(u32, (i32, i32
 
     rng.skip(6);
 
-    paint_biome_area_split(&mut rng, 28, 20, 7, 6, 3);
-    paint_biome_area_split(&mut rng, 28, 27, 7, 4, 4);
-    paint_biome_area_split(&mut rng, 28, 29, 7, 5, 4);
+    paint_biome_area_split(&mut rng, 7, 3);
+    paint_biome_area_split(&mut rng, 7, 4);
+    paint_biome_area_split(&mut rng, 7, 4);
 
     rng.skip(2);
 
