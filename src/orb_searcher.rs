@@ -29,8 +29,8 @@ impl Orb {}
 
 #[derive(Debug, SmartDefault)]
 pub struct OrbSearcher {
-    #[default([16, 9])]
-    search_range: [i32; 2],
+    #[default(5)]
+    search_range: i32,
     #[default(Promise::Taken)]
     search_task: Promise<Vec<Orb>>,
 
@@ -71,17 +71,45 @@ impl OrbSearcher {
         !self.search_task.is_taken()
     }
 
+    /// Return the next chunk to check in a spiral pattern around the player
     fn next_chunk(&mut self, pos: Pos2) -> Option<(i32, i32)> {
-        let xc = pos.x as i32 / CHUNK_SIZE;
-        let yc = pos.y as i32 / CHUNK_SIZE;
-        // TODO: spiral marching
-        for x in xc - self.search_range[0]..=xc + self.search_range[0] {
-            for y in yc - self.search_range[1]..=yc + self.search_range[1] {
-                if self.searched_chunks.insert((x, y)) {
-                    return Some((x, y));
+        let mut x = pos.x as i32 / CHUNK_SIZE;
+        let mut y = pos.y as i32 / CHUNK_SIZE;
+
+        if self.searched_chunks.insert((x, y)) {
+            return Some((x, y));
+        }
+
+        // Tracking the steps of the marching
+        let (mut steps, mut step) = (1, 0);
+        // Direction of the next step
+        let (mut x_dir, mut y_dir) = (1, 0);
+        let mut rotations = 0;
+
+        // Search a square centered on the current chunk
+        for _ in 0..(1 + 2 * self.search_range).pow(2) {
+            // Step once
+            (x, y) = (x + x_dir, y + y_dir);
+            step += 1;
+
+            // If we didn't already checked this chunk, stop there
+            if self.searched_chunks.insert((x, y)) {
+                return Some((x, y));
+            }
+
+            if step == steps {
+                // Rotate when at the limit
+                (x_dir, y_dir) = (-y_dir, x_dir);
+                rotations += 1;
+                step = 0;
+
+                // Every two direction changes, increase the number of steps
+                if rotations % 2 == 0 {
+                    steps += 1;
                 }
             }
         }
+
         None
     }
 
