@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 use eframe::egui::{Context, Pos2, pos2};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -25,7 +25,15 @@ pub struct Orb {
     pub corrupted: bool,
 }
 
-impl Orb {}
+impl Orb {
+    pub fn parallel_world_id(id: u32, parallel_world: i32) -> u32 {
+        id + match parallel_world.cmp(&0) {
+            Ordering::Equal => 0,
+            Ordering::Less => 128,
+            Ordering::Greater => 256,
+        }
+    }
+}
 
 #[derive(Debug, SmartDefault)]
 pub struct OrbSearcher {
@@ -144,12 +152,7 @@ impl OrbSearcher {
                     let orbs: Vec<Orb> = find_chest_orbs(seed.sum(), x, y, sampo)
                         .into_iter()
                         .map(|(x, y)| Orb {
-                            id: (11
-                                + match parallel_world {
-                                    0 => 0,
-                                    ..0 => 128,
-                                    1.. => 256,
-                                }),
+                            id: Orb::parallel_world_id(11, parallel_world),
                             pos: pos2(x as f32, y as f32),
                             source: OrbSource::Chest,
                             corrupted: false,
@@ -228,11 +231,7 @@ fn list_orb_rooms(world_seed: u32, ng_count: u32, parallel_world: i32) -> Vec<Or
         .map(|(id, (x, y))| {
             (
                 // ID of PW orbs are different
-                (id + match parallel_world {
-                    0 => 0,
-                    ..0 => 128,
-                    1.. => 256,
-                }),
+                Orb::parallel_world_id(*id, parallel_world),
                 // The offset of X chunks to the room generation
                 (x + parallel_world * if ng_count == 0 { 70 } else { 64 }, y),
             )
