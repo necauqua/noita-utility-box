@@ -172,10 +172,11 @@ impl OrbSearcher {
 /// Compute the parallel_world of the current position depending on if we are in NG+ or not.
 fn parallel_world(ng_count: u32, pos: &Pos2) -> i32 {
     if ng_count == 0 {
-        (pos.x / CHUNK_SIZE as f32 - 35.0) as i32 / 70
+        pos.x / CHUNK_SIZE as f32 / 70.0
     } else {
-        (pos.x / CHUNK_SIZE as f32 - 32.0) as i32 / 64
+        pos.x / CHUNK_SIZE as f32 / 64.0
     }
+    .round() as i32
 }
 
 /// Find all chests producing a Greater Chest Orb or Sampo in the chunk given
