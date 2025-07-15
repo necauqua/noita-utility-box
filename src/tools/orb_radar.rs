@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Write as _};
 
 use crate::{
     app::AppState,
-    orb_searcher::{CHUNK_SIZE, Orb, OrbSearcher, OrbSource},
+    orb_searcher::{Orb, OrbSearcher, OrbSource},
 };
 use eframe::egui::{
     Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, TextStyle, Ui, pos2, vec2,
@@ -223,47 +223,79 @@ impl OrbRadar {
                 }
             }
 
+            // Crosshair
+            let r = |p| painter.round_pos_to_pixels(p);
             let c = rect.center();
             let c_from = 2.0;
             let c_to = 5.0;
 
-            let r = |p| painter.round_pos_to_pixels(p);
-
-            // crosshair
             painter.line_segment([r(c - vec2(c_from, 0.0)), r(c - vec2(c_to, 0.0))], stroke);
             painter.line_segment([r(c + vec2(c_from, 0.0)), r(c + vec2(c_to, 0.0))], stroke);
             painter.line_segment([r(c - vec2(0.0, c_from)), r(c - vec2(0.0, c_to))], stroke);
             painter.line_segment([r(c + vec2(0.0, c_from)), r(c + vec2(0.0, c_to))], stroke);
 
-            let mut text = format!(
-                "pos: x:{:.1} y:{:.1}\nchunks searched: {}\nchunk size: {}\norbs found: {}\n",
-                pos.x,
-                pos.y,
-                self.orb_searcher.searched_chunks(),
-                CHUNK_SIZE,
-                self.orb_searcher.known_orbs().len(),
-            );
-
-            let text_pos = rect.right_top() + vec2(-5.0, 5.0);
-            let text_font = ui
+            // Player infos
+            let player_info_pos = rect.right_top() + vec2(-5.0, 5.0);
+            let player_infos_font = ui
                 .style()
                 .text_styles
                 .get(&TextStyle::Monospace)
                 .cloned()
                 .unwrap_or(FontId::monospace(12.0));
-            let limit = (rect.height() / ui.fonts(|f| f.row_height(&text_font))) as usize / 2;
-            let orbs = self.orb_searcher.known_orbs();
-            for orb in orbs.iter().take(limit) {
-                // NOTE: EGUI does not support rendering UTF-8 emojis... Sadge
-                writeln!(&mut text, "  ({: >5.0}, {: >5.0})", orb.pos.x, orb.pos.y).unwrap();
-            }
-            if orbs.len() > limit {
-                writeln!(&mut text, "  ..{} more", orbs.len() - limit).unwrap();
-            }
-            let color = ui.style().visuals.weak_text_color();
-            painter.text(text_pos, Align2::RIGHT_TOP, text, text_font.clone(), color);
 
-            let diameter = text_font.size * 2.0; // Diameter relative to the text size
+            let mut player_infos = String::new();
+            writeln!(&mut player_infos, "pos: ({:.1}, {:.1})", pos.x, pos.y).unwrap();
+            writeln!(
+                &mut player_infos,
+                "chunks searched: {}",
+                self.orb_searcher.searched_chunks()
+            )
+            .unwrap();
+            writeln!(
+                &mut player_infos,
+                "orbs collected: {}",
+                collected_orbs.len()
+            )
+            .unwrap();
+            writeln!(
+                &mut player_infos,
+                "chest orbs found: {}",
+                self.orb_searcher.known_orbs().len()
+            )
+            .unwrap();
+
+            let orbs_to_list =
+                (rect.height() / ui.fonts(|f| f.row_height(&player_infos_font))) as usize / 2;
+
+            for orb in displayed_orbs.iter().take(orbs_to_list) {
+                // NOTE: EGUI does not support rendering UTF-8 emojis... Sadge
+                writeln!(
+                    &mut player_infos,
+                    "  ({: >5.0}, {: >5.0}) id={}",
+                    orb.pos.x, orb.pos.y, orb.id
+                )
+                .unwrap();
+            }
+            if displayed_orbs.len() > orbs_to_list {
+                writeln!(
+                    &mut player_infos,
+                    "  ... and {} more orbs",
+                    displayed_orbs.len() - orbs_to_list
+                )
+                .unwrap();
+            }
+
+            let color = ui.style().visuals.weak_text_color();
+            painter.text(
+                player_info_pos,
+                Align2::RIGHT_TOP,
+                player_infos,
+                player_infos_font.clone(),
+                color,
+            );
+
+            // Bottom Left compass
+            let diameter = player_infos_font.size * 2.0; // Diameter relative to the text size
             let radius = diameter / 2.0;
 
             let padding = 10.0; // Padding from the sides to the circle
@@ -287,7 +319,7 @@ impl OrbRadar {
                 circle_pos + vec2(radius + padding, 0.0),
                 Align2::LEFT_CENTER,
                 format!("{dist_to_first:.1} px"),
-                text_font,
+                player_infos_font,
                 self.orb_color(ui, first_orb, state),
             );
         });
