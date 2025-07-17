@@ -41,7 +41,7 @@ tools! {
     process_panel::ProcessPanel : "Noita";
     orb_radar::OrbRadar;
     live_stats::LiveStats;
-    material_pipette::MaterialPipette;
+    player_info::PlayerInfo;
     material_list::MaterialList;
     address_maps::AddressMaps;
     settings::Settings;

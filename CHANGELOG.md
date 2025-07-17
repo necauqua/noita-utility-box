@@ -11,11 +11,14 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - Orb radar can now show Orb Rooms in both NG and NG+ (new checkbox at the bottom of the radar). @Larandar
   - Orb radar now filter collected Orbs (i.e. current PW Greater Chest Orbs, or Orb Rooms). @Larandar
+  - Detailed information about each of Mina's wands (including speed multiplier) in Player Info. @Larandar
+  - Link to [Noita Wand Simulator] of each of Mina's wands in Player Info. @Larandar
 
 ### Changed
   - Orb radar search now processes chunks in a spiral pattern around the player. @Larandar
   - Orb radar search now works on noita chunks instead of custom internal 1024x1024 chunks to avoid confusion. @Larandar
   - The update modal you're maybe reading this right now got way better and now actually renders the changelog nicely instead of showing you raw markdown text.
+  - Renamed Material Pipette tab to Player Info. @Larandar
 
 ### Fixed
   - Orb radar can now find the player when cessated.
@@ -78,3 +81,5 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/ "Keep a Changelog"
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html "Semantic Versioning"
 [Holocene Calendar]: https://en.wikipedia.org/wiki/Holocene_calendar "Holocene Calendar"
+[Noita Wand Simulator]: https://noita-wand-simulator.salinecitrine.com "Noita Wand Simulator"
+
