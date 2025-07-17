@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use noita_engine_reader::{
     memory::{MemoryStorage, RawPtr, StdString, StdVec, set_debug_process},
     rng::NoitaRng,
-    types::components::{ItemComponent, LuaComponent, UIIconComponent},
+    types::components::{DamageModelComponent, ItemComponent, LuaComponent, UIIconComponent},
 };
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator, ParallelIterator};
 
@@ -48,6 +48,24 @@ fn read_inventory() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[test]
+#[ignore]
+fn read_hp() -> Result<()> {
+    let mut noita = common::setup()?;
+    let store = noita.component_store::<DamageModelComponent>()?;
+    let (player, _) = noita.get_player()?.context("no player")?;
+
+    println!("hp: -");
+
+    loop {
+        let dmc = store.get(&player)?.context("no DMC")?;
+
+        println!("\x1b[1F\x1b[2Jhp: {}", dmc.hp.get() * 25.0);
+
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 #[test]
