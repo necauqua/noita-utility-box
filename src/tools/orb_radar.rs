@@ -3,11 +3,13 @@ use std::{collections::HashSet, fmt::Write as _};
 use crate::{
     app::AppState,
     orb_searcher::{Orb, OrbSearcher, OrbSource},
+    tools::ToolError,
 };
+use anyhow::Context;
 use eframe::egui::{
     Align, Align2, Color32, FontId, Layout, Rect, Rounding, Stroke, TextStyle, Ui, pos2, vec2,
 };
-use noita_engine_reader::{PlayerState, Seed};
+use noita_engine_reader::{Noita, PlayerState, Seed};
 use serde::{Deserialize, Serialize};
 
 use super::{Result, Tool};
@@ -25,13 +27,6 @@ pub struct OrbRadar {
 #[typetag::serde]
 impl Tool for OrbRadar {
     fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
-        self.ui(ui, state);
-        Ok(())
-    }
-}
-
-impl OrbRadar {
-    pub fn ui(&mut self, ui: &mut Ui, state: &mut AppState) {
         if state.seed != self.prev_seed {
             self.prev_seed = state.seed;
             self.orb_searcher.reset();
@@ -43,14 +38,12 @@ impl OrbRadar {
                 ui.checkbox(&mut self.show_rooms, "Show orb rooms");
                 ui.checkbox(&mut self.filter_collected_orbs, "Filter collected orbs");
 
-                if ui
-                    .checkbox(
-                        &mut self.orb_searcher.look_for_sampo_instead,
-                        "Look for sampo instead",
-                    )
-                    .changed()
-                    | ui.button("Reset").clicked()
-                {
+                let look_for_sampo = ui.checkbox(
+                    &mut self.orb_searcher.look_for_sampo_instead,
+                    "Look for sampo instead",
+                );
+                let reset = ui.button("Reset");
+                if look_for_sampo.changed() || reset.clicked() {
                     self.orb_searcher.reset();
                 };
 
@@ -119,7 +112,7 @@ impl OrbRadar {
                     ui.style().visuals.warn_fg_color,
                 );
 
-                return;
+                return Ok(());
             };
             let popup = match player_state {
                 PlayerState::Normal => "",
@@ -138,7 +131,7 @@ impl OrbRadar {
 
             self.orb_searcher.poll_search(ui.ctx(), seed, pos);
 
-            let known_orbs: Vec<Orb> = if self.show_rooms {
+            let known_orbs = if self.show_rooms {
                 self.orb_searcher
                     .known_orbs()
                     .iter()
@@ -149,13 +142,13 @@ impl OrbRadar {
                 self.orb_searcher.known_orbs().to_vec()
             };
 
-            let collected_orbs = OrbRadar::collected_orbs(state);
+            let collected_orbs = OrbRadar::collected_orbs(state.get_noita()?)?;
             let mut displayed_orbs = if self.filter_collected_orbs {
                 known_orbs
                     .iter()
-                    .filter(|orb: &&Orb| !collected_orbs.contains(&orb.id))
+                    .filter(|orb| !collected_orbs.contains(&orb.id))
                     .cloned()
-                    .collect::<Vec<Orb>>()
+                    .collect::<Vec<_>>()
             } else {
                 known_orbs
             };
@@ -166,7 +159,7 @@ impl OrbRadar {
             });
 
             let Some(first_orb) = displayed_orbs.first() else {
-                return;
+                return Ok(());
             };
 
             let dir_to_first = first_orb.pos - pos;
@@ -305,7 +298,7 @@ impl OrbRadar {
             if pos.x.round() == first_orb.pos.x.round() && pos.y.round() == first_orb.pos.y.round()
             {
                 painter.circle(circle_pos, radius, Color32::from_rgb(40, 255, 40), stroke);
-                return;
+                return Ok(());
             }
             painter.circle_stroke(circle_pos, radius, stroke);
             let arrow = dir_to_first * (diameter - 10.0) / dist_to_first;
@@ -322,9 +315,13 @@ impl OrbRadar {
                 player_infos_font,
                 self.orb_color(ui, first_orb, state),
             );
-        });
+            Ok(())
+        })
+        .inner
     }
+}
 
+impl OrbRadar {
     fn orb_color(&self, ui: &Ui, orb: &Orb, state: &AppState) -> Color32 {
         if !self.show_rooms {
             return ui.style().visuals.text_color();
@@ -335,21 +332,13 @@ impl OrbRadar {
         }
     }
 
-    fn collected_orbs(state: &mut AppState) -> HashSet<i32> {
-        let world = state
-            .noita
-            .as_mut()
-            .and_then(|n| n.get_world_state().unwrap_or(None));
-        let Some(world) = world else {
-            return HashSet::new();
-        };
-
-        let Ok(collected_orbs) = world
+    fn collected_orbs(noita: &mut Noita) -> std::result::Result<HashSet<i32>, ToolError> {
+        Ok(noita
+            .get_world_state()?
+            .context("WorldStateComponent does not exist")?
             .orbs_found_thisrun
-            .read_storage(state.noita.as_mut().unwrap().proc())
-        else {
-            return HashSet::new();
-        };
-        collected_orbs.iter().copied().collect()
+            .read_storage(noita.proc())?
+            .into_iter()
+            .collect())
     }
 }
