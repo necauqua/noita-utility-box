@@ -4,7 +4,7 @@ _default:
 
 check:
     cargo fmt --check
-    cargo clippy --all-targets --all-features -- -D warnings
+    cargo clippy --no-deps --all-targets --all-features -- -D warnings
     cargo doc --no-deps --all-features
     cargo test --all-features
 
