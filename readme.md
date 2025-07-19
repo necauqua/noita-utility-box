@@ -4,8 +4,10 @@
 ![License](https://img.shields.io/github/license/necauqua/noita-utility-box)
 [![discord link](https://img.shields.io/discord/1346986932244054016)](https://discord.gg/RDdRT8Z8j9)
 
-This is a cheatengine-style memory reader that reads useful data
+This is a memory reading tool that reads some useful data
 directly from a running instance of [Noita](https://noitagame.com).
+Anything that's considered true cheating is hidden by default and requires you
+to enable it with checkboxes, collapsing panels and/or settings.
 
 This is useful if you want **no** mods to be installed yet want to do some
 advanced stuff.
