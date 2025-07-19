@@ -44,7 +44,6 @@ pub struct OrbSearcher {
     search_task: Promise<Vec<Orb>>,
 
     // Which PW the rooms are listed
-    #[default(Option::None)]
     current_rooms_world: Option<i32>,
     known_rooms: Vec<Orb>,
 
