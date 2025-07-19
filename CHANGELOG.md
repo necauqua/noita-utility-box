@@ -17,7 +17,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - Searching algorithm now works on noita chunks instead of custom internal 1024x1024 chunks to avoid confusion. @Larandar
 
 ### Fixed
-  - Orb radar can now find the player whe cessated.
+  - Orb radar can now find the player when cessated.
 
 ## [v0.3.0] 12025-03-06
 
