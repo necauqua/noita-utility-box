@@ -45,7 +45,7 @@ manager, a mod update manager, etc etc
 There is much room for improvements, being functionality or readability:
 
 - [x] Display current world orb rooms in NG & NG+
-- [ ] Filter orbs that are already taken
+- [x] Filter orbs that are already taken
 - [ ] Better accessibility features for the radar
 
 ##### Ingame overlay
