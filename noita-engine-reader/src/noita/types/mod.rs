@@ -107,6 +107,18 @@ pub struct Entity {
     pub parent: Ptr<Entity>,
 }
 
+impl Entity {
+    pub fn first_child_by_name(&self, name: &str, proc: &ProcessRef) -> io::Result<Option<Entity>> {
+        for child in self.children.read(proc)?.read(proc)? {
+            let child = child.read(proc)?;
+            if child.name.read(proc)? == name {
+                return Ok(Some(child));
+            }
+        }
+        Ok(None)
+    }
+}
+
 impl MemoryStorage for Ptr<Entity> {
     type Value = Entity;
 

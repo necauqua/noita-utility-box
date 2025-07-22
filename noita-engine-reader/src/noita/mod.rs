@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, io, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, io, marker::PhantomData, sync::Arc};
 
 use convert_case::{Case, Casing};
 use derive_more::{Debug, derive::Display};
@@ -26,6 +26,7 @@ pub struct Noita {
 
     materials: Vec<String>,
     material_ui_names: Vec<String>,
+    files: HashMap<String, Arc<[u8]>>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -114,10 +115,11 @@ impl Noita {
         Self {
             proc,
             g,
-            entity_tag_cache: HashMap::new(),
-            no_player_not_polied: false,
-            materials: Vec::new(),
-            material_ui_names: Vec::new(),
+            entity_tag_cache: Default::default(),
+            no_player_not_polied: Default::default(),
+            materials: Default::default(),
+            material_ui_names: Default::default(),
+            files: Default::default(),
         }
     }
 
@@ -161,7 +163,11 @@ impl Noita {
         read_ptr!(self.platform)
     }
 
-    pub fn read_file(&self, path: &str) -> io::Result<Option<Vec<u8>>> {
+    pub fn get_file(&mut self, path: &str) -> io::Result<Arc<[u8]>> {
+        if let Some(file) = self.files.get(path) {
+            return Ok(file.clone());
+        }
+
         let fs = self.read_platform()?.file_system.read(&self.proc)?;
         let devices = fs.devices.read(&self.proc)?;
 
@@ -170,11 +176,16 @@ impl Noita {
                 continue;
             };
             if let Some(file) = device.as_dyn().get_file(&self.proc, &fs, path)? {
-                return Ok(Some(file));
+                let file = Arc::<[u8]>::from(file);
+                self.files.insert(path.to_owned(), file.clone());
+                return Ok(file);
             }
         }
 
-        Ok(None)
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("File not found in Noita fs: {path}"),
+        ))
     }
 
     pub fn translations(&self) -> io::Result<CachedTranslations> {
@@ -442,6 +453,10 @@ pub struct CachedTranslations {
 }
 
 impl CachedTranslations {
+    pub fn is_empty(&self) -> bool {
+        self.lang_key_indices.is_empty()
+    }
+
     pub fn translate<'k>(&self, key: &'k str, title_case: bool) -> Cow<'k, str> {
         self.lang_key_indices
             .get(key)

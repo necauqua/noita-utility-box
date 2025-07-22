@@ -10,7 +10,6 @@ use tracing_subscriber::{
 };
 
 mod app;
-mod entities;
 mod orb_searcher;
 mod tools;
 mod update_check;

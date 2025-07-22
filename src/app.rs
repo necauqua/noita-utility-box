@@ -194,8 +194,8 @@ impl egui_tiles::Behavior<Pane> for AppState {
                 }
                 match pane.tool.ui(ui, self) {
                     Ok(()) => {}
-                    Err(ToolError::ImmediateRetry(e)) => {
-                        ui.label(format!("{e}"));
+                    Err(ToolError::ImmediateRetry(text)) => {
+                        ui.label(text);
                     }
                     Err(e) => {
                         pane.error = Some(e);

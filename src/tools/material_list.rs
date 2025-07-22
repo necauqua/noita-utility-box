@@ -64,20 +64,15 @@ struct MaterialView {
 }
 
 impl MaterialView {
-    fn new(noita: &Noita, entry: &FilteredCellData) -> io::Result<Self> {
-        let texture = entry
-            .data
-            .graphics
-            .texture_file
-            .read(noita.proc())
-            .and_then(|path| {
-                if path.is_empty() {
-                    return Ok(None);
-                }
-                noita
-                    .read_file(&path)
-                    .map(|bytes| bytes.map(|b| (format!("bytes://{path}"), b.into())))
-            })?;
+    fn new(noita: &mut Noita, entry: &FilteredCellData) -> io::Result<Self> {
+        let path = entry.data.graphics.texture_file.read(noita.proc())?;
+        let texture = match &*path {
+            "" => None,
+            p => {
+                let bytes = noita.get_file(p)?;
+                Some((format!("bytes://{path}"), bytes))
+            }
+        };
 
         Ok(Self {
             name: entry.name.clone(),
@@ -139,10 +134,7 @@ impl Widget for &MaterialView {
 #[typetag::serde]
 impl Tool for MaterialList {
     fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
-        let Some(noita) = state.noita.as_mut() else {
-            ui.label("Noita not connected");
-            return Ok(());
-        };
+        let noita = state.get_noita()?;
 
         let res = ui.button("Refresh materials");
         let clicked = if self.first_update {

@@ -231,7 +231,7 @@ impl Serialize for CellType {
     {
         use std::fmt::Write;
         let mut buf = String::new();
-        write!(&mut buf, "{:?}", self).unwrap();
+        write!(&mut buf, "{self:?}").unwrap();
         serializer.serialize_str(&buf.to_lowercase())
     }
 }
@@ -257,7 +257,7 @@ impl Serialize for CellColor {
         }
         use std::fmt::Write;
         let mut buf = String::new();
-        write!(&mut buf, "{:?}", self).unwrap();
+        write!(&mut buf, "{self:?}").unwrap();
         serializer.serialize_str(&buf)
     }
 }

@@ -6,7 +6,13 @@ use std::{
 
 use crate::app::AppState;
 use crate::util::to_title_case;
+use anyhow::{Context as _, anyhow};
 use eframe::egui::{Context, Ui};
+use noita_engine_reader::{
+    ComponentStore,
+    memory::Pod,
+    types::{Entity, components::ComponentName},
+};
 use thiserror::Error;
 
 macro_rules! tools {
@@ -107,7 +113,24 @@ impl From<std::io::Error> for ToolError {
     }
 }
 
-pub type Result = std::result::Result<(), ToolError>;
+pub type Result<T = ()> = std::result::Result<T, ToolError>;
+
+pub trait ComponentStoreExt<T> {
+    fn get_checked(&self, entity: &Entity) -> Result<T>;
+}
+
+impl<T> ComponentStoreExt<T> for ComponentStore<T>
+where
+    T: ComponentName + Pod,
+{
+    fn get_checked(&self, entity: &Entity) -> Result<T> {
+        Ok(self
+            .get(entity)
+            .map_err(|e| anyhow!(e))
+            .and_then(|c| c.context("Component missing"))
+            .with_context(|| format!("Reading {} from entity {}", T::NAME, entity.id))?)
+    }
+}
 
 #[typetag::serde]
 pub trait Tool: Send + 'static {

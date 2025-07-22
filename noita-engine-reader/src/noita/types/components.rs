@@ -1,4 +1,5 @@
 use open_enum::open_enum;
+use serde::Serialize;
 use zerocopy::{FromBytes, IntoBytes};
 
 use crate::memory::{
@@ -391,9 +392,10 @@ impl ComponentName for AbilityComponent {
     const NAME: &str = "AbilityComponent";
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
 pub struct ConfigDamagesByType {
+    #[serde(skip)]
     pub vftable: Vftable,
     pub melee: f32,
     pub projectile: f32,

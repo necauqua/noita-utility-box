@@ -45,6 +45,7 @@ tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typetag = "0.2"
 wgpu = "25" # enables the wgpu default features so we get the default backends
+serde_json = { version = "1.0.141", features = ["preserve_order"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", default-features = false, features = [
