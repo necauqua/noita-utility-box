@@ -211,6 +211,17 @@ impl Tool for PlayerInfo {
                         }
                     ));
                     ui.end_row();
+
+                    ui.label("Curse damage");
+                    ui.label(format!(
+                        "{}",
+                        if self.multiply_hp {
+                            dmc.hp.get() * 100.0 * 25.0
+                        } else {
+                            dmc.hp.get() * 100.0
+                        }
+                    ));
+                    ui.end_row();
                 });
             CollapsingHeader::new("Damage Multipliers").show(ui, |ui| {
                 ui.small("Damage multipliers equal to 1.0 are omitted");
