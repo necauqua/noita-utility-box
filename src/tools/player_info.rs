@@ -213,6 +213,7 @@ impl Tool for PlayerInfo {
                     ui.end_row();
                 });
             CollapsingHeader::new("Damage Multipliers").show(ui, |ui| {
+                ui.small("Damage multipliers equal to 1.0 are omitted");
                 Grid::new(ui.id().with("grid"))
                     .num_columns(2)
                     .striped(true)
@@ -223,8 +224,11 @@ impl Tool for PlayerInfo {
                             .unwrap() // never fails
                             .iter()
                             .for_each(|(key, value)| {
+                                if value == 1.0 {
+                                    return;
+                                }
                                 ui.label(key);
-                                ui.label(format!("{value}"));
+                                ui.label(value.to_string());
                                 ui.end_row();
                             });
                     });
