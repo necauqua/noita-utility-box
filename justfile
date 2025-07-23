@@ -29,7 +29,7 @@ release version: check
     ;/\[unreleased\]/{s%compare/.*%compare/v{{version}}...HEAD%;n;h;s/v[^]]*/v{{version}}/g;p;g}" CHANGELOG.md
 
     # Update Cargo.toml and Cargo.lock
-    sed -i "/^version/s/\".[^\"]*\"/\"{{version}}\"/" Cargo.toml macros/Cargo.toml
+    sed -i "/^version/s/\".[^\"]*\"/\"{{version}}\"/" Cargo.toml noita-engine-reader{,-macros}/Cargo.toml
     cargo update -q --offline
 
     # Make a commit and the annotated tag
