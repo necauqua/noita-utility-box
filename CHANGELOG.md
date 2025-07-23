@@ -9,10 +9,10 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Added
-  - Detailed information about each of Mina's wands (including speed multiplier and a button to open [Noita Wand Simulator](https://noita-wand-simulator.salinecitrine.com)) in Player Info. @Larandar
+  - Detailed information about each of Mina's wands (with a button to open [Noita Wand Simulator](https://noita-wand-simulator.salinecitrine.com) and optionally the hidden speed multiplier) in Player Info. @Larandar
   - True float values of Mina's current HP and max HP in Player Info, as well as the damage multiplier values.
   - Orb radar can now show Orb Rooms in both NG and NG+ (new checkbox at the bottom of the radar). @Larandar
-  - Orb radar now filter collected Orbs (i.e. current PW Greater Chest Orbs, or Orb Rooms). @Larandar
+  - Orb radar can now filter out the collected Orbs (i.e. current PW Greater Chest Orbs, or Orb Rooms). @Larandar
 
 ### Changed
   - Renamed Material Pipette tab to Player Info. @Larandar
