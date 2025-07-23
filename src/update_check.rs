@@ -76,6 +76,7 @@ fn bullet_point(ui: &mut Ui, width: f32, height: f32) -> Response {
 }
 
 fn draw_a_tiny_subset_of_markdown(ui: &mut Ui, text: &str) {
+    let row_height = ui.text_style_height(&TextStyle::Body);
     for line in text.lines() {
         if let Some(line) = line.trim().strip_prefix("###") {
             ui.strong(line.trim());
@@ -84,7 +85,6 @@ fn draw_a_tiny_subset_of_markdown(ui: &mut Ui, text: &str) {
         if let Some(line) = line.trim().strip_prefix("-") {
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
-                let row_height = ui.text_style_height(&TextStyle::Small);
                 ui.set_row_height(row_height);
                 bullet_point(ui, row_height, row_height);
                 ui.horizontal_wrapped(|ui| {
@@ -94,6 +94,14 @@ fn draw_a_tiny_subset_of_markdown(ui: &mut Ui, text: &str) {
                         f.ui(ui);
                     }
                 });
+            });
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                ui.set_row_height(row_height);
+                ui.spacing_mut().item_spacing.x = 1.0;
+                for f in InlineMarkdownFragment::parse(line.trim()) {
+                    f.ui(ui);
+                }
             });
         }
     }
@@ -207,6 +215,7 @@ enum InlineMarkdownFragment {
     Bold(String),
     Italic(String),
     Link(String, String),
+    Username(String),
 }
 
 impl Widget for InlineMarkdownFragment {
@@ -216,7 +225,10 @@ impl Widget for InlineMarkdownFragment {
             Self::Code(text) => ui.label(RichText::new(text).code()),
             Self::Bold(text) => ui.label(RichText::new(text).strong()),
             Self::Italic(text) => ui.label(RichText::new(text).italics()),
-            Self::Link(text, url) => ui.hyperlink_to(RichText::new(text), url),
+            Self::Link(text, url) => ui.hyperlink_to(text, url),
+            Self::Username(name) => {
+                ui.hyperlink_to(format!("@{name}"), format!("https://github.com/{name}"))
+            }
         }
     }
 }
@@ -279,6 +291,28 @@ impl InlineMarkdownFragment {
                             fragments.push(Self::Text(mem::take(&mut current)));
                         }
                         state = State::LinkText;
+                        continue;
+                    }
+                    if c == '@' {
+                        let mut username = String::new();
+                        let mut peeked = chars.peek();
+                        while let Some(&ch) = peeked {
+                            if ch.is_ascii_alphanumeric() {
+                                username.push(ch);
+                                chars.next();
+                                peeked = chars.peek();
+                            } else {
+                                break;
+                            }
+                        }
+                        if username.is_empty() {
+                            current.push('@');
+                            continue;
+                        }
+                        if !current.is_empty() {
+                            fragments.push(Self::Text(mem::take(&mut current)));
+                        }
+                        fragments.push(Self::Username(username));
                         continue;
                     }
                     current.push(c);
