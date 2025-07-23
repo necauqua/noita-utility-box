@@ -1,4 +1,4 @@
-use anyhow::{Context as _, anyhow};
+use anyhow::Context as _;
 use derive_more::Debug;
 use eframe::egui::{
     ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui, text::LayoutJob,
@@ -38,18 +38,6 @@ impl NoitaData {
     fn connect(pid: sysinfo::Pid, exe_name: Option<String>, state: &AppState) -> NoitaResult<Self> {
         let proc = ProcessRef::connect(pid.as_u32())
             .with_context(|| format!("Couldn't open the process {pid}"))?;
-
-        if state.settings.check_export_name {
-            let header = proc.header();
-            let export_name = header.export_name();
-            if export_name != b"wizard_physics.exe\0" {
-                let name = String::from_utf8_lossy(&export_name[..export_name.len() - 1]);
-                // bail! didn't convert?.
-                Err(anyhow!(
-                    "Export exe name was {name:?}, expecting wizard_physics.exe"
-                ))?;
-            }
-        }
 
         let timestamp = proc.header().timestamp();
 

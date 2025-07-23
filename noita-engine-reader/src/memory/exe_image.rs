@@ -20,10 +20,6 @@ pub enum ReadImageError {
     BadCodeRange(Range<usize>),
     #[error("Bad .rdata range in header {0:?}")]
     BadDataRange(Range<usize>),
-    #[error("Export directory RVA is not present")]
-    NoExportDirectory,
-    #[error("Failed to read export exe name")]
-    BadExportName,
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -59,25 +55,11 @@ struct PeHeaderData {
     image_base: u32,
     _skip: [u8; 0x18],
     size_of_image: u32,
-    _skip2: [u8; 0x20],
-    num_of_rvas: u32,
-
-    // we're only interested in the export directory, which is first
-    export_directory_addr: Ibo<ExportDirectoryData>,
-    export_directory_size: u32,
-}
-
-#[derive(Debug, PtrReadable)]
-#[repr(C)]
-struct ExportDirectoryData {
-    _skip: [u8; 0x0c],
-    name: Ibo<[u8; 256]>, // eh, cstrings
 }
 
 #[derive(Debug, Clone)]
 pub struct PeHeader {
     timestamp: u32,
-    export_name: Vec<u8>,
     text: Range<usize>,
     rdata: Range<usize>,
     image_base: u32,
@@ -87,10 +69,6 @@ pub struct PeHeader {
 impl PeHeader {
     pub fn timestamp(&self) -> u32 {
         self.timestamp
-    }
-
-    pub fn export_name(&self) -> &[u8] {
-        &self.export_name
     }
 
     pub fn read(proc: &ProcessRef) -> Result<Self, ReadImageError> {
@@ -127,25 +105,8 @@ impl PeHeader {
             return Err(ReadImageError::BadDataRange(rdata));
         }
 
-        if pe.num_of_rvas < 1 || pe.export_directory_size < size_of::<ExportDirectoryData>() as u32
-        {
-            return Err(ReadImageError::NoExportDirectory);
-        }
-
-        let export_dir = pe.export_directory_addr.read(proc)?;
-
-        // If only there was some sort of `CString::from_prefix_before_first_nul`..
-        let export_name = export_dir
-            .name
-            .read(proc)?
-            .split_inclusive(|b| *b == 0)
-            .next()
-            .ok_or(ReadImageError::BadExportName)?
-            .to_owned();
-
         Ok(Self {
             timestamp: pe.time_date_stamp,
-            export_name,
             text,
             rdata,
             image_base: pe.image_base,

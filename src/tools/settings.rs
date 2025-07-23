@@ -21,8 +21,6 @@ pub struct SettingsData {
     pub check_for_updates: bool,
     #[default(true)]
     pub notify_when_outdated: bool,
-    #[default(true)]
-    pub check_export_name: bool,
 
     #[default(Color32::GOLD)]
     pub color_orb_chests: Color32,
@@ -118,8 +116,6 @@ impl Settings {
                     ui.end_row();
                 }
 
-                ui.checkbox(&mut s.check_export_name, "Check export name")
-                    .on_hover_text("When detecting noita, check that the executable export name is 'wizard_physics.exe'");
                 ui.end_row();
             });
 

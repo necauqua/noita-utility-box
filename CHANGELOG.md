@@ -20,6 +20,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - Orb radar search now works on noita chunks instead of custom internal 1024x1024 chunks to avoid confusion. @Larandar
   - The update modal you're maybe reading this right now got way better and now actually renders the changelog nicely instead of showing you raw markdown text.
 
+### Removed
+  - The "Check export name" setting for being mostly useless.
+
 ### Fixed
   - Orb radar can now find the player when cessated.
 
