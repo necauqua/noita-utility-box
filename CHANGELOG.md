@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.4.0] 12025-07-23
+
 ### Added
   - Detailed information about each of Mina's wands (with a button to open [Noita Wand Simulator](https://noita-wand-simulator.salinecitrine.com) and optionally the hidden speed multiplier) in Player Info. @Larandar
   - True float values of Mina's current HP and max HP in Player Info, as well as the damage multiplier values.
@@ -75,7 +77,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.0
 [v0.3.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.3.0
 [v0.2.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.1
 [v0.2.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.0
