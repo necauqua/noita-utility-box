@@ -3,9 +3,11 @@ use zerocopy::{FromBytes, IntoBytes};
 
 use super::exe_image::PeHeader;
 
+/// A reference to a process, can be cheaply cloned.
 #[derive(Debug, Clone)]
 pub struct ProcessRef {
     handle: platform::Handle,
+    // Used for the timestamp in structs that changed between versions
     pe_header: Option<Arc<PeHeader>>,
 }
 
@@ -27,9 +29,9 @@ impl ProcessRef {
         Ok(proc)
     }
 
-    pub fn header(&self) -> Arc<PeHeader> {
+    pub fn header(&self) -> &PeHeader {
         // The only path where this is None is PeHeader::read for obvious reasons
-        self.pe_header.as_ref().unwrap().clone()
+        self.pe_header.as_ref().unwrap()
     }
 
     pub fn pid(&self) -> u32 {
