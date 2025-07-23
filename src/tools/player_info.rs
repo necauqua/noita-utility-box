@@ -25,8 +25,7 @@ use crate::{app::AppState, tools::ComponentStoreExt};
 #[serde(default)]
 pub struct PlayerInfo {
     realtime: bool,
-    #[default(true)]
-    multiply_hp: bool,
+    show_raw_hp: bool,
     #[serde(skip)]
     cached_translations: Arc<CachedTranslations>,
 }
@@ -182,10 +181,8 @@ impl Tool for PlayerInfo {
 
         section(ui, "Player Damage", |ui| {
             let dmc = dmc_store.get_checked(&player)?;
-            ui.checkbox(
-                &mut self.multiply_hp,
-                "Multiply HP value by 25 (like Noita UI does)",
-            );
+            ui.checkbox(&mut self.show_raw_hp, "Raw HP values")
+                .on_hover_text("Noita UI multiplies the actual float value of HP by 25, so when you have 100 health the in-memory value is actually 4.0");
             Grid::new(ui.id().with("grid"))
                 .num_columns(2)
                 .striped(true)
@@ -193,10 +190,10 @@ impl Tool for PlayerInfo {
                     ui.label("Current HP");
                     ui.label(format!(
                         "{}",
-                        if self.multiply_hp {
-                            dmc.hp.get() * 25.0
-                        } else {
+                        if self.show_raw_hp {
                             dmc.hp.get() // dont even multiply by 1 just in case
+                        } else {
+                            dmc.hp.get() * 25.0
                         }
                     ));
                     ui.end_row();
@@ -204,10 +201,10 @@ impl Tool for PlayerInfo {
                     ui.label("Max HP");
                     ui.label(format!(
                         "{}",
-                        if self.multiply_hp {
-                            dmc.max_hp.get() * 25.0
-                        } else {
+                        if self.show_raw_hp {
                             dmc.max_hp.get()
+                        } else {
+                            dmc.max_hp.get() * 25.0
                         }
                     ));
                     ui.end_row();
@@ -215,10 +212,10 @@ impl Tool for PlayerInfo {
                     ui.label("Curse damage");
                     ui.label(format!(
                         "{}",
-                        if self.multiply_hp {
-                            dmc.hp.get() * 100.0 * 25.0
-                        } else {
+                        if self.show_raw_hp {
                             dmc.hp.get() * 100.0
+                        } else {
+                            dmc.hp.get() * 100.0 * 25.0
                         }
                     ));
                     ui.end_row();
