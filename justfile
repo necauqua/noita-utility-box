@@ -4,9 +4,11 @@ _default:
 
 check:
     cargo fmt --check
-    cargo clippy --no-deps --all-targets --all-features -- -D warnings
-    cargo doc --no-deps --all-features
-    cargo test --all-features
+    cargo clippy --no-deps --all-features --workspace -- -D warnings
+    cargo clippy --no-deps --all-features --workspace --target x86_64-pc-windows-gnu -- -D warnings
+    cargo doc --no-deps --all-features --workspace
+    cargo doc --no-deps --all-features --workspace --target x86_64-pc-windows-gnu
+    cargo test --all-features --workspace
 
 build target:
     nix build . ".#{{target}}"

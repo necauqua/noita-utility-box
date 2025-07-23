@@ -36,10 +36,16 @@ jobs:
         run: nix develop --command -- cargo fmt --check
 
       - name: Check (clippy)
-        run: nix develop --command -- cargo clippy --no-deps --all-targets --all-features -- -D warnings
+        run: nix develop --command -- cargo clippy --no-deps --all-features --workspace -- -D warnings
+
+      - name: Check (clippy, windows)
+        run: nix develop --command -- cargo clippy --no-deps --all-features --workspace --target x86_64-pc-windows-gnu -- -D warnings
 
       - name: Check (docs)
         run: nix develop --command -- cargo doc --no-deps --all-features
+
+      - name: Check (docs, windows)
+        run: nix develop --command -- cargo doc --no-deps --all-features --workspace --target x86_64-pc-windows-gnu
 
   build:
     name: Test and Build

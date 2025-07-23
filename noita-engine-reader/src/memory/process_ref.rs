@@ -176,7 +176,7 @@ mod platform {
     /// which makes windows error codes into ugly large negatives instead of hex
     /// strings that windows does
     fn better_message(e: windows::core::Error) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, e.to_string())
+        io::Error::other(e.to_string())
     }
 
     impl Handle {
@@ -224,7 +224,7 @@ mod platform {
     use direct_syscall::open_process;
 
     /// A quick and dirty copypaste of the "Hells Gate" technique
-    /// (https://fluxsec.red/rust-edr-evasion-hells-gate)
+    /// (<https://fluxsec.red/rust-edr-evasion-hells-gate>)
     /// to hopefully stop Windows Defender from being annoying
     /// by *LITERALLY* employing detection evasion rofl
     ///

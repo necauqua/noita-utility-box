@@ -4,6 +4,7 @@
 /result-[1-3]
 
 /.vscode
+/.zed
 /tests
 
 /res/icon.ico
