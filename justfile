@@ -33,11 +33,12 @@ release version: check
     cargo update -q --offline
 
     # Make a commit and the annotated tag
-    jj ci -m "release: {{version}}" && jj bookmark set main -r @-
+    git commit -am "release: {{version}}"
+    git branch -f main HEAD # jj tug lmao
     git tag --cleanup=whitespace -m "$annotation" "v{{version}}"
 
     read -p $'Push it? [y/N]\n' -n 1 -r
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then jj git push && git push --tags; fi
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then git push refs/heads/main refs/tags/v{{version}}; fi
 
 play:
     cargo test --workspace --package playground::test -- --ignored --nocapture
