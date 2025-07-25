@@ -58,25 +58,48 @@ of another on top of fullscreen Noita some information:
 
 - [ ] Orb radar
 - [ ] Coords
-- [ ] Arbitrary entity component informations?
+- [ ] Arbitrary entity component information?
 
-## Development
+### Development
 
-### Building from sources
+`cargo build/run` should just work to build or run the binary for your
+platform, given that you have [Rust](https://rustup.rs) installed.
 
-`cargo build --release` will work to build the binary for your platform, but
-for cross-compilation the thing that works reliably for me is Nix.
+If you're not on Windows, you can build the Windows .exe by doing:
+  - `rustup add x86_64-pc-windows-gnu` once and having `mingw-w64` installed on your system.
+  - And then `cargo build --release --target x86_64-pc-windows-gnu`
 
-If you have [Nix](https://nixos.org/download/) set up, you can build the flake
-apps `.#windows`, `.#linux` and `.#deb`:
+If you're on NixOS (or just use Nix) the dev shell in `flake.nix` provides all
+necessary dependencies for the above commands to work, you can enter is with
+`nix develop` but I suggest using `direnv`.
 
-- `nix build . .#{{target}}`
+To get a bit-by-bit reproducible builds of artifacts downloadable from
+[releases](https://github.com/necauqua/noita-utility-box/releases), you can set
+up [Nix](https://nixos.org/download/), and use
+```bash
+nix build .#linux
+# or
+nix build .#deb
+# or
+nix build .#windows
+# or all at once
+nix build .#linux .#deb .#windows
+```
 
-The `justfile` provides the following shortcuts (given you have `just` installed):
-- `just check` will check for formatting and clippy errors to save on waiting for CI to catch those
-- `just build (windows|linux|deb)` to build a specific artifact (still requires Nix, just an alias for the above)
-- `just build-all` to build all three
+On NixOS the flake app is installable with
+```bash
+nix profile install github:necauqua/noita-utility-box
+```
+to get a bleeding edge version (from latest `main` commit) or
+```bash
+nix profile install github:necauqua/noita-utility-box/release
+```
+for the latest release.
 
-## License
+If have `just` installed, there's a convenient `just check` shortcut that will
+check for formatting and clippy errors to save on waiting for CI to catch
+those (it will probably not work well on Windows).
+
+### License
 It's MIT, please have a copy of the LICENSE file in your derivatives so that my
 name is there lol

@@ -10,12 +10,6 @@ check:
     cargo doc --no-deps --all-features --workspace --target x86_64-pc-windows-gnu
     cargo test --all-features --workspace
 
-build target:
-    nix build . ".#{{target}}"
-
-build-all:
-    nix build . ".#windows" ".#linux" ".#deb"
-
 release version: check
     #!/usr/bin/env bash
     set -euo pipefail
@@ -35,10 +29,8 @@ release version: check
     # Make a commit and the annotated tag
     git commit -am "release: {{version}}"
     git branch -f main HEAD # jj tug lmao
+    git branch -f release HEAD
     git tag --cleanup=whitespace -m "$annotation" "v{{version}}"
 
     read -p $'Push it? [y/N]\n' -n 1 -r
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then git push refs/heads/main refs/tags/v{{version}}; fi
-
-play:
-    cargo test --workspace --package playground::test -- --ignored --nocapture
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then git push refs/heads/main refs/heads/release refs/tags/v{{version}}; fi

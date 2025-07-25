@@ -179,9 +179,8 @@
             inputsFrom = builtins.attrValues packages;
 
             nativeBuildInputs = with pkgs; [
-              # # inputsFrom does not seem to include the depsBuildBuild thing
-              # pkgsCross.mingwW64.stdenv.cc
-              # pkgsCross.mingwW64.windows.pthreads
+              # inputsFrom does not seem to include the depsBuildBuild thing
+              pkgsCross.mingwW64.stdenv.cc
 
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview
@@ -189,6 +188,8 @@
 
               p7zip
             ];
+
+            CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS = "-L native=${pkgs.pkgsCross.mingwW64.windows.pthreads}/lib";
 
             LD_LIBRARY_PATH = dynamicDeps;
 
