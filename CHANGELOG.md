@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
+
 ## [v0.4.1] 12025-07-26
 
 ### Fixed

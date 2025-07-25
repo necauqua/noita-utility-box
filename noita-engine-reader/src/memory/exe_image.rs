@@ -4,7 +4,7 @@ use iced_x86::{Code, Decoder, DecoderOptions, Instruction};
 use memchr::memmem;
 use thiserror::Error;
 
-use crate::memory::{Ibo, MemoryStorage, ProcessRef};
+use crate::memory::ProcessRef;
 
 use super::PtrReadable;
 
@@ -29,7 +29,7 @@ pub enum ReadImageError {
 struct DosHeaderData {
     magic: [u8; 2],
     _skip: [u8; 0x3a],
-    e_lfanew: Ibo<PeHeaderData>,
+    e_lfanew: u32, // offset to PE header
 }
 
 #[derive(Debug, PtrReadable)]
@@ -72,12 +72,12 @@ impl PeHeader {
     }
 
     pub fn read(proc: &ProcessRef) -> Result<Self, ReadImageError> {
-        let dos_header = Ibo::<DosHeaderData>::of(0x0).read(proc)?;
+        let dos_header = proc.read::<DosHeaderData>(proc.base() as _)?;
         if dos_header.magic != *b"MZ" {
             return Err(ReadImageError::InvalidMzHeader);
         }
 
-        let pe = dos_header.e_lfanew.read(proc)?;
+        let pe = proc.read::<PeHeaderData>(proc.base() as u32 + dos_header.e_lfanew)?;
         if pe.magic != *b"PE\0\0" {
             return Err(ReadImageError::InvalidPeHeader);
         }

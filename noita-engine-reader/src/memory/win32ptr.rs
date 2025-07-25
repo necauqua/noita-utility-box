@@ -37,10 +37,6 @@ impl RawPtr {
         proc.read_multiple(self.0, len)
     }
 
-    pub fn read_at<T: Pod>(self, offset: u32, proc: &ProcessRef) -> io::Result<T> {
-        proc.read(self.0 + offset)
-    }
-
     pub fn read<T: Pod>(self, proc: &ProcessRef) -> io::Result<T> {
         proc.read(self.0)
     }
@@ -64,14 +60,12 @@ impl From<u32> for RawPtr {
 
 #[derive(FromBytes, IntoBytes)]
 #[repr(transparent)]
-pub struct Ptr<T, const BASE: u32 = 0> {
+pub struct Ptr<T> {
     raw: RawPtr,
     _phantom: PhantomData<T>,
 }
 
-pub type Ibo<T> = Ptr<T, 0x0040_0000>;
-
-impl<T, const BASE: u32> Ptr<T, BASE> {
+impl<T> Ptr<T> {
     pub const fn of(addr: u32) -> Self {
         Self {
             raw: RawPtr::of(addr),
@@ -98,37 +92,33 @@ impl<T> Ptr<T> {
     }
 }
 
-impl<T, const BASE: u32> Clone for Ptr<T, BASE> {
+impl<T> Clone for Ptr<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<T, const BASE: u32> Copy for Ptr<T, BASE> {}
+impl<T> Copy for Ptr<T> {}
 
-impl<T, const BASE: u32> PartialEq for Ptr<T, BASE> {
+impl<T> PartialEq for Ptr<T> {
     fn eq(&self, other: &Self) -> bool {
         self.raw == other.raw
     }
 }
 
-impl<T, const BASE: u32> Eq for Ptr<T, BASE> {}
+impl<T> Eq for Ptr<T> {}
 
-impl<T, const BASE: u32> Debug for Ptr<T, BASE> {
+impl<T> Debug for Ptr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if BASE == 0 {
-            if self.raw.is_null() {
-                write!(f, "NULL")
-            } else {
-                write!(f, "{:?} as {}", self.raw, debug_type::<T>())
-            }
+        if self.raw.is_null() {
+            write!(f, "NULL")
         } else {
-            write!(f, "0x{BASE:08x}+{:?} as {}", self.raw, debug_type::<T>())
+            write!(f, "{:?} as {}", self.raw, debug_type::<T>())
         }
     }
 }
 
-impl<T, const BASE: u32> Serialize for Ptr<T, BASE>
+impl<T> Serialize for Ptr<T>
 where
     T: PtrReadable + Serialize,
 {
@@ -139,13 +129,12 @@ where
         // Only try to dereference if we have a process context and pointer is not null
         crate::memory::DEBUG_PROCESS.with_borrow(|proc| {
             if let Some(proc) = proc.as_ref() {
-                if BASE == 0 && self.raw.is_null() {
-                    serializer.serialize_none()
-                } else {
-                    match self.read(proc) {
-                        Ok(val) => val.serialize(serializer),
-                        Err(_) => serializer.serialize_none(),
-                    }
+                if self.raw.is_null() {
+                    return serializer.serialize_none();
+                }
+                match self.read(proc) {
+                    Ok(val) => val.serialize(serializer),
+                    Err(_) => serializer.serialize_none(),
                 }
             } else {
                 serializer.serialize_u32(self.raw.addr())
@@ -154,28 +143,28 @@ where
     }
 }
 
-impl<T, const BASE: u32> From<u32> for Ptr<T, BASE> {
+impl<T> From<u32> for Ptr<T> {
     fn from(addr: u32) -> Self {
         Self::of(addr)
     }
 }
 
 // pointers themselves are readable through pointers
-impl<T: 'static, const BASE: u32> PtrReadable for Ptr<T, BASE> {}
+impl<T: 'static> PtrReadable for Ptr<T> {}
 
-impl<T: PtrReadable, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
+impl<T: PtrReadable> MemoryStorage for Ptr<T> {
     type Value = T;
 
     #[track_caller]
     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
-        if BASE == 0 && self.raw.is_null() {
+        if self.raw.is_null() {
             let loc = Location::caller();
             Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 format!("Reading a NULL pointer at {loc}"),
             ))
         } else {
-            self.raw.read_at(BASE, proc)
+            self.raw.read(proc)
         }
     }
 }
@@ -183,7 +172,7 @@ impl<T: PtrReadable, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
 // Sadly, this is a specialization, for it to work we need a blanket noop impl
 // for MemoryStorage, which would conflict with this
 //
-// impl<T: MemoryStorage, const BASE: u32> MemoryStorage for Ptr<T, BASE> {
+// impl<T: MemoryStorage> MemoryStorage for Ptr<T> {
 //     type Value = T::Value;
 
 //     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {

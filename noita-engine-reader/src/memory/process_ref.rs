@@ -34,8 +34,12 @@ impl ProcessRef {
         self.pe_header.as_ref().unwrap()
     }
 
-    pub fn pid(&self) -> u32 {
+    pub const fn pid(&self) -> u32 {
         self.handle.pid()
+    }
+
+    pub const fn base(&self) -> usize {
+        self.handle.base()
     }
 
     #[cfg(target_os = "linux")]
@@ -91,8 +95,12 @@ mod platform {
             &self.steam_compat_data_path
         }
 
-        pub fn pid(&self) -> u32 {
+        pub const fn pid(&self) -> u32 {
             self.pid as _
+        }
+
+        pub const fn base(&self) -> usize {
+            0x0040_0000
         }
 
         pub fn read_memory(&self, addr: usize, buf: &mut [u8]) -> io::Result<()> {
@@ -121,7 +129,9 @@ mod platform {
 mod platform {
     use std::{io, sync::Arc};
     use windows::Win32::System::{
-        Diagnostics::Debug::ReadProcessMemory, Threading::PROCESS_VM_READ,
+        Diagnostics::Debug::ReadProcessMemory,
+        ProcessStatus::EnumProcessModules,
+        Threading::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ},
     };
 
     mod threadsafe_handle {
@@ -168,6 +178,7 @@ mod platform {
     #[derive(Debug, Clone)]
     pub struct Handle {
         pid: u32,
+        base: usize,
         handle: Arc<ThreadsafeHandle>,
     }
 
@@ -181,14 +192,33 @@ mod platform {
 
     impl Handle {
         pub fn connect(pid: u32) -> io::Result<Self> {
+            let handle = open_process(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, pid)
+                .map_err(better_message)?;
+
+            let mut module = unsafe { std::mem::zeroed() };
+            let mut cb_needed = 0;
+            unsafe {
+                EnumProcessModules(
+                    *handle,
+                    &mut module,
+                    std::mem::size_of_val(&module) as _,
+                    &mut cb_needed,
+                )
+            }?;
+
             Ok(Self {
                 pid,
-                handle: Arc::new(open_process(PROCESS_VM_READ, pid).map_err(better_message)?),
+                base: module.0 as _,
+                handle: Arc::new(handle),
             })
         }
 
-        pub fn pid(&self) -> u32 {
+        pub const fn pid(&self) -> u32 {
             self.pid
+        }
+
+        pub const fn base(&self) -> usize {
+            self.base
         }
 
         pub fn read_memory(&self, addr: usize, buf: &mut [u8]) -> io::Result<()> {
