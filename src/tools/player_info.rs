@@ -65,8 +65,7 @@ fn section(ui: &mut Ui, title: &str, add_contents: impl FnOnce(&mut Ui) -> Resul
                 .inner
         })
         .body_returned
-        .transpose()
-        .unwrap_or_default();
+        .transpose()?;
     Ok(())
 }
 
@@ -148,7 +147,7 @@ impl Tool for PlayerInfo {
                                 &self.cached_translations,
                                 &entity,
                             )
-                            .context(format!("Reading wand {entity:?}"))?,
+                            .with_context(|| format!("Reading wand {entity:#?}"))?,
                         );
                         Result::Ok(())
                     })
