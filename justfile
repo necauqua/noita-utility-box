@@ -33,4 +33,8 @@ release version: check
     git tag --cleanup=whitespace -m "$annotation" "v{{version}}"
 
     read -p $'Push it? [y/N]\n' -n 1 -r
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then git push refs/heads/main refs/heads/release refs/tags/v{{version}}; fi
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        for remote in $(git remote); do
+            git push $remote refs/heads/main refs/heads/release refs/tags/v{{version}} --force
+        done
+    fi
