@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.4.1] 12025-07-26
+
 ### Fixed
   - (hotfix) Fix the new Player Info tab not showing the wands.
   - Also fix the unfinished material list not showing any materials with sprites (same error as the wands).
@@ -81,7 +83,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.4.1...HEAD
+[v0.4.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.1
 [v0.4.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.0
 [v0.3.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.3.0
 [v0.2.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.2.1

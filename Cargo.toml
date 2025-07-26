@@ -4,7 +4,7 @@ resolver = "2"
 [package]
 name = "noita-utility-box"
 description = "A collection of memory-reading utilities for the game Noita"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 license = "MIT"
 
