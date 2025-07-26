@@ -8,6 +8,10 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - (hotfix) Fix the new Player Info tab not showing the wands.
+  - Also fix the unfinished material list not showing any materials with sprites (same error as the wands).
+
 ## [v0.4.0] 12025-07-23
 
 ### Added

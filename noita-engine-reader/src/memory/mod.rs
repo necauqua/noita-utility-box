@@ -442,6 +442,10 @@ impl<K: MemoryStorage, V> StdMap<K, V> {
         let root_ptr = self.root;
         let root = root_ptr.read(proc)?;
 
+        if { root.parent } == root_ptr || { root.parent }.is_null() {
+            return Ok(None);
+        }
+
         // The root node is special, root.parent is the actual root node
         // of the binary tree and root.left/root.right are first/last I think
         let mut node = { root.parent }.read(proc)?;
