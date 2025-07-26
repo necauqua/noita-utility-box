@@ -8,9 +8,6 @@ version = "0.4.1"
 edition = "2024"
 license = "MIT"
 
-[features]
-default = ["noita-engine-reader/sneaky"]
-
 [dependencies]
 noita-engine-reader = { path = "noita-engine-reader" }
 

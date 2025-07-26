@@ -5,8 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [features]
-default = ["sneaky", "lookup"]
-sneaky = ["dep:export-resolver", "dep:str_crypter"]
+default = ["lookup"]
 lookup = ["dep:sysinfo"]
 
 [dependencies]
@@ -37,8 +36,6 @@ serde_json = { version = "1.0.141", features = ["preserve_order"] }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-export-resolver = { version = "1", optional = true }
-str_crypter = { version = "1", optional = true }
 windows = { version = "0.61", default-features = false, features = [
     "Wdk_Foundation",
     "Win32_Security",
