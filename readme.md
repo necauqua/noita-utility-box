@@ -100,6 +100,33 @@ If have `just` installed, there's a convenient `just check` shortcut that will
 check for formatting and clippy errors to save on waiting for CI to catch
 those (it will probably not work well on Windows).
 
+### Contribution
+If you want to contribute, feel free to open a PR here on github, or send
+patches on [tangled](https://tangled.sh/@necauq.ua/noita-utility-box),
+[radicle](https://app.radicle.xyz/nodes/iris.radicle.xyz/rad%3Az2n8gDK7BUhNrt2aV2wCanazHoSSN)
+or even to my (e-mail)[mailto:him@necauq.ua?subject=noita-utility-box].
+
+- This repo follows a convention of small atomic commits (the smaller the
+  better) that I will fast-forward into the `main` branch once you pass my
+  reviews. This means your PGP signatures and commit authorship will be fully
+  preserved in git history.
+
+- Since the commit (before that I was a bit loose) introducing this contribution
+  section, this repo strictly follows the
+  [conventional commits](https://www.conventionalcommits.org/)
+  naming scheme, I *will* ask you to reword commits.
+  Also I find this
+  [cheat sheet](https://gist.github.com/qoomon/5dfcdf8eec66a051ecd85625518cfd13)
+  to be easier to digest, take a look.
+
+- Any review comment fixes **must** be amended into respective commits, the
+  final patchset should be clear of any "addressing reviews" commits.
+  You can read
+  [this](https://gist.github.com/thoughtpolice/9c45287550a56b2047c6311fbadebed2)
+  excellent writeup on the topic. Also I cannot recommend enough checking out
+  [jujutsu](https://github.com/jj-vcs/jj#readme) which makes all of the above
+  that much easier compared to git.
+
 ### License
 It's MIT, please have a copy of the LICENSE file in your derivatives so that my
 name is there lol
