@@ -289,7 +289,7 @@ impl Wand {
             "" => None,
             s => {
                 // just cheat, for wands this seems ok
-                let s = s.replace(".xml", ".png");
+                let s = s.replace("_sprite.xml", ".png").replace(".xml", ".png");
                 Some((format!("bytes://{s}"), noita.get_file(&s)?))
             }
         };

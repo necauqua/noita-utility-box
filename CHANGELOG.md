@@ -10,6 +10,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ### Fixed
   - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
+  - No longer break when loading experimental wands. @Larandar
 
 ## [v0.4.1] 12025-07-26
 
