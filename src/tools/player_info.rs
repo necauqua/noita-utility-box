@@ -298,12 +298,14 @@ impl Wand {
         let mut spells = Vec::new();
         let mut always_cast_count = 0;
 
-        for entity in entity.children.read(p)?.read_storage(p)? {
-            let item = item_store.get_checked(&entity)?;
-            let spell = spell_store.get_checked(&entity)?;
+        if !entity.children.is_null() {
+            for entity in entity.children.read(p)?.read_storage(p)? {
+                let item = item_store.get_checked(&entity)?;
+                let spell = spell_store.get_checked(&entity)?;
 
-            spells.push(spell.action_id.read(p)?);
-            always_cast_count += item.permanently_attached.as_bool() as i32;
+                spells.push(spell.action_id.read(p)?);
+                always_cast_count += item.permanently_attached.as_bool() as i32;
+            }
         }
 
         Ok(Self {
