@@ -104,7 +104,7 @@ those (it will probably not work well on Windows).
 If you want to contribute, feel free to open a PR here on github, or send
 patches on [tangled](https://tangled.sh/@necauq.ua/noita-utility-box),
 [radicle](https://app.radicle.xyz/nodes/iris.radicle.xyz/rad%3Az2n8gDK7BUhNrt2aV2wCanazHoSSN)
-or even to my (e-mail)[mailto:him@necauq.ua?subject=noita-utility-box].
+or even to my [e-mail](mailto:him@necauq.ua?subject=noita-utility-box).
 
 - This repo follows a convention of small atomic commits (the smaller the
   better) that I will fast-forward into the `main` branch once you pass my
