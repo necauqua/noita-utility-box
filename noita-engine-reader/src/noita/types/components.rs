@@ -1,3 +1,4 @@
+pub use noita_engine_reader_macros::ComponentName;
 use open_enum::open_enum;
 use serde::Serialize;
 use zerocopy::{FromBytes, IntoBytes};
@@ -30,7 +31,7 @@ pub trait ComponentName {
     const NAME: &str;
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct WalletComponent {
     pub money: Align4<u64>,
@@ -39,11 +40,7 @@ pub struct WalletComponent {
     pub m_has_reached_inf: PadBool<3>,
 }
 
-impl ComponentName for WalletComponent {
-    const NAME: &str = "WalletComponent";
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ItemComponent {
     pub item_name: StdString,
@@ -88,21 +85,13 @@ pub struct ItemComponent {
     pub m_is_identified: PadBool<3>,
 }
 
-impl ComponentName for ItemComponent {
-    const NAME: &str = "ItemComponent";
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct ItemActionComponent {
     pub action_id: StdString,
 }
 
-impl ComponentName for ItemActionComponent {
-    const NAME: &str = "ItemActionComponent";
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct MaterialInventoryComponent {
     pub drop_as_item: ByteBool,
@@ -130,11 +119,7 @@ pub struct MaterialInventoryComponent {
     pub ex_angle: f32,
 }
 
-impl ComponentName for MaterialInventoryComponent {
-    const NAME: &str = "MaterialInventoryComponent";
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct DamageModelComponent {
     pub hp: Align4<f64>,
@@ -231,11 +216,7 @@ pub struct DamageModelComponent {
 }
 const _: () = assert!(std::mem::size_of::<DamageModelComponent>() == 0x294);
 
-impl ComponentName for DamageModelComponent {
-    const NAME: &str = "DamageModelComponent";
-}
-
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct UIIconComponent {
     pub icon_sprite_file: StdString,
@@ -244,10 +225,6 @@ pub struct UIIconComponent {
     pub display_above_head: ByteBool,
     pub display_in_hud: ByteBool,
     pub is_perk: PadBool<1>,
-}
-
-impl ComponentName for UIIconComponent {
-    const NAME: &str = "UIIconComponent";
 }
 
 #[derive(FromBytes, IntoBytes, Debug)]
@@ -333,7 +310,7 @@ pub struct ConfigGunActionInfo {
 }
 const _: () = assert!(std::mem::size_of::<ConfigGunActionInfo>() == 0x23c);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct AbilityComponent {
     pub cooldown_frames: i32,
@@ -387,10 +364,6 @@ pub struct AbilityComponent {
     pub m_is_initialized: PadBool<3>,
 }
 const _: () = assert!(std::mem::size_of::<AbilityComponent>() == 0x374);
-
-impl ComponentName for AbilityComponent {
-    const NAME: &str = "AbilityComponent";
-}
 
 #[derive(FromBytes, IntoBytes, Debug, Serialize)]
 #[repr(C)]
@@ -470,7 +443,7 @@ pub struct ConfigCutThroughWorld {
 }
 const _: () = assert!(std::mem::size_of::<ConfigCutThroughWorld>() == 0x1c);
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct WorldStateComponent {
     pub is_initialized: WithPad<ByteBool, 3>,
@@ -538,10 +511,6 @@ pub struct WorldStateComponent {
 }
 const _: () = assert!(std::mem::size_of::<WorldStateComponent>() == 0x180);
 
-impl ComponentName for WorldStateComponent {
-    const NAME: &str = "WorldStateComponent";
-}
-
 #[open_enum]
 #[repr(u32)]
 #[derive(FromBytes, IntoBytes, Debug)]
@@ -551,7 +520,7 @@ pub enum LuaVmType {
     OnePerComponentInstance,
 }
 
-#[derive(FromBytes, IntoBytes, Debug)]
+#[derive(ComponentName, FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct LuaComponent {
     pub script_source_file: StdString,
@@ -600,7 +569,3 @@ pub struct LuaComponent {
 }
 
 const _: () = assert!(std::mem::size_of::<LuaComponent>() == 0x2d8 - 0x48);
-
-impl ComponentName for LuaComponent {
-    const NAME: &str = "LuaComponent";
-}

@@ -44,3 +44,18 @@ pub fn derive_macro(item: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[proc_macro_derive(ComponentName)]
+pub fn derive_component_name(item: TokenStream) -> TokenStream {
+    let derive_input = syn::parse_macro_input!(item as syn::DeriveInput);
+    let ident = &derive_input.ident;
+    let name = ident.to_string();
+    let name = name.trim_start_matches("r#");
+
+    quote! {
+        impl crate::noita::types::components::ComponentName for #ident {
+            const NAME: &'static str = #name;
+        }
+    }
+    .into()
+}
