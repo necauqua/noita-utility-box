@@ -111,6 +111,10 @@ or even to my [e-mail](mailto:him@necauq.ua?subject=noita-utility-box).
   reviews. This means your PGP signatures and commit authorship will be fully
   preserved in git history.
 
+- Each commit that has user-facing changes must also have a changelog entry
+  added to the corresponding section under "Unreleased" in the `CHANGELOG.md`
+  file.
+
 - Since the commit (before that I was a bit loose) introducing this contribution
   section, this repo strictly follows the
   [conventional commits](https://www.conventionalcommits.org/)
