@@ -1,4 +1,10 @@
-use std::{borrow::Cow, collections::HashMap, io, marker::PhantomData, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, hash_map::Entry},
+    io,
+    marker::PhantomData,
+    sync::Arc,
+};
 
 use convert_case::{Case, Casing};
 use derive_more::{Debug, derive::Display};
@@ -27,6 +33,7 @@ pub struct Noita {
     materials: Vec<String>,
     material_ui_names: Vec<String>,
     files: HashMap<String, Arc<[u8]>>,
+    component_stores: HashMap<&'static str, ComponentStore<()>>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -120,6 +127,7 @@ impl Noita {
             materials: Default::default(),
             material_ui_names: Default::default(),
             files: Default::default(),
+            component_stores: Default::default(),
         }
     }
 
@@ -340,7 +348,12 @@ impl Noita {
         read_ptr!(self.component_type_manager)
     }
 
-    pub fn component_store<T: ComponentName>(&self) -> io::Result<ComponentStore<T>> {
+    pub fn component_store<T: ComponentName>(&mut self) -> io::Result<ComponentStore<T>> {
+        let entry = self.component_stores.entry(T::NAME);
+        if let Entry::Occupied(entry) = entry {
+            return Ok(entry.get().cast());
+        }
+
         let index = read_ptr!(self.component_type_manager)?
             .component_indices
             .get(&self.proc, T::NAME)?
@@ -358,11 +371,14 @@ impl Noita {
             ))?
             .read(&self.proc)?;
 
-        Ok(ComponentStore {
+        let store = ComponentStore {
             proc: self.proc.clone(),
             buffer,
             _marker: PhantomData,
-        })
+        };
+        let ret = store.cast();
+        entry.insert_entry(store);
+        Ok(ret)
     }
 
     pub fn get_camera_pos(&self) -> io::Result<Vec2> {
@@ -408,11 +424,21 @@ impl Seed {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentStore<T> {
     proc: ProcessRef,
     buffer: Ptr<ComponentBuffer>,
     _marker: PhantomData<T>,
+}
+
+impl ComponentStore<()> {
+    pub(crate) fn cast<T>(&self) -> ComponentStore<T> {
+        ComponentStore {
+            proc: self.proc.clone(),
+            buffer: self.buffer,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T> ComponentStore<T>

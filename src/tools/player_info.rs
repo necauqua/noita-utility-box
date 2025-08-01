@@ -443,6 +443,9 @@ impl Widget for &Wand {
                                     self.ability.gunaction_config.speed_multiplier
                                 ));
                                 ui.end_row();
+                                ui.label("Wand Level");
+                                ui.label(format!("{}", self.ability.gun_level));
+                                ui.end_row();
                                 ui.label("Entity ID");
                                 ui.label(format!("{}", self.id));
                                 ui.end_row();

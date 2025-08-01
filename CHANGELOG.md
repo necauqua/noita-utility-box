@@ -8,6 +8,12 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Added
+  - Show the wand level in hidden stats.
+
+### Changed
+  - No longer rounding the wand speed hidden stat, the entire float number is  useful for advanced LDT.
+
 ### Fixed
   - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
   - No longer break when loading experimental wands. @Larandar
