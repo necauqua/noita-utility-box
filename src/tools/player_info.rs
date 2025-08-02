@@ -439,7 +439,7 @@ impl Widget for &Wand {
                             .show(ui, |ui| {
                                 ui.label("Speed Mult.");
                                 ui.label(format!(
-                                    "{:0.2}",
+                                    "{}",
                                     self.ability.gunaction_config.speed_multiplier
                                 ));
                                 ui.end_row();
