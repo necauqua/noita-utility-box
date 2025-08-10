@@ -2,6 +2,7 @@ use std::{
     any::TypeId,
     borrow::Cow,
     fmt::{self, Display},
+    panic::Location,
 };
 
 use crate::app::AppState;
@@ -84,8 +85,8 @@ impl Display for UnexpectedError {
 
 #[derive(Debug, Error)]
 pub enum ToolError {
-    #[error("{0}")]
-    Unexpected(UnexpectedError),
+    #[error("{0}\n    at {1}")]
+    Unexpected(UnexpectedError, &'static Location<'static>),
     #[error("{0}")]
     BadState(String),
     #[error("{0}")]
@@ -102,14 +103,16 @@ impl ToolError {
 }
 
 impl From<anyhow::Error> for ToolError {
+    #[track_caller]
     fn from(e: anyhow::Error) -> Self {
-        ToolError::Unexpected(UnexpectedError::Contextual(e))
+        ToolError::Unexpected(UnexpectedError::Contextual(e), Location::caller())
     }
 }
 
 impl From<std::io::Error> for ToolError {
+    #[track_caller]
     fn from(e: std::io::Error) -> Self {
-        ToolError::Unexpected(UnexpectedError::Io(e))
+        ToolError::Unexpected(UnexpectedError::Io(e), Location::caller())
     }
 }
 
