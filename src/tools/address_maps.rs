@@ -32,6 +32,7 @@ pub struct AddressEntry {
 }
 
 #[derive(SmartDefault, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AddressMapInner {
     name: String,
     noita_ts: u32,

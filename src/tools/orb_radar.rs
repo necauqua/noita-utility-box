@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use super::{Result, Tool};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct OrbRadar {
     realtime: bool,
     show_rooms: bool,

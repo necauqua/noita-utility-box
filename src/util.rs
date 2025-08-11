@@ -121,7 +121,8 @@ macro_rules! persist {
             fn deserialize<D: ::serde::Deserializer<'de>>(
                 deserializer: D,
             ) -> ::std::result::Result<Self, D::Error> {
-                #[derive(::serde::Deserialize)]
+                #[derive(::serde::Deserialize, Default)]
+                #[serde(default)]
                 struct Persisted {
                     $($field: $field_t,)*
                 }
