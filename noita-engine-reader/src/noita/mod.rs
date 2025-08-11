@@ -377,7 +377,9 @@ impl Noita {
             _marker: PhantomData,
         };
         let ret = store.cast();
-        entry.insert_entry(store);
+        if !buffer.is_null() {
+            entry.insert_entry(store);
+        }
         Ok(ret)
     }
 
@@ -446,6 +448,9 @@ where
     T: ComponentName + Pod,
 {
     pub fn get_full(&self, entity: &Entity) -> io::Result<Option<Component<T>>> {
+        if self.buffer.is_null() {
+            return Ok(None);
+        }
         let buffer = self.buffer.read(&self.proc)?;
 
         let idx = buffer
