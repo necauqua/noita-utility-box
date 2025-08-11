@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     io,
     sync::{
         Arc,
@@ -9,7 +8,7 @@ use std::{
 
 use derive_more::derive::Debug;
 use eframe::egui::{
-    self, Grid, Image, Label, Link, ScrollArea, TextFormat, TextureOptions, Ui, ViewportBuilder,
+    self, Grid, Image, Link, ScrollArea, TextFormat, TextureOptions, Ui, ViewportBuilder,
     ViewportId, Widget, text::LayoutJob,
 };
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
@@ -18,7 +17,7 @@ use noita_engine_reader::{
 };
 use smart_default::SmartDefault;
 
-use crate::{app::AppState, util::persist};
+use crate::{app::AppState, util::persist, widgets::JsonWidget};
 
 use super::{Result, Tool, ToolError};
 
@@ -44,8 +43,6 @@ persist!(MaterialList {
 #[derive(Debug)]
 struct FilteredCellData {
     idx: String,
-    name: String,
-    ui_name: String,
     ui_name_translated: String,
     name_highlights: LayoutJob,
     ui_name_highlights: LayoutJob,
@@ -55,8 +52,6 @@ struct FilteredCellData {
 
 #[derive(Debug)]
 struct MaterialView {
-    name: String,
-    ui_name: String,
     ui_name_translated: String,
     texture: Option<(String, Arc<[u8]>)>,
     cell_data: Arc<CellData>,
@@ -75,8 +70,6 @@ impl MaterialView {
         };
 
         Ok(Self {
-            name: entry.name.clone(),
-            ui_name: entry.ui_name.clone(),
             ui_name_translated: entry.ui_name_translated.clone(),
             texture,
             cell_data: entry.data.clone(),
@@ -85,47 +78,24 @@ impl MaterialView {
     }
 }
 
-trait UiExt {
-    fn widget(&mut self, name: &str, widget: impl Widget);
-    fn plain(&mut self, name: &str, value: impl ToString);
-}
-
-impl UiExt for Ui {
-    fn widget(&mut self, name: &str, widget: impl Widget) {
-        self.label(name);
-        widget.ui(self);
-        self.end_row();
-    }
-
-    fn plain(&mut self, name: &str, value: impl ToString) {
-        self.widget(name, Label::new(value.to_string()));
-    }
-}
-
 impl Widget for &MaterialView {
     fn ui(self, ui: &mut Ui) -> egui::Response {
         ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            Grid::new("material_view")
-                .num_columns(2)
-                .striped(true)
-                .show(ui, |ui| {
-                    if let Some(texture) = &self.texture {
-                        ui.widget(
-                            "texture",
-                            Image::new(texture.clone())
-                                .tint({
-                                    let [r, g, b, a] =
-                                        self.cell_data.graphics.color.0.to_le_bytes();
-                                    egui::Color32::from_rgba_premultiplied(r, g, b, a)
-                                })
-                                .texture_options(TextureOptions::NEAREST),
-                        );
-                    }
-                    ui.plain("name", &self.name);
-                    ui.plain("ui_name", &self.ui_name);
-                    ui.plain("ui_name (translated)", &self.ui_name_translated);
-                    ui.plain("durability", &self.cell_data.durability);
-                })
+            let json = serde_json::to_value(&self.cell_data).unwrap();
+
+            ui.label(&self.ui_name_translated);
+            if let Some(texture) = &self.texture {
+                ui.add(
+                    Image::new(texture.clone())
+                        .tint({
+                            let [r, g, b, a] = self.cell_data.graphics.color.0.to_le_bytes();
+                            egui::Color32::from_rgba_premultiplied(r, g, b, a)
+                        })
+                        .texture_options(TextureOptions::NEAREST)
+                        .fit_to_original_size(4.0),
+                );
+            }
+            ui.add(JsonWidget::new(&json));
         });
         ui.response()
     }
@@ -170,9 +140,8 @@ impl Tool for MaterialList {
                 let ui_name = data.ui_name.read(noita.proc())?;
                 let ui_name_translated = ui_name
                     .strip_prefix("$")
-                    .map(|key| self.cached_translations.translate(key, true))
-                    .unwrap_or(Cow::Borrowed(&ui_name))
-                    .into_owned();
+                    .and_then(|key| self.cached_translations.translate(key, true))
+                    .unwrap_or_else(|| ui_name.to_owned());
 
                 let name_match = self.matcher.fuzzy_indices(&name, &self.search_text);
                 let ui_name_match = self
@@ -196,8 +165,6 @@ impl Tool for MaterialList {
                     idx: idx.to_string(),
                     name_highlights,
                     ui_name_highlights,
-                    name,
-                    ui_name,
                     ui_name_translated,
                     score,
                     data: data.clone(),

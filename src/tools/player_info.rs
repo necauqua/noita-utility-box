@@ -45,14 +45,13 @@ impl PlayerInfo {
             "" => default_name,
             n => n.trim_start_matches('$'),
         };
-        let translated = self.cached_translations.translate(key, true);
-        if translated != key {
-            return Ok(translated.into_owned());
+        if let Some(translated) = self.cached_translations.translate(key, true) {
+            return Ok(translated);
         }
         Ok(self
             .cached_translations
             .translate(default_name, true)
-            .into_owned())
+            .unwrap_or_else(|| default_name.to_owned()))
     }
 }
 
@@ -275,12 +274,10 @@ impl Wand {
             "" => "item_wand",
             n => n.trim_start_matches('$'),
         };
-        let translated = translations.translate(key, true);
-        let name = if translated != key {
-            translated.into_owned()
-        } else {
-            translations.translate("item_wand", true).into_owned()
-        };
+        let name = translations
+            .translate(key, true)
+            .or_else(|| translations.translate("item_wand", true))
+            .unwrap_or_else(|| "item_wand".to_owned());
 
         let ability = store.get_checked(entity)?;
 

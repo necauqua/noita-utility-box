@@ -14,6 +14,7 @@ mod orb_searcher;
 mod tools;
 mod update_check;
 mod util;
+mod widgets;
 
 fn setup_logging() -> Result<WorkerGuard> {
     // attempt to attach to parent console, so that we have panics/logs when

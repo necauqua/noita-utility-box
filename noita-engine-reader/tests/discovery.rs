@@ -33,23 +33,30 @@ fn test() -> Result<()> {
         world_seed,
         ng_count,
         global_stats,
+        config_player_stats,
         game_global,
         entity_manager,
         entity_tag_manager,
         component_type_manager,
         translation_manager,
         platform,
+        persistent_flag_manager,
+        mod_context,
     } = KnownBuild::last().map();
 
+    // separate asserts so we know which one failed (maybe use insta?)
     assert_eq!(globals.world_seed, world_seed);
     assert_eq!(globals.ng_count, ng_count);
     assert_eq!(globals.global_stats, global_stats);
+    assert_eq!(globals.config_player_stats, config_player_stats);
     assert_eq!(globals.game_global, game_global);
     assert_eq!(globals.entity_manager, entity_manager);
     assert_eq!(globals.entity_tag_manager, entity_tag_manager);
     assert_eq!(globals.component_type_manager, component_type_manager);
     assert_eq!(globals.translation_manager, translation_manager);
     assert_eq!(globals.platform, platform);
+    assert_eq!(globals.persistent_flag_manager, persistent_flag_manager);
+    assert_eq!(globals.mod_context, mod_context);
 
     Ok(())
 }

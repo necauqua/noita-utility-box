@@ -150,6 +150,17 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
         .map(|instr| instr.immediate32())
 }
 
+fn find_persistent_flag_manager_pointer(image: &ExeImage) -> Option<u32> {
+    in_lua_api_fn(image, c"AddFlagPersistent")
+        .filter(|instr| {
+            instr.code() == Code::Mov_r32_rm32
+                && instr.op0_register() == Register::ECX
+                && instr.memory_base() == Register::None
+        })
+        .last()
+        .map(|instr| instr.memory_displacement32())
+}
+
 /// It's actually almost same as the PE timestamp I've been using, but
 /// they might have some more human-readable stuff here.
 pub fn find_noita_build(image: &ExeImage) -> Option<Cow<str>> {
@@ -170,6 +181,9 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
         global_stats: image
             .find_static_global(c".?AVGlobalStats@@")
             .map(|p| p.into()),
+        config_player_stats: image
+            .find_static_global(c".?AVConfigPlayerStats@impl@@")
+            .map(|p| p.into()),
         game_global: find_game_global_pointer(image).map(|p| p.into()),
         entity_manager: find_entity_manager_pointer(image).map(|p| p.into()),
         entity_tag_manager: find_entity_tag_manager_pointer(image).map(|p| p.into()),
@@ -179,6 +193,10 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
             .map(|p| p.into()),
         platform: image
             .find_static_global(c".?AVPlatformWin@poro@@")
+            .map(|p| p.into()),
+        persistent_flag_manager: find_persistent_flag_manager_pointer(image).map(|p| p.into()),
+        mod_context: image
+            .find_static_global(c".?AUModContext@@")
             .map(|p| p.into()),
     }
 }
@@ -212,23 +230,29 @@ impl KnownBuild {
                 world_seed: Some(Ptr::of(0x1202fe4)),
                 ng_count: Some(Ptr::of(0x1203004)),
                 global_stats: Some(Ptr::of(0x1206920)),
-                game_global: Some(Ptr::of(0x0122172c)),
+                config_player_stats: Some(Ptr::of(0x1206740)),
+                game_global: Some(Ptr::of(0x122172c)),
                 entity_manager: Some(Ptr::of(0x1202b78)),
                 entity_tag_manager: Some(Ptr::of(0x1204fbc)),
-                component_type_manager: Some(Ptr::of(0x01221c08)),
-                translation_manager: Some(Ptr::of(0x01205c08)),
-                platform: Some(Ptr::of(0x0121fba0)),
+                component_type_manager: Some(Ptr::of(0x1221c08)),
+                translation_manager: Some(Ptr::of(0x1205c08)),
+                platform: Some(Ptr::of(0x121fba0)),
+                persistent_flag_manager: Some(Ptr::of(0x12053cc)),
+                mod_context: Some(Ptr::of(0x1205e60)),
             },
             KnownBuild::v2025_01_25 => NoitaGlobals {
                 world_seed: Some(Ptr::of(0x1205004)),
                 ng_count: Some(Ptr::of(0x1205024)),
                 global_stats: Some(Ptr::of(0x1208940)),
+                config_player_stats: Some(Ptr::of(0x1208760)),
                 game_global: Some(Ptr::of(0x122374c)),
                 entity_manager: Some(Ptr::of(0x1204b98)),
                 entity_tag_manager: Some(Ptr::of(0x1206fac)),
                 component_type_manager: Some(Ptr::of(0x1223c88)),
                 translation_manager: Some(Ptr::of(0x1207c28)),
                 platform: Some(Ptr::of(0x1221bc0)),
+                persistent_flag_manager: Some(Ptr::of(0x12073f4)),
+                mod_context: Some(Ptr::of(0x1207e80)),
             },
         }
     }

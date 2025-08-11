@@ -8,8 +8,8 @@ use std::{
 };
 
 use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, PtrReadable, RawPtr, StdMap, StdString,
-    StdVec, Vftable,
+    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, PtrReadable, Raw, RawPtr, StdMap, StdString,
+    StdUnorderedMap, StdVec, Vftable,
 };
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -284,6 +284,26 @@ pub struct GlobalStats {
     pub prev_best: GameStats,
 }
 
+#[derive(Debug, PtrReadable)]
+#[repr(C)]
+pub struct ConfigPlayerStats {
+    pub vftable: Vftable,
+    pub build_name: StdString,
+    _unknown: u32, // padding likely
+    pub stats: GameStats,
+    pub biome_baseline: GameStats,
+    pub item_map: StdVec<ConfigItemStats>,
+    _unknown2: u32, // padding likely
+}
+
+#[derive(FromBytes, IntoBytes, Debug)]
+#[repr(C)]
+pub struct ConfigItemStats {
+    unknown: [u8; 0xc],
+}
+
+const _: () = assert!(std::mem::size_of::<ConfigItemStats>() == 0xc);
+
 #[derive(FromBytes, IntoBytes, Debug)]
 #[repr(C)]
 pub struct GameStats {
@@ -352,3 +372,38 @@ pub struct Language {
     pub strings: StdVec<StdString>,
 }
 const _: () = assert!(std::mem::size_of::<Language>() == 0xb4);
+
+#[derive(PtrReadable)]
+#[repr(C)]
+pub struct PersistentFlagManager {
+    flags: StdUnorderedMap<StdString, u8>, // idk what is the value type, but we dont use it anyway
+    pub path: StdString,
+}
+const _: () = assert!(std::mem::size_of::<PersistentFlagManager>() == 0x38);
+
+impl PersistentFlagManager {
+    pub fn read_flags(&self, proc: &ProcessRef) -> io::Result<Vec<String>> {
+        self.flags.read_keys(proc)
+    }
+}
+
+#[derive(Debug, PtrReadable, Clone)]
+#[repr(C)]
+pub struct NoitaMod {
+    pub id: StdString,
+    // not sure how exactly those two enabled values behave, but the mod is
+    // enabled if either of them is non-zero
+    pub enabled1: u32,
+    pub enabled2: u32,
+    _skip: [u32; 16],
+}
+const _: () = assert!(std::mem::size_of::<NoitaMod>() == 0x60);
+
+#[derive(Debug, PtrReadable)]
+#[repr(C)]
+pub struct ModContext {
+    pub vftable: Vftable,
+    _skip: [u32; 6], // two vectors
+    pub mods: StdVec<Raw<NoitaMod>>,
+    // ...
+}

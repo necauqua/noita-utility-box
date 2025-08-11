@@ -9,15 +9,17 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Added
+  - Streamer Wands! A new tool that allows you to send game data to the onlywands.com website without needing to install any mods.
   - Show the wand level in hidden stats.
 
 ### Changed
-  - No longer rounding the wand speed hidden stat, the entire float number is  useful for advanced LDT.
+  - No longer rounding the wand speed hidden stat, the entire float number is needed for advanced LDT.
 
 ### Fixed
   - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
-  - No longer break when loading experimental wands. @Larandar
-  - No longer break when loading an empty wand. @Larandar
+  - Player Info no longer break when loading experimental wands. @Larandar
+  - Player Info no longer break when loading an empty wand. @Larandar
+  - WIP Material List tool now (very) slightly less broken.
 
 ## [v0.4.1] 12025-07-26
 

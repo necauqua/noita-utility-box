@@ -74,11 +74,14 @@ impl AddressMap {
             ng_count: self.get("ng-plus-count"),
             global_stats: self.get("global-stats"),
             game_global: self.get("game-global"),
+            config_player_stats: self.get("config-player-stats"),
             entity_manager: self.get("entity-manager"),
             entity_tag_manager: self.get("entity-tag-manager"),
             component_type_manager: self.get("component-type-manager"),
             translation_manager: self.get("translation-manager"),
             platform: self.get("platform"),
+            persistent_flag_manager: self.get("persistent-flag-manager"),
+            mod_context: self.get("mod-context"),
         }
     }
 }
@@ -292,12 +295,15 @@ impl AddressMapsData {
             world_seed,
             ng_count,
             global_stats,
+            config_player_stats,
             game_global,
             entity_manager,
             entity_tag_manager,
             component_type_manager,
             translation_manager,
             platform,
+            persistent_flag_manager,
+            mod_context,
         } = discovery::run(&image);
 
         let mut entries = Vec::new();
@@ -313,6 +319,12 @@ impl AddressMapsData {
             "global-stats",
             global_stats,
             "Used to get all the stats",
+        );
+        add_entry(
+            &mut entries,
+            "config-player-stats",
+            config_player_stats,
+            "Another stats object used by streamer wands",
         );
         add_entry(
             &mut entries,
@@ -349,6 +361,18 @@ impl AddressMapsData {
             "platform",
             platform,
             "Platform-specific stuff, only used to get the game install directory",
+        );
+        add_entry(
+            &mut entries,
+            "persistent-flag-manager",
+            persistent_flag_manager,
+            "Persistent flag manager, used for perk and spell progress, and reading other flags too ofc",
+        );
+        add_entry(
+            &mut entries,
+            "mod-context",
+            mod_context,
+            "Mod context, used for sending mod list to streamer wands",
         );
 
         if !entries.is_empty() {

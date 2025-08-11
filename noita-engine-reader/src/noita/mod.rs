@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{HashMap, hash_map::Entry},
     io,
     marker::PhantomData,
@@ -16,7 +15,10 @@ use types::{
     platform::{FileDevice, PlatformWin},
 };
 
-use crate::memory::{MemoryStorage, Pod, ProcessRef, Ptr};
+use crate::{
+    memory::{MemoryStorage, Pod, ProcessRef, Ptr},
+    types::{ConfigPlayerStats, ModContext, PersistentFlagManager},
+};
 
 pub mod discovery;
 pub mod rng;
@@ -32,6 +34,7 @@ pub struct Noita {
 
     materials: Vec<String>,
     material_ui_names: Vec<String>,
+    cell_data: Vec<CellData>,
     files: HashMap<String, Arc<[u8]>>,
     component_stores: HashMap<&'static str, ComponentStore<()>>,
 }
@@ -41,12 +44,15 @@ pub struct NoitaGlobals {
     pub world_seed: Option<Ptr<u32>>,
     pub ng_count: Option<Ptr<u32>>,
     pub global_stats: Option<Ptr<GlobalStats>>,
+    pub config_player_stats: Option<Ptr<ConfigPlayerStats>>,
     pub game_global: Option<Ptr<Ptr<GameGlobal>>>,
     pub entity_manager: Option<Ptr<Ptr<EntityManager>>>,
     pub entity_tag_manager: Option<Ptr<Ptr<TagManager>>>,
     pub component_type_manager: Option<Ptr<ComponentTypeManager>>,
     pub translation_manager: Option<Ptr<TranslationManager>>,
     pub platform: Option<Ptr<PlatformWin>>,
+    pub persistent_flag_manager: Option<Ptr<Ptr<PersistentFlagManager>>>,
+    pub mod_context: Option<Ptr<ModContext>>,
 }
 
 macro_rules! not_found {
@@ -126,6 +132,7 @@ impl Noita {
             no_player_not_polied: Default::default(),
             materials: Default::default(),
             material_ui_names: Default::default(),
+            cell_data: Default::default(),
             files: Default::default(),
             component_stores: Default::default(),
         }
@@ -142,12 +149,20 @@ impl Noita {
         }
         Ok(Some(Seed {
             world_seed,
-            ng_count: deep_read!(self.ng_count)?,
+            ng_count: self.read_ng_plus()?,
         }))
+    }
+
+    pub fn read_ng_plus(&self) -> io::Result<u32> {
+        deep_read!(self.ng_count)
     }
 
     pub fn read_stats(&self) -> io::Result<GlobalStats> {
         read_ptr!(self.global_stats)
+    }
+
+    pub fn read_config_player_stats(&self) -> io::Result<ConfigPlayerStats> {
+        read_ptr!(self.config_player_stats)
     }
 
     pub fn read_game_global(&self) -> io::Result<GameGlobal> {
@@ -325,6 +340,13 @@ impl Noita {
         Ok(&self.materials)
     }
 
+    pub fn cell_data(&mut self) -> io::Result<&[CellData]> {
+        if self.cell_data.is_empty() {
+            self.cell_data = self.read_cell_data()?;
+        }
+        Ok(&self.cell_data)
+    }
+
     pub fn get_material_name(&mut self, index: u32) -> io::Result<Option<String>> {
         Ok(self.materials()?.get(index as usize).cloned())
     }
@@ -390,6 +412,14 @@ impl Noita {
     pub fn get_camera_bounds(&self) -> io::Result<[i32; 4]> {
         let bounds = deep_read!(self.game_global.camera.bounds)?;
         Ok([bounds.x, bounds.y, bounds.w, bounds.h])
+    }
+
+    pub fn read_persistent_flag_manager(&self) -> io::Result<PersistentFlagManager> {
+        deep_read!(self.persistent_flag_manager)
+    }
+
+    pub fn read_mod_context(&self) -> io::Result<ModContext> {
+        read_ptr!(self.mod_context)
     }
 }
 
@@ -488,16 +518,16 @@ impl CachedTranslations {
         self.lang_key_indices.is_empty()
     }
 
-    pub fn translate<'k>(&self, key: &'k str, title_case: bool) -> Cow<'k, str> {
+    pub fn translate(&self, key: &str, title_case: bool) -> Option<String> {
         self.lang_key_indices
             .get(key)
             .and_then(|i| self.current_lang_strings.get(*i as usize))
-            .map_or(Cow::Borrowed(key), |s| {
-                Cow::Owned(if title_case {
+            .map(|s| {
+                if title_case {
                     s.to_case(Case::Title)
                 } else {
                     (*s).clone()
-                })
+                }
             })
     }
 }
