@@ -96,7 +96,6 @@ impl<T: Default> Default for Promise<T> {
 
 /// Implement [serde::Serialize] and [serde::Deserialize] for a struct, only
 /// writing/reading the specified fields and using Default when reading.
-#[allow(unused_macros)] // false positive?. it's definitely used
 macro_rules! persist {
     (__ref_of $lt:lifetime, String) => {
         &$lt str
@@ -137,7 +136,6 @@ macro_rules! persist {
     };
 }
 
-#[allow(unused_imports)] // same as above
 pub(crate) use persist;
 
 pub trait Tickable {
