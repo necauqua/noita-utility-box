@@ -350,7 +350,7 @@ impl<K: Pod, V: Pod> PtrReadable for StdMapNode<K, V> {}
 #[derive(FromBytes, IntoBytes, Clone)]
 #[repr(C, packed)]
 pub struct StdMap<K, V> {
-    root: Ptr<StdMapNode<K, V>>,
+    sentinel: Ptr<StdMapNode<K, V>>,
     len: u32,
 }
 
@@ -399,16 +399,15 @@ where
 
     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
         let mut result = HashMap::with_capacity(self.len() as _);
-        let root_ptr = self.root;
-        let root = root_ptr.read(proc)?;
+        let root = { self.sentinel }.read(proc)?.parent;
 
         // just do bfs on the tree ig - this is unordered;
-        // for ordered we need to start from root.left/root.right
+        // for ordered we need to start from sentinel.left/sentinel.right
         // (which are the smallest/biggest nodes) and do the correct
-        // tree traversal type of thing
-        let mut stack = vec![root.parent];
+        // red-black tree traversal type of thing
+        let mut stack = vec![root];
         while let Some(node_ptr) = stack.pop() {
-            if node_ptr == root_ptr || node_ptr.is_null() {
+            if node_ptr == { self.sentinel } || node_ptr.is_null() {
                 continue;
             }
             let node = node_ptr.read(proc)?;
@@ -439,7 +438,7 @@ impl<K: MemoryStorage, V> StdMap<K, V> {
         Q: Ord + ?Sized,
         K::Value: Borrow<Q>,
     {
-        let root_ptr = self.root;
+        let root_ptr = self.sentinel;
         let root = root_ptr.read(proc)?;
 
         if { root.parent } == root_ptr || { root.parent }.is_null() {
@@ -472,4 +471,45 @@ impl<K: MemoryStorage, V> StdMap<K, V> {
 
 pub(crate) fn debug_type<T>() -> Cow<'static, str> {
     regex_replace_all!(r"(?:\w+::)+", type_name::<T>(), "")
+}
+
+#[derive(FromBytes, IntoBytes)]
+#[repr(C, packed)]
+struct StdUnorderedMapNode<K, V> {
+    next: Ptr<StdUnorderedMapNode<K, V>>,
+    _unknown: u32, // cached hash?
+    key: K,
+    value: V,
+}
+impl<K: Pod, V: Pod> PtrReadable for StdUnorderedMapNode<K, V> {}
+
+#[derive(FromBytes, IntoBytes)]
+#[repr(C, packed)]
+pub struct StdUnorderedMap<K, V> {
+    sentinel: Ptr<StdUnorderedMapNode<K, V>>,
+    size: u32,
+    buckets: StdVec<Ptr<StdUnorderedMapNode<K, V>>>,
+    hash_mask: u32,
+    table_size: u32,
+    load_factor: f32,
+}
+
+impl<K, V> StdUnorderedMap<K, V> {
+    pub fn read_keys(&self, proc: &ProcessRef) -> io::Result<Vec<K::Value>>
+    where
+        K: MemoryStorage,
+        V: MemoryStorage,
+    {
+        let mut res = Vec::new();
+
+        let mut entry = { self.sentinel }.read(proc)?.next;
+        while entry != { self.sentinel } {
+            let e = entry.read(proc)?;
+            let key = { e.key }.read(proc)?;
+            res.push(key);
+            entry = e.next;
+        }
+
+        Ok(res)
+    }
 }
