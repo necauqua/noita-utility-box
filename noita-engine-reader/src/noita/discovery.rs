@@ -1,7 +1,6 @@
 use std::{borrow::Cow, ffi::CStr};
 
 use iced_x86::{Code, Instruction, OpKind, Register};
-use memchr::memmem;
 
 use crate::memory::{Ptr, exe_image::ExeImage};
 
@@ -19,7 +18,7 @@ use super::NoitaGlobals;
 ///
 /// Note that this completely breaks (already) with noita_dev.exe lol
 fn find_lua_api_fn(image: &ExeImage, name: &CStr) -> Option<u32> {
-    match image.text()[image.find_push_str_pos(name)? - 8..] {
+    match image[image.find_push_str(name)? - image.base() - 8..] {
         [0x68, a, b, c, d, ..] => {
             let addr = u32::from_le_bytes([a, b, c, d]);
             tracing::debug!("Found Lua API function {name:?} at 0x{addr:x}");
@@ -99,35 +98,6 @@ fn find_game_global_pointer(image: &ExeImage) -> Option<u32> {
         .map(|instr| instr.memory_displacement32())
 }
 
-/// We look for the `AddFlagPersistent` Lua API function and then we look
-/// for second-to-last `CALL rel32`, the last being some C++ exception
-/// thing, and the second-to-last being a call to `AddFlagPersistentImpl`,
-/// as I call it.
-///
-/// Then inside of that we look for `MOV ECX imm32` which is specifically
-/// after `CALL rel32` which is after `MOV EDX, "progress_ending1"`.
-/// The call being to a string equality check and our MOV being an
-/// argument to a following call which is the global KEY_VALUE_STATS map
-/// pointer.
-fn find_stats_map_pointer(image: &ExeImage) -> Option<u32> {
-    in_lua_api_fn(image, c"AddFlagPersistent")
-        .filter(|instr| instr.code() == Code::Call_rel32_32)
-        .forced_rev()
-        .nth(1)?
-        .jump_there(image)
-        .skip_while({
-            let end1_addr = image.find_string(c"progress_ending1")?;
-            move |instr| {
-                instr.code() != Code::Mov_r32_imm32
-                    || instr.op0_register() != Register::EDX
-                    || instr.immediate32() != end1_addr
-            }
-        })
-        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
-        .find(|instr| instr.code() == Code::Mov_r32_imm32 && instr.op0_register() == Register::ECX)
-        .map(|instr| instr.immediate32())
-}
-
 /// We look for the `EntityGetParent` Lua API function and there we look
 /// for `MOV ECX, [addr]` is the 0th argument to EntityManager::get_entity, the
 /// entity manager global.
@@ -144,10 +114,8 @@ fn find_entity_manager_pointer(image: &ExeImage) -> Option<u32> {
 /// Look for the `EntityTagManager` string only use, and then look for the
 /// following assignment to a global from EAX
 fn find_entity_tag_manager_pointer(image: &ExeImage) -> Option<u32> {
-    let offset = image.find_push_str_pos(c"EntityTagManager")?;
-    let addr = image.text_offset_to_addr(offset);
     image
-        .decode_fn(addr)
+        .decode_fn(image.find_push_str(c"EntityTagManager")? as u32)
         .find(|instr| instr.code() == Code::Mov_moffs32_EAX)
         .map(|instr| instr.memory_displacement32())
 }
@@ -182,60 +150,37 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
         .map(|instr| instr.immediate32())
 }
 
-/// In `GameTextGet` Lua API function:
-///   - Look for the second CALL rel32 after JMP rm32 (second call after the
-///     switch starts), which is a call to `Translate` function
-///   - In that function extract the translation manager pointer from
-///     `TRANSLATION_MANAGER.langs[TRANSLATION_MANAGER.current_lang_idx]`
-///     pseudocode
-fn find_translation_manager_pointer(image: &ExeImage) -> Option<u32> {
-    in_lua_api_fn(image, c"GameTextGet")
-        .skip_while(|instr| instr.code() != Code::Jmp_rm32)
-        .skip_while(|instr| instr.code() != Code::Call_rel32_32)
-        .skip(1)
-        .find(|instr| instr.code() == Code::Call_rel32_32)?
-        .jump_there(image)
-        .find(|instr| instr.code() == Code::Add_r32_rm32 && instr.op0_register() == Register::EAX)
-        .map(|instr| instr.memory_displacement32() - 0x10)
-}
-
-/// In `GameGetRealWorldTimeSinceStarted` Lua API function:
-///  - Look for the last `MOV ECX, imm32` instruction, which is the
-///    first arg to the vftable platform call (to get the time, duh).
-fn find_platform_pointer(image: &ExeImage) -> Option<u32> {
-    in_lua_api_fn(image, c"GameGetRealWorldTimeSinceStarted")
-        .filter(|instr| {
-            instr.code() == Code::Mov_r32_imm32 && instr.op0_register() == Register::ECX
-        })
-        .last()
-        .map(|instr| instr.immediate32())
-}
-
 /// It's actually almost same as the PE timestamp I've been using, but
 /// they might have some more human-readable stuff here.
 pub fn find_noita_build(image: &ExeImage) -> Option<Cow<str>> {
-    let pos = memmem::find(image.rdata(), b"Noita - Build ")?;
+    let addr = image.rdata().scan(b"Noita - Build ")?;
+    let pos = addr - image.base();
 
     // + 8 to skip the "Noita - " part
-    let prefix = image.rdata()[pos + 8..].split(|b| *b == 0).next()?;
+    let prefix = image[pos + 8..].split(|b| *b == 0).next()?;
     Some(String::from_utf8_lossy(prefix))
 }
 
 pub fn run(image: &ExeImage) -> NoitaGlobals {
-    let mut g = NoitaGlobals::default();
-
     let seed = find_seed_pointers(image);
-    g.world_seed = seed.map(|(seed, _)| seed).map(|p| p.into());
-    g.ng_count = seed.map(|(_, ng)| ng).map(|p| p.into());
-    g.global_stats = find_stats_map_pointer(image).map(|p| (p - 0x18).into());
-    g.game_global = find_game_global_pointer(image).map(|p| p.into());
-    g.entity_manager = find_entity_manager_pointer(image).map(|p| p.into());
-    g.entity_tag_manager = find_entity_tag_manager_pointer(image).map(|p| p.into());
-    g.component_type_manager = find_component_type_manager_pointer(image).map(|p| p.into());
-    g.translation_manager = find_translation_manager_pointer(image).map(|p| p.into());
-    g.platform = find_platform_pointer(image).map(|p| p.into());
 
-    g
+    NoitaGlobals {
+        world_seed: seed.map(|(seed, _)| seed).map(|p| p.into()),
+        ng_count: seed.map(|(_, ng)| ng).map(|p| p.into()),
+        global_stats: image
+            .find_static_global(c".?AVGlobalStats@@")
+            .map(|p| p.into()),
+        game_global: find_game_global_pointer(image).map(|p| p.into()),
+        entity_manager: find_entity_manager_pointer(image).map(|p| p.into()),
+        entity_tag_manager: find_entity_tag_manager_pointer(image).map(|p| p.into()),
+        component_type_manager: find_component_type_manager_pointer(image).map(|p| p.into()),
+        translation_manager: image
+            .find_static_global(c".?AUTextImpl@@")
+            .map(|p| p.into()),
+        platform: image
+            .find_static_global(c".?AVPlatformWin@poro@@")
+            .map(|p| p.into()),
+    }
 }
 
 #[allow(non_camel_case_types)]
