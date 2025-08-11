@@ -382,7 +382,7 @@ impl IFileDevice for DiskFileDevice {
         path: &str,
     ) -> io::Result<Option<Vec<u8>>> {
         let device_path = self.path.read(proc)?;
-        let device_path = if device_path.contains(r"\\:") {
+        let device_path = if device_path.contains(r":\") {
             device_path
         } else {
             let cwd = fs.default_device.read(proc)?.path.read(proc)?;
