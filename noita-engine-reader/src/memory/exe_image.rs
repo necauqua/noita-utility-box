@@ -172,7 +172,7 @@ impl ExeImage {
         })
     }
 
-    pub fn text(&self) -> PeSection {
+    pub fn text(&self) -> PeSection<'_> {
         let range = self.proc.header().text.clone();
         PeSection {
             base: self.proc.base(),
@@ -182,7 +182,7 @@ impl ExeImage {
         }
     }
 
-    pub fn rdata(&self) -> PeSection {
+    pub fn rdata(&self) -> PeSection<'_> {
         let range = self.proc.header().rdata.clone();
         PeSection {
             base: self.proc.base(),
@@ -192,7 +192,7 @@ impl ExeImage {
         }
     }
 
-    pub fn data(&self) -> PeSection {
+    pub fn data(&self) -> PeSection<'_> {
         let range = self.proc.header().data.clone();
         PeSection {
             base: self.proc.base(),

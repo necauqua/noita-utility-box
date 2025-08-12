@@ -152,7 +152,7 @@ fn find_component_type_manager_pointer(image: &ExeImage) -> Option<u32> {
 
 /// It's actually almost same as the PE timestamp I've been using, but
 /// they might have some more human-readable stuff here.
-pub fn find_noita_build(image: &ExeImage) -> Option<Cow<str>> {
+pub fn find_noita_build(image: &ExeImage) -> Option<Cow<'_, str>> {
     let addr = image.rdata().scan(b"Noita - Build ")?;
     let pos = addr - image.base();
 

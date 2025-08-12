@@ -54,6 +54,7 @@ tools! {
     settings::Settings;
 }
 
+#[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ToolInfo {
     pub default_constructor: fn() -> Box<dyn Tool>,

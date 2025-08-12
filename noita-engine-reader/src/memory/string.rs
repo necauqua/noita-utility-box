@@ -24,7 +24,7 @@ impl StdString {
         self.len == 0
     }
 
-    pub fn decode(&self) -> DecodedStdString {
+    pub fn decode(&self) -> DecodedStdString<'_> {
         if let Some(inline) = self.buf[..15].get(..self.len as usize) {
             DecodedStdString::Inline(inline)
         } else {
@@ -117,7 +117,7 @@ impl StdWstring {
         self.len == 0
     }
 
-    pub fn decode(&self) -> DecodedStdWstring {
+    pub fn decode(&self) -> DecodedStdWstring<'_> {
         if let Some(inline) = self.buf[..7].get(..self.len as usize) {
             DecodedStdWstring::Inline(inline)
         } else {
