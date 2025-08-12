@@ -285,12 +285,11 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // an heuristic to avoid printing huge or invalid vectors
-        if self.len() < 4096 {
-            if let Some(s) =
+        if self.len() < 4096
+            && let Some(s) =
                 DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-            {
-                return Debug::fmt(&s, f);
-            }
+        {
+            return Debug::fmt(&s, f);
         }
         write!(f, "StdVec[{} * {}]", self.len(), debug_type::<T>())
     }
@@ -372,12 +371,11 @@ where
     V::Value: Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.len() < 512 {
-            if let Some(s) =
+        if self.len() < 512
+            && let Some(s) =
                 DEBUG_PROCESS.with_borrow(|proc| proc.as_ref().and_then(|h| self.read(h).ok()))
-            {
-                return Debug::fmt(&s, f);
-            }
+        {
+            return Debug::fmt(&s, f);
         }
         write!(
             f,
