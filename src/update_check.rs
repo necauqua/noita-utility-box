@@ -2,8 +2,8 @@ use std::mem;
 
 use anyhow::Result;
 use eframe::egui::{
-    Align, Context, Id, Layout, Modal, OpenUrl, Response, RichText, ScrollArea, Sense, TextStyle,
-    Ui, Widget, style::ScrollStyle, vec2,
+    Align, CollapsingHeader, Context, Id, Layout, Modal, OpenUrl, Response, RichText, ScrollArea,
+    Sense, TextStyle, Ui, Widget, style::ScrollStyle, vec2,
 };
 use reqwest::Client;
 use serde::Deserialize;
@@ -20,26 +20,8 @@ struct UpdateInfo {
     prerelease: bool,
 }
 
-async fn fetch_newer_release() -> Result<Option<UpdateInfo>> {
-    if cfg!(debug_assertions) {
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        return Ok(Some(UpdateInfo {
-            html_url: "ez{`b(<;ba`6`uuuwaa+ehe&}jxnf0f,}[s E]AKRA1".chars().enumerate().map(|(i, ch)| (ch as u8 ^ ((13 + i as u8) % 27)) as char).collect(),
-            tag_name: "v0.0.0a".into(),
-            body: r"
-                ### Added
-                    - This is a test update notice, since you're running a debug build with github env vars set
-                    - Here we have some `inline code` and some **bold** text, as well as some _italics_
-                ### Changed
-                    - Made it way better better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way better way
-                    - Also made it support [links](https://necauq.ua)?
-                ### Removed
-                    - Removed Herobrine
-            ".into(),
-            prerelease: false,
-        }));
-    }
-
+async fn fetch_new_releases() -> Result<Vec<UpdateInfo>> {
+    // dont bother with pagination, showing changelog from *at most* last ten or whatnot releases is ok imo
     let releases: Vec<UpdateInfo> = Client::builder()
         .build()?
         .get("https://api.github.com/repos/necauqua/noita-utility-box/releases")
@@ -55,13 +37,14 @@ async fn fetch_newer_release() -> Result<Option<UpdateInfo>> {
 
     Ok(releases
         .into_iter()
-        .find(|r| !r.prerelease)
-        .filter(|r| r.tag_name != RELEASE_VERSION.unwrap_or_default()))
+        .filter(|r| !r.prerelease)
+        .take_while(|r| r.tag_name != RELEASE_VERSION.unwrap_or_default())
+        .collect())
 }
 
 #[derive(Debug, Default)]
 pub struct UpdateChecker {
-    update_task: Promise<Option<UpdateInfo>>,
+    update_task: Promise<Vec<UpdateInfo>>,
 }
 
 // stole that from egui examples
@@ -107,7 +90,7 @@ fn draw_a_tiny_subset_of_markdown(ui: &mut Ui, text: &str) {
     }
 }
 
-fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppState) -> bool {
+fn show_update_modal(ctx: &Context, releases: &[UpdateInfo], state: &mut AppState) -> bool {
     if !state.settings.notify_when_outdated {
         return false;
     }
@@ -121,12 +104,14 @@ fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppSta
 
         ui.label(RichText::new("An update is available").heading().strong());
 
+        let newest = &releases[0];
+
         ui.horizontal_top(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
             ui.label("You are running version ");
             ui.monospace(RELEASE_VERSION.unwrap_or("<unknown>"));
             ui.label(", the newest is ");
-            ui.monospace(&update_info.tag_name);
+            ui.monospace(&newest.tag_name);
         });
 
         ui.label("Changelog:");
@@ -134,7 +119,13 @@ fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppSta
         ui.separator();
         ui.spacing_mut().scroll = ScrollStyle::thin();
         ScrollArea::vertical().show(ui, |ui| {
-            draw_a_tiny_subset_of_markdown(ui, &update_info.body);
+            for release in releases {
+                CollapsingHeader::new(&release.tag_name)
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        draw_a_tiny_subset_of_markdown(ui, &release.body);
+                    });
+            }
         });
         ui.separator();
 
@@ -146,7 +137,7 @@ fn show_update_modal(ctx: &Context, update_info: &UpdateInfo, state: &mut AppSta
             ui.with_layout(Layout::top_down(Align::Max), |ui| {
                 if ui.button("Download").clicked() {
                     ctx.open_url(OpenUrl {
-                        url: update_info.html_url.clone(),
+                        url: newest.html_url.clone(),
                         new_tab: true,
                     });
                     close = true;
@@ -172,39 +163,40 @@ impl UpdateChecker {
         }
         match &mut self.update_task {
             Promise::Taken => {}
-            // finished update task is taken, so it can only Done(None) on the first update
-            Promise::Done(None) => {
+            // finished update task is taken, so releases.is_empty() is only true on the first update
+            Promise::Done(releases) if releases.is_empty() => {
                 if !state.settings.check_for_updates {
                     tracing::info!("Update check is disabled, skipping");
                     self.update_task = Promise::Taken;
                 }
                 let ctx = ctx.clone();
                 self.update_task = Promise::spawn(async move {
-                    match fetch_newer_release().await {
+                    match fetch_new_releases().await {
                         Ok(info) => {
                             ctx.request_repaint();
                             info
                         }
                         Err(e) => {
                             tracing::error!(e = e.to_string(), "Update check failed");
-                            None
+                            vec![]
                         }
                     }
                 });
             }
-            p => match p.poll() {
-                Some(Some(info)) => {
-                    if !show_update_modal(ctx, info, state) {
-                        state.settings.newest_version = Some(info.tag_name.clone());
+            p => {
+                if let Some(releases) = p.poll::<[_]>() {
+                    if releases.is_empty() {
+                        tracing::info!("No updates found");
+                        self.update_task = Promise::Taken;
+                        return;
+                    }
+
+                    if !show_update_modal(ctx, releases, state) {
+                        state.settings.newest_version = Some(releases[0].tag_name.clone());
                         self.update_task = Promise::Taken;
                     }
                 }
-                Some(None) => {
-                    tracing::info!("No updates found");
-                    self.update_task = Promise::Taken;
-                }
-                None => {}
-            },
+            }
         }
     }
 }

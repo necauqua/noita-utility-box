@@ -14,6 +14,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ### Changed
   - No longer rounding the wand speed hidden stat, the entire float number is needed for advanced LDT.
+  - The update modal (that you may or may not be reading right now) finally shows update for all new releases since current version instead of just the latest one.
 
 ### Fixed
   - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
