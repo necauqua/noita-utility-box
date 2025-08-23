@@ -55,10 +55,11 @@ tools! {
     streamer_wands::StreamerWands;
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct ToolInfo {
     pub default_constructor: fn() -> Box<dyn Tool>,
     pub title: &'static str,
+    // todo const TypeId::of will be stabilized in rust 1.91, use that then
     type_id: fn() -> TypeId,
 }
 
