@@ -50,7 +50,6 @@ tools! {
     live_stats::LiveStats;
     player_info::PlayerInfo;
     material_list::MaterialList;
-    address_maps::AddressMaps;
     settings::Settings;
     streamer_wands::StreamerWands;
 }

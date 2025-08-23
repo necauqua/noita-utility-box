@@ -16,6 +16,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
   - No longer rounding the wand speed hidden stat, the entire float number is needed for advanced LDT.
   - The update modal (that you may or may not be reading right now) finally shows changelogs for all new releases since current version instead of just the latest one.
 
+### Removed
+  - The entire Address Maps tool was quite complicated for no reason whatsoever as well as being useless to virtually everyone, removed it.
+
 ### Fixed
   - The whole thing no longer breaks on Windows if you have ASLR (a security setting) enabled.
   - Player Info no longer break when loading experimental wands. @Larandar

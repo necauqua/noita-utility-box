@@ -9,14 +9,12 @@ use eframe::{
     get_value, icon_data, set_value,
 };
 use egui_tiles::{Container, Linear, LinearDir, SimplificationOptions, Tabs, Tile, TileId, Tiles};
-use noita_engine_reader::{Noita, Seed};
+use noita_engine_reader::{Noita, NoitaGlobals, Seed};
 use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
 use crate::{
-    tools::{
-        TOOLS, Tool, ToolError, ToolInfo, address_maps::AddressMapsData, settings::SettingsData,
-    },
+    tools::{TOOLS, Tool, ToolError, ToolInfo, settings::SettingsData},
     update_check::UpdateChecker,
     util::{Tickable, UpdatableApp, persist},
 };
@@ -24,7 +22,8 @@ use crate::{
 #[derive(Default)]
 pub struct AppState {
     pub settings: SettingsData,
-    pub address_maps: AddressMapsData,
+    // todo this should be serializable somehow
+    pub autodiscovered: Option<(u32, NoitaGlobals)>,
 
     hidden_tools: Vec<Pane>,
     tool_request: Option<(TileId, Pane)>,
@@ -47,7 +46,6 @@ impl AppState {
 
 persist!(AppState {
     settings: SettingsData,
-    address_maps: AddressMapsData,
     hidden_tools: Vec<Pane>,
 });
 

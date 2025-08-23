@@ -3,7 +3,11 @@ use derive_more::Debug;
 use eframe::egui::{
     ComboBox, Context, Grid, Hyperlink, RichText, TextFormat, TextStyle, Ui, text::LayoutJob,
 };
-use noita_engine_reader::{Noita, memory::ProcessRef};
+use noita_engine_reader::{
+    Noita,
+    discovery::KnownBuild,
+    memory::{ProcessRef, exe_image::ExeImage},
+};
 use smart_default::SmartDefault;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 use thiserror::Error;
@@ -41,11 +45,21 @@ impl NoitaData {
 
         let timestamp = proc.header().timestamp();
 
-        let Some(address_map) = state.address_maps.get(timestamp) else {
+        let map = KnownBuild::from_timestamp(timestamp)
+            .map(|known| known.map())
+            .or_else(|| {
+                state
+                    .autodiscovered
+                    .as_ref()
+                    .filter(|(t, _)| timestamp == *t)
+                    .map(|(_, m)| m.clone())
+            });
+
+        let Some(map) = map else {
             return Err(NoitaError::Unmapped { proc });
         };
 
-        let noita = Noita::new(proc, address_map.as_noita_globals());
+        let noita = Noita::new(proc, map);
 
         Ok(Self {
             pid,
@@ -194,12 +208,25 @@ impl Tool for ProcessPanel {
                 ui.label(RichText::new(format!("{e:#}")).color(ui.style().visuals.error_fg_color));
 
                 if let NoitaError::Unmapped { proc } = e {
+                    ui.small("The toolbox does not have a known and tested pointer address table for the version of Noita you're running.");
+                    ui.small(
+                        "Auto-discovery is quite good, but some (or all) things might not work.",
+                    );
                     if ui.button("Run auto-discovery").clicked() {
-                        if let Err(e) = state.address_maps.discover(proc) {
-                            self.set_noita(ui.ctx(), state, Err(e.into()))
-                        } else {
-                            self.set_noita(ui.ctx(), state, Ok(None))
-                        }
+                        let image = match ExeImage::read(proc)
+                            .context("Reading the image of the game for discovery")
+                        {
+                            Ok(image) => image,
+                            Err(e) => {
+                                self.set_noita(ui.ctx(), state, Err(e.into()));
+                                return Ok(());
+                            }
+                        };
+                        state.autodiscovered = Some((
+                            proc.header().timestamp(),
+                            noita_engine_reader::discovery::run(&image),
+                        ));
+                        self.set_noita(ui.ctx(), state, Ok(None));
                     }
                     if !self.look_for_noita {
                         self.processes_box(ui, state);

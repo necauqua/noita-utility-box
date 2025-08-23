@@ -215,8 +215,12 @@ impl KnownBuild {
     }
 
     pub fn from_timestamp(timestamp: u32) -> Option<Self> {
-        Some(Self::v2024_08_12).filter(|b| *b as u32 == timestamp)?;
-        Some(Self::v2025_01_25).filter(|b| *b as u32 == timestamp)?;
+        if Self::v2024_08_12 as u32 == timestamp {
+            return Some(Self::v2024_08_12);
+        }
+        if Self::v2025_01_25 as u32 == timestamp {
+            return Some(Self::v2025_01_25);
+        }
         None
     }
 
