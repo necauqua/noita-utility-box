@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Fix streamer wands not working for some people due to incorrectly assuming the token is invalid.
+
 ## [v0.5.0] 12025-08-24
 
 ### Added

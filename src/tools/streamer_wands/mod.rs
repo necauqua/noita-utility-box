@@ -13,7 +13,7 @@ use std::{
 };
 
 use anyhow::Context as _;
-use base64::{Engine, prelude::BASE64_URL_SAFE};
+use base64::{Engine, prelude::BASE64_STANDARD_NO_PAD};
 use derive_more::Debug;
 use eframe::egui::{Button, CollapsingHeader, Context, Grid, TextEdit, Ui};
 use noita_engine_reader::{
@@ -343,7 +343,7 @@ fn get_username_from_token(token: &str) -> Option<String> {
     let mut parts = token.split('.');
     parts.next(); // skip header
 
-    let payload = BASE64_URL_SAFE.decode(parts.next()?).ok()?;
+    let payload = BASE64_STANDARD_NO_PAD.decode(parts.next()?).ok()?;
 
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
