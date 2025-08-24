@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.5.2] 12025-08-24
+
 ### Fixed
   - Fix the previous streamer wands fix, for real this time.
 
@@ -110,7 +112,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.1...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.2...HEAD
+[v0.5.2]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.1
 [v0.5.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.0
 [v0.4.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.1
