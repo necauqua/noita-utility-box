@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.5.0] 12025-08-24
+
 ### Added
   - Streamer Wands! A new tool that allows you to send game data to the onlywands.com website without needing to install any mods.
   - Show the wand level in hidden stats.
@@ -100,7 +102,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.4.1...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.0...HEAD
+[v0.5.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.0
 [v0.4.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.1
 [v0.4.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.4.0
 [v0.3.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.3.0
