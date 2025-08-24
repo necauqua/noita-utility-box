@@ -2612,7 +2612,7 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "noita-engine-reader"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "convert_case",
@@ -2636,7 +2636,7 @@ dependencies = [
 
 [[package]]
 name = "noita-engine-reader-macros"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2645,7 +2645,7 @@ dependencies = [
 
 [[package]]
 name = "noita-utility-box"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "base64",
