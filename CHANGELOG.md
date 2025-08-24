@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Fix the previous streamer wands fix, for real this time.
+
 ## [v0.5.1] 12025-08-24
 
 ### Fixed
