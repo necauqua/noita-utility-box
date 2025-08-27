@@ -40,10 +40,24 @@ Shows several pieces of information about the player.
 - Current player damage multipliers, similar to orb radar to avoid having to
   shut down the game and read `player.xml` if you want to know them.
 
+#### Streamer Wands
+Reads all the information that [onlywands.com](https://onlywands.com) needs to
+show your wands and sends it there, so you dont have to install any mods.
+
+To use it, log in on [onlywands.com](https://onlywands.com), download their mod
+(you dont have to upload the stats) and select that zip file in the
+`Streamer Wands` tool with the `browse` button - this will read your
+authorization token and the websocket host address from the zip file.
+
+The mod is not installed/sideloaded in any way! It only reads your token and
+host from the file for your convenience, you can type them in manually.
+
+After that, if Noita is running and found you'll be able to click `connect` and
+your wand data will be sent!
+
 #### .. more coming
-There are plans for more stuff to come, some low handing fruits like hitless
-checker, less low ones like modless streamer wands, I want to do a git backup
-manager, a mod update manager, etc etc
+There are ideas floating for more tools useful for advanced Noita gameplay,
+they will be added in future releases.
 
 ##### Orb Radar
 There is much room for improvements, being functionality or readability:
