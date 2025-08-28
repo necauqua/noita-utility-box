@@ -978,27 +978,34 @@ impl FungalShift {
 
         let mut result = vec![];
 
-        while let Some([from, to]) = iter.next() {
-            if let Some(group) = SHIFT_GROUPS.iter().find(|g| from == g[0]) {
-                let mut group_iter = group.iter();
-                group_iter.next();
-
+        'outer: loop {
+            // peek heh
+            let Some([_, to]) = iter.clone().next() else {
+                break;
+            };
+            for group in SHIFT_GROUPS {
+                let group = group.iter().filter(|next_to| next_to != &to);
                 if iter
                     .clone() // peek the following shifts without consuming
                     .chain(iter::repeat(&[String::new(), String::new()]))
-                    .zip(group_iter)
+                    .zip(group.clone())
                     .all(|([from, next_to], group_from)| next_to == to && from == group_from)
                 {
+                    let from = group.map(|&s| s.to_owned()).collect::<Vec<_>>();
+
                     // if everything matched consume it
-                    (&mut iter).take(group.len() - 1).last();
+                    iter.by_ref().take(from.len()).count();
 
                     result.push(Self {
-                        from: group.iter().map(|s| (*s).to_owned()).collect(),
+                        from,
                         to: to.to_owned(),
                     });
-                    continue;
+                    continue 'outer;
                 }
             }
+            let Some([from, to]) = iter.next() else {
+                break;
+            };
             result.push(Self {
                 from: vec![from.to_owned()],
                 to: to.to_owned(),
@@ -1016,7 +1023,7 @@ mod tests {
     #[test]
     fn fungal_parsing() {
         #[rustfmt::skip]
-        let changed_materials = vec![
+        let changed_materials = [
             "lava", "acid",
 
             "oil",  "water", "swamp", "water", "peat", "water",
@@ -1042,5 +1049,47 @@ mod tests {
         assert_eq!(shifts[3], FungalShift::of(["swamp"], "water"));
         assert_eq!(shifts[4], FungalShift::of(["gold"], "water"));
         assert_eq!(shifts.len(), 5);
+    }
+
+    #[test]
+    fn fungal_target_was_in_input_group() {
+        #[rustfmt::skip]
+        let changed_materials = [
+            "blood_fungi", "fungi", "fungisoil", "fungi",
+
+            "acid_gas", "lava",
+            "acid_gas_static", "lava",
+            "poison_gas", "lava",
+            "fungal_gas", "lava",
+            "radioactive_gas", "lava",
+            "radioactive_gas_static", "lava",
+        ];
+
+        let shifts = FungalShift::from_changed_materials(
+            changed_materials
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect(),
+        );
+
+        assert_eq!(
+            shifts[0],
+            FungalShift::of(["blood_fungi", "fungisoil"], "fungi")
+        );
+        assert_eq!(
+            shifts[1],
+            FungalShift::of(
+                [
+                    "acid_gas",
+                    "acid_gas_static",
+                    "poison_gas",
+                    "fungal_gas",
+                    "radioactive_gas",
+                    "radioactive_gas_static"
+                ],
+                "lava"
+            )
+        );
+        assert_eq!(shifts.len(), 2);
     }
 }

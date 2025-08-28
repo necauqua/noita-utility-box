@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Streamer Wands: fix the fungal shift groups being detected incorrectly in cases where the target material is also in the source group.
+
 ## [v0.5.2] 12025-08-24
 
 ### Fixed
