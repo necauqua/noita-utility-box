@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
+use anyhow::bail;
 use eframe::egui::{ComboBox, Context, DragValue, Grid, RichText, TextEdit, Ui};
 use futures::{StreamExt, pin_mut};
 use noita_engine_reader::memory::MemoryStorage;
@@ -93,6 +94,10 @@ impl Tool for LiveStats {
             .read_stats()
             .context("Reading global stats")
             .and_then(|global| {
+                if global.key_value_stats.is_empty() {
+                    bail!("key_value_stats is empty");
+                }
+
                 let end0 = global
                     .key_value_stats
                     .get(noita.proc(), "progress_ending0")
