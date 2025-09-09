@@ -9,8 +9,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Fixed
-  - Streamer Wands: fix the fungal shift groups being detected incorrectly in cases where the target material is also in the source group.
-  - Live Stats: fix the win count being set to zero if Noita was closed while the tool is running.
+  - Streamer Wands: the fungal shift groups being detected incorrectly in cases where the target material is also in the source group.
+  - Live Stats: the win count being set to zero if Noita was closed while the tool is running.
+  - Live Stats: did not work with TextGDI+ text sources.
 
 ## [v0.5.2] 12025-08-24
 

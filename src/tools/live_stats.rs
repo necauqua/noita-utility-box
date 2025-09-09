@@ -8,6 +8,7 @@ use noita_engine_reader::memory::MemoryStorage;
 use obws::{events::Event, requests::inputs::SetSettings, responses::inputs::InputId};
 use smart_default::SmartDefault;
 use strfmt::{FmtError, Format};
+use tokio::task::JoinSet;
 
 use crate::{
     app::AppState,
@@ -309,12 +310,30 @@ impl Tool for LiveStats {
                     if r.response.clicked() {
                         let client = client.clone();
                         self.text_sources = Promise::spawn(async move {
-                            client
-                                .inputs()
-                                .list(Some("text_ft2_source_v2"))
-                                .await
-                                .map(|inputs| inputs.into_iter().map(|input| input.id).collect())
-                                .unwrap_or_default()
+                            let types = [
+                                "text_gdiplus",
+                                "text_gdiplus_v2",
+                                "text_ft2_source",
+                                "text_ft2_source_v2",
+                            ];
+                            let mut join_set = JoinSet::new();
+                            for t in types {
+                                let client = client.clone();
+                                join_set.spawn(async move {
+                                    client
+                                        .inputs()
+                                        .list(Some(t))
+                                        .await
+                                        .map(|inputs| {
+                                            inputs
+                                                .into_iter()
+                                                .map(|input| input.id)
+                                                .collect::<Vec<_>>()
+                                        })
+                                        .unwrap_or_default()
+                                });
+                            }
+                            join_set.join_all().await.into_iter().flatten().collect()
                         });
                     }
 
