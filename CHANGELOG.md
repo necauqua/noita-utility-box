@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.5.3] 12025-09-20
+
 ### Fixed
   - Streamer Wands: the fungal shift groups being detected incorrectly in cases where the target material is also in the source group.
   - Live Stats: the win count being set to zero if Noita was closed while the tool is running.
@@ -117,7 +119,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.2...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.3...HEAD
+[v0.5.3]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.3
 [v0.5.2]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.1
 [v0.5.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.0

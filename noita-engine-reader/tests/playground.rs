@@ -37,6 +37,35 @@ fn read_hp() -> Result<()> {
 
 #[test]
 #[ignore]
+fn read_world_state() -> Result<()> {
+    let mut noita = common::setup()?;
+
+    let ws = noita.get_world_state()?.context("no world state")?;
+
+    let kek = ws
+        .flags
+        .read_storage(noita.proc())?
+        .iter()
+        .any(|f| f == "sun_kill");
+
+    println!("sun_kill: {kek}");
+
+    // let kills = ws.lua_globals.get(noita.proc(), "HELPLESS_KILLS")?;
+
+    // println!("kills: {}", kills.as_deref().unwrap_or("0"));
+
+    Ok(())
+
+    // loop {
+
+    //     println!("\x1b[1F\x1b[2Jhp: {}", dmc.hp.get() * 25.0);
+
+    //     std::thread::sleep(Duration::from_millis(50));
+    // }
+}
+
+#[test]
+#[ignore]
 fn read_inventory() -> Result<()> {
     let mut noita = common::setup()?;
 
