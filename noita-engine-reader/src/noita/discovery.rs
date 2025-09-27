@@ -206,6 +206,7 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
 #[derive(Debug, Clone, Copy)]
 pub enum KnownBuild {
     v2024_08_12 = 0x66ba59d6,
+    v2025_01_25_beta = 0x6794c092,
     v2025_01_25 = 0x6794ee3c,
 }
 
@@ -214,9 +215,13 @@ impl KnownBuild {
         Self::v2025_01_25
     }
 
+    // todo maybe macro this somehow?.
     pub fn from_timestamp(timestamp: u32) -> Option<Self> {
         if Self::v2024_08_12 as u32 == timestamp {
             return Some(Self::v2024_08_12);
+        }
+        if Self::v2025_01_25_beta as u32 == timestamp {
+            return Some(Self::v2025_01_25_beta);
         }
         if Self::v2025_01_25 as u32 == timestamp {
             return Some(Self::v2025_01_25);
@@ -244,7 +249,7 @@ impl KnownBuild {
                 persistent_flag_manager: Some(Ptr::of(0x12053cc)),
                 mod_context: Some(Ptr::of(0x1205e60)),
             },
-            KnownBuild::v2025_01_25 => NoitaGlobals {
+            KnownBuild::v2025_01_25_beta | KnownBuild::v2025_01_25 => NoitaGlobals {
                 world_seed: Some(Ptr::of(0x1205004)),
                 ng_count: Some(Ptr::of(0x1205024)),
                 global_stats: Some(Ptr::of(0x1208940)),

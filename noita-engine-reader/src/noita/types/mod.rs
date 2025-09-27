@@ -7,9 +7,12 @@ use std::{
     ops::Index,
 };
 
-use crate::memory::{
-    ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, PtrReadable, Raw, RawPtr, StdMap, StdString,
-    StdUnorderedMap, StdVec, Vftable,
+use crate::{
+    discovery::KnownBuild,
+    memory::{
+        ByteBool, MemoryStorage, PadBool, ProcessRef, Ptr, PtrReadable, Raw, RawPtr, StdMap,
+        StdString, StdUnorderedMap, StdVec, Vftable,
+    },
 };
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -125,7 +128,7 @@ impl MemoryStorage for Ptr<Entity> {
     #[track_caller]
     fn read(&self, proc: &ProcessRef) -> io::Result<Self::Value> {
         // build 2025-01-25 updated the tag bitset to 512
-        if proc.header().timestamp() >= 0x6794ee3c {
+        if proc.header().timestamp() >= KnownBuild::v2025_01_25_beta.timestamp() {
             return self.raw().read(proc);
         }
 

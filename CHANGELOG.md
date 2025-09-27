@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Fix things mostly not working on the beta branch of the 2025-01-25 Noita build ([#4](https://github.com/necauqua/noita-utility-box/issues/4)).
+
 ## [v0.5.3] 12025-09-20
 
 ### Fixed
