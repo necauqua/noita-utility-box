@@ -76,65 +76,126 @@ pub struct StreamerWands {
 
 persist!(StreamerWands { state: State });
 
+type ConnectionHandle = JoinHandle<tungstenite::Result<Box<WebSocket<MaybeTlsStream<TcpStream>>>>>;
+
 #[derive(Debug, Default)]
 enum WebsocketState {
     #[default]
     NotConnected,
-    Connecting(
-        #[debug(skip)] JoinHandle<tungstenite::Result<Box<WebSocket<MaybeTlsStream<TcpStream>>>>>,
-    ),
+    Connecting(#[debug(skip)] ConnectionHandle),
     Connected(Box<WebSocket<MaybeTlsStream<TcpStream>>>),
     Error(String),
+}
+
+impl StreamerWands {
+    fn connect(&self) -> WebsocketState {
+        if self.state.token.is_empty() {
+            WebsocketState::Error("Token is empty".into())
+        } else if self.state.host.is_empty() {
+            WebsocketState::Error("Host is empty".into())
+        } else if self.username.is_none() {
+            WebsocketState::Error("Invalid token".into())
+        } else {
+            let url = format!("{}/{}", self.state.host, self.state.token);
+
+            let handle = std::thread::spawn(|| {
+                let (ws, _) = tungstenite::connect(url)?;
+                Ok(Box::new(ws))
+            });
+
+            WebsocketState::Connecting(handle)
+        }
+    }
+
+    fn poll_connecting(&mut self, handle: ConnectionHandle) -> WebsocketState {
+        if handle.is_finished() {
+            match handle.join() {
+                Ok(Ok(stream)) => {
+                    self.state.was_connected = true;
+                    WebsocketState::Connected(stream)
+                }
+                Ok(Err(err)) => WebsocketState::Error(err.to_string()),
+                Err(err) => WebsocketState::Error(match err.downcast() {
+                    Ok(s) => *s,
+                    Err(_) => "panic".into(),
+                }),
+            }
+        } else {
+            WebsocketState::Connecting(handle)
+        }
+    }
 }
 
 #[typetag::serde]
 impl Tool for StreamerWands {
     fn tick(&mut self, _ctx: &Context, state: &mut AppState) {
-        let connected = if let WebsocketState::Connected(stream) = &mut self.websocket {
-            if self.last_ping.elapsed().as_secs() >= 5 {
-                if let Err(e) = stream.send(Message::Text("im alive".into())) {
-                    tracing::error!(%e, "Failed to send keepalive");
-                }
-                self.last_ping = Instant::now();
-                tracing::info!("sent ping!");
+        self.websocket = match std::mem::replace(&mut self.websocket, WebsocketState::NotConnected)
+        {
+            WebsocketState::NotConnected if self.state.was_connected && state.noita.is_some() => {
+                self.connect()
             }
-            true
-        } else {
-            false
-        };
-        // need this cringe 'connected' bool to separately mut-borrow
-        // self.websocket above and below the call to Payload::read(-> &mut self <-, ..)
-        if connected && self.last_send.elapsed().as_secs() >= 3 {
-            let Some(noita) = &mut state.noita else {
-                return;
-            };
+            WebsocketState::Connecting(handle) => self.poll_connecting(handle),
+            WebsocketState::Error(e)
+                if self.state.was_connected
+                    && state.noita.is_some()
+                    && self.last_send.elapsed().as_secs() >= 3 =>
+            {
+                tracing::error!(%e, "websocket error, trying to reconnect..");
+                self.last_sent.clear();
+                self.connect()
+            }
+            WebsocketState::Connected(mut stream) => {
+                if self.last_ping.elapsed().as_secs() >= 5 {
+                    if let Err(e) = stream.send(Message::Text("im alive".into())) {
+                        tracing::error!(%e, "failed to send keepalive");
+                    }
+                    self.last_ping = Instant::now();
+                    tracing::debug!("sent ping!");
+                }
 
-            let payload = match Payload::read(self, noita).and_then(|p| {
-                Ok(p.map(|p| serde_json::to_string(&p))
-                    .transpose()
-                    .context("Payload serialization")?)
-            }) {
-                Ok(Some(payload)) => payload,
-                Ok(None) => return,
-                Err(e) => {
-                    tracing::error!(%e, "Failed to read payload");
+                if self.last_send.elapsed().as_secs() < 3 {
+                    // ugh just reassign it back before every early return..
+                    self.websocket = WebsocketState::Connected(stream);
                     return;
                 }
-            };
+                let Some(noita) = &mut state.noita else {
+                    self.websocket = WebsocketState::Connected(stream);
+                    return;
+                };
 
-            if let WebsocketState::Connected(stream) = &mut self.websocket {
+                let payload = match Payload::read(self, noita).and_then(|p| {
+                    Ok(p.map(|p| serde_json::to_string(&p))
+                        .transpose()
+                        .context("payload serialization")?)
+                }) {
+                    Ok(Some(payload)) => payload,
+                    Ok(None) => {
+                        self.websocket = WebsocketState::Connected(stream);
+                        return;
+                    }
+                    Err(e) => {
+                        tracing::error!(%e, "failed to read payload");
+                        self.websocket = WebsocketState::Connected(stream);
+                        return;
+                    }
+                };
+
                 if payload == self.last_sent {
+                    self.websocket = WebsocketState::Connected(stream);
                     return;
                 }
                 self.last_sent = payload.clone();
 
                 if let Err(e) = stream.send(Message::Text(payload.into())) {
-                    tracing::error!(%e, "Failed to send the payload");
+                    tracing::error!(%e, "failed to send the payload");
                 }
                 tracing::info!("sent payload!");
                 self.last_send = Instant::now();
+
+                WebsocketState::Connected(stream)
             }
-        }
+            ws => ws,
+        };
     }
 
     fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
@@ -221,43 +282,14 @@ impl Tool for StreamerWands {
         {
             WebsocketState::NotConnected => {
                 if ui.button("Connect").clicked() || self.state.was_connected {
-                    if self.state.token.is_empty() {
-                        WebsocketState::Error("Token is empty".into())
-                    } else if self.state.host.is_empty() {
-                        WebsocketState::Error("Host is empty".into())
-                    } else if self.username.is_none() {
-                        WebsocketState::Error("Invalid token".into())
-                    } else {
-                        let url = format!("{}/{}", self.state.host, self.state.token);
-
-                        let handle = std::thread::spawn(|| {
-                            let (ws, _) = tungstenite::connect(url)?;
-                            Ok(Box::new(ws))
-                        });
-
-                        WebsocketState::Connecting(handle)
-                    }
+                    self.connect()
                 } else {
                     WebsocketState::NotConnected
                 }
             }
             WebsocketState::Connecting(handle) => {
                 ui.label("Connecting...");
-                if handle.is_finished() {
-                    match handle.join() {
-                        Ok(Ok(stream)) => {
-                            self.state.was_connected = true;
-                            WebsocketState::Connected(stream)
-                        }
-                        Ok(Err(err)) => WebsocketState::Error(err.to_string()),
-                        Err(err) => WebsocketState::Error(match err.downcast() {
-                            Ok(s) => *s,
-                            Err(_) => "panic".into(),
-                        }),
-                    }
-                } else {
-                    WebsocketState::Connecting(handle)
-                }
+                self.poll_connecting(handle)
             }
             ws @ WebsocketState::Connected(_) => {
                 if ui.button("Disconnect").clicked() {
