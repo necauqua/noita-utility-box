@@ -602,7 +602,9 @@ impl RunInfo {
                 mods.push(md.id.read(noita.proc())?);
             }
         }
-        let beta = noita.get_file("_branch.txt")?.trim_ascii_end() != b"master";
+        let beta = noita
+            .get_file("_branch.txt")
+            .is_ok_and(|b| b.trim_ascii_end() != b"master");
         let seed = noita.read_seed()?;
 
         let playtime = noita.read_config_player_stats()?.stats.playtime;

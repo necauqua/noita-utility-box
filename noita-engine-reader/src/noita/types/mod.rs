@@ -313,7 +313,7 @@ pub struct GameStats {
     pub vftable: Vftable,
     pub dead: PadBool<3>,
     pub death_count: u32,
-    pub streaks: u32,
+    pub streaks: i32,
     pub world_seed: u32,
     pub killed_by: StdString,
     pub killed_by_extra: StdString,

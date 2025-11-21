@@ -31,8 +31,8 @@ enum ObsState {
 struct Stats {
     deaths: u32,
     wins: u32,
-    streak: u32,
-    record: u32,
+    streak: i32,
+    record: i32,
     actual_playtime: String,
 }
 
@@ -134,8 +134,8 @@ impl Tool for LiveStats {
             (&self.stats, &self.selected, &self.obs_ws)
         {
             let data = HashMap::from([
-                ("deaths".to_owned(), stats.deaths),
-                ("wins".to_owned(), stats.wins),
+                ("deaths".to_owned(), stats.deaths as i32),
+                ("wins".to_owned(), stats.wins as i32),
                 ("streak".to_owned(), stats.streak),
                 ("streak-pb".to_owned(), stats.record),
             ]);
