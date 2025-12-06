@@ -11,6 +11,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - Live Stats compatibility with the [negative-streak](https://github.com/necauqua/negative-streak) mod.
 
+### Changed
+  - Update Streamer Wands to support backend version 1.2.10.
+
 ### Fixed
   - Fix things mostly not working on the beta branch of the 2025-01-25 Noita build ([#4](https://github.com/necauqua/noita-utility-box/issues/4)).
   - Fix Streamer Wands not reconnecting after Noita restarts or other connection losses if the window is minimized or otherwise not visible.

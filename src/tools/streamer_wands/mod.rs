@@ -397,7 +397,7 @@ struct Payload {
     run_info: RunInfo,
     player_info: PlayerInfo,
     mod_features: Features,
-    #[default("1.2.9")]
+    #[default("1.2.10")]
     mod_version: String,
 }
 
@@ -734,7 +734,7 @@ impl Perks {
 #[serde(rename_all = "camelCase")]
 struct PlayerInfo {
     perks: Perks,
-    health: (f64, f64),
+    health: (String, String),
     gold: u64,
     orbs: u32,
     pos: Option<(f32, f32)>,
@@ -824,9 +824,23 @@ impl PlayerInfo {
             })
             .transpose()?;
 
+        fn lua_tostring(f: f64) -> String {
+            if f.is_nan() {
+                "nan".into()
+            } else if f.is_infinite() {
+                if f.is_sign_negative() {
+                    "-inf".into()
+                } else {
+                    "inf".into()
+                }
+            } else {
+                f.to_string()
+            }
+        }
+
         Ok(Self {
             perks: Perks::read(noita, player)?,
-            health: (dmc.hp.get(), dmc.max_hp.get()),
+            health: (lua_tostring(dmc.hp.get()), lua_tostring(dmc.max_hp.get())),
             gold: wc.get_checked(player)?.money.get(),
             orbs: noita
                 .get_world_state()?
