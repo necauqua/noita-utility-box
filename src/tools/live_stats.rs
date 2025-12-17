@@ -313,6 +313,7 @@ impl Tool for LiveStats {
                             let types = [
                                 "text_gdiplus",
                                 "text_gdiplus_v2",
+                                "text_gdiplus_v3",
                                 "text_ft2_source",
                                 "text_ft2_source_v2",
                             ];

@@ -17,6 +17,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Fixed
   - Fix things mostly not working on the beta branch of the 2025-01-25 Noita build ([#4](https://github.com/necauqua/noita-utility-box/issues/4)).
   - Fix Streamer Wands not reconnecting after Noita restarts or other connection losses if the window is minimized or otherwise not visible.
+  - `text_gdiplus_v3` OBS text source type support for Live Stats.
 
 ## [v0.5.3] 12025-09-20
 
