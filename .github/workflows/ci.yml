@@ -22,15 +22,9 @@ jobs:
     name: Checks
     runs-on: ubuntu-latest
     steps:
-      - uses: DeterminateSystems/nix-installer-action@v14
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
-
-      - uses: actions/checkout@v4
-
-      # - name: Check (flake)
-      #   uses: DeterminateSystems/flake-checker-action@v9
-      #   with:
-      #     fail-mode: true
+      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a
+      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Check (fmt)
         run: nix develop --command -- cargo fmt --check
@@ -53,10 +47,9 @@ jobs:
       - checks
     runs-on: ubuntu-latest
     steps:
-      - uses: DeterminateSystems/nix-installer-action@v14
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
-
-      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a
+      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Test
         run: nix develop --command -- cargo test --all-features
@@ -69,7 +62,7 @@ jobs:
       # push the .#default package build result to cachix
       - id: path
         run: echo "PATH=$(readlink result)" >> $GITHUB_OUTPUT
-      - uses: cachix/cachix-action@v14
+      - uses: cachix/cachix-action@0fc020193b5a1fa3ac4575aa3a7d3aa6a35435ad
         with:
           name: necauqua
           pathsToPush: ${{ steps.path.outputs.PATH }}
@@ -78,15 +71,15 @@ jobs:
       - name: Finalize artifacts
         run: ./.github/workflows/finalize-artifacts.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: Windows
           path: noita-utility-box.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: Generic Linux
           path: noita-utility-box-linux-generic.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: Debian
           path: noita-utility-box.deb
