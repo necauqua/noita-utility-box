@@ -148,6 +148,8 @@ impl Tool for StreamerWands {
                 if self.last_ping.elapsed().as_secs() >= 5 {
                     if let Err(e) = stream.send(Message::Text("im alive".into())) {
                         tracing::error!(%e, "failed to send keepalive");
+                        self.websocket = WebsocketState::Error(e.to_string());
+                        return;
                     }
                     self.last_ping = Instant::now();
                     tracing::debug!("sent ping!");
@@ -188,6 +190,8 @@ impl Tool for StreamerWands {
 
                 if let Err(e) = stream.send(Message::Text(payload.into())) {
                     tracing::error!(%e, "failed to send the payload");
+                    self.websocket = WebsocketState::Error(e.to_string());
+                    return;
                 }
                 tracing::info!("sent payload!");
                 self.last_send = Instant::now();
