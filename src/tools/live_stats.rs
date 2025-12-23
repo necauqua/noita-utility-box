@@ -114,7 +114,7 @@ impl Tool for LiveStats {
                     deaths: global.global.death_count,
                     wins: end0 + end1,
                     streak: global.session.streaks,
-                    record: global.highest.streaks,
+                    record: global.highest.streaks.max(global.session.streaks),
                     actual_playtime: global.global.playtime_str.read(noita.proc())?,
                 })
             })
