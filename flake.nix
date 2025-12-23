@@ -68,8 +68,6 @@
             xorg.libXcursor
             xorg.libXi
             xorg.libXrandr
-
-            openssl
           ];
 
           buildPackage = attrs: naersk-lib.buildPackage (
@@ -92,7 +90,14 @@
         rec {
           packages = {
             default = buildPackage {
-              nativeBuildInputs = with pkgs; [ makeWrapper copyDesktopItems pkg-config ];
+              nativeBuildInputs = with pkgs; [
+                makeWrapper
+                copyDesktopItems
+                pkg-config
+                llvmPackages.bintools
+              ];
+              OPENSSL_NO_VENDOR = 1;
+              RUSTFLAGS = "-Clink-self-contained=-linker";
               buildInputs = [ pkgs.openssl ];
               postInstall = ''
                 wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${dynamicDeps}

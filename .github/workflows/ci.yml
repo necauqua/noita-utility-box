@@ -57,7 +57,7 @@ jobs:
 
       # the default package does run the tests
       - name: Build
-        run: nix build . .#windows .#linux .#deb
+        run: nix build --accept-flake-config . .#windows .#linux .#deb
 
       # push the .#default package build result to cachix
       - id: path

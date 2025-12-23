@@ -20,7 +20,7 @@ jobs:
         id: build
         run: |
           echo "CI_RELEASE_VERSION=\"${GITHUB_REF_NAME}\"" > env-input.toml
-          nix build . .#windows .#linux .#deb --override-input build-env "file+file://$PWD/env-input.toml"
+          nix build --accept-flake-config . .#windows .#linux .#deb --override-input build-env "file+file://$PWD/env-input.toml"
 
       - name: Finalize artifacts
         run: |
