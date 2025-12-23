@@ -281,7 +281,7 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(i32, (i32, i32
     }
 
     // NG+3,6,... biomes
-    if ng_count % 3 == 0 {
+    if ng_count.is_multiple_of(3) {
         rng.skip(12);
     }
 
@@ -312,7 +312,7 @@ fn list_orb_rooms_ng_plus(world_seed: u32, ng_count: u32) -> Vec<(i32, (i32, i32
 
     rng.skip(2);
 
-    if ng_count % 5 == 0 {
+    if ng_count.is_multiple_of(5) {
         rng.skip(6);
     }
 

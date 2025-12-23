@@ -176,11 +176,11 @@
           };
 
           devShells.default = pkgs.mkShell {
-            inputsFrom = builtins.attrValues packages;
+            inputsFrom = [ packages.default ];
 
             nativeBuildInputs = with pkgs; [
-              # inputsFrom does not seem to include the depsBuildBuild thing
               pkgsCross.mingwW64.stdenv.cc
+              imagemagick
 
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview

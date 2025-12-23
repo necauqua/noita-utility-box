@@ -42,11 +42,11 @@ tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 typetag = "0.2"
 wgpu = "25" # enables the wgpu default features so we get the default backends
-serde_json = { version = "1.0.141", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order"] }
 rfd = "0.15.4"
-zip = { version = "4.3.0", default-features = false, features = ["deflate"] }
-base64 = "0.22.1"
-tungstenite = { version = "0.27.0", features = ["native-tls"] }
+zip = { version = "4.6", default-features = false, features = ["deflate"] }
+base64 = "0.22"
+tungstenite = { version = "0.27", features = ["native-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", default-features = false, features = [

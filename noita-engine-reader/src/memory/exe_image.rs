@@ -76,7 +76,7 @@ pub struct PeSection<'i> {
 impl<'i> PeSection<'i> {
     pub fn scan(&self, needle: &[u8]) -> Option<usize> {
         let found =
-            memmem::find(self.section, needle).map(|pos| (self.base + self.range.start + pos));
+            memmem::find(self.section, needle).map(|pos| self.base + self.range.start + pos);
 
         if let Some(res) = found {
             tracing::debug!("Found needle {needle:?} in .{} at 0x{res:x}", self.name);
