@@ -55,27 +55,11 @@
             rustc = toolchain;
           };
 
-          dynamicDeps = with pkgs; lib.makeLibraryPath [
-            vulkan-loader
-
-            # It's annoying that you need either wayland or the xorg stuff,
-            # but never both - idk how to make this better, and having to have
-            # an LD_LIBRARY_PATH wrapper thing is cringe on its own
-            wayland
-            libxkbcommon
-
-            xorg.libX11
-            xorg.libXcursor
-            xorg.libXi
-            xorg.libXrandr
-          ];
-
           buildPackage = attrs: naersk-lib.buildPackage (
             {
               inherit name version;
               src = ./.;
               strictDeps = true;
-              doCheck = true;
 
               NIX_REV = self.rev or "dirty";
             } // attrs // builtins.fromTOML (builtins.readFile "${build-env}")
@@ -84,8 +68,15 @@
           wineWrap = name: cmd: pkgs.writeShellScript "${name}-in-wine" ''
             export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
             trap "rm -rf \"$WINEPREFIX\"" EXIT
-            exec ${pkgs.wineWowPackages.staging}/bin/wine64 ${cmd}
+            exec ${pkgs.wineWowPackages.staging}/bin/wine ${cmd}
           '';
+
+          dynamicDeps = with pkgs; lib.makeLibraryPath [
+            wayland
+            libxkbcommon
+            vulkan-loader
+            libGL
+          ];
         in
         rec {
           packages = {
@@ -94,16 +85,26 @@
                 makeWrapper
                 copyDesktopItems
                 pkg-config
-                llvmPackages.bintools
+                autoPatchelfHook
               ];
-              OPENSSL_NO_VENDOR = 1;
-              RUSTFLAGS = "-Clink-self-contained=-linker";
-              buildInputs = [ pkgs.openssl ];
+
+              buildInputs = with pkgs; [
+                gcc.cc.lib
+                openssl.out
+
+                xorg.libX11
+                xorg.libXcursor
+                xorg.libXi
+                xorg.libXrandr
+              ];
+
+              appendRunpaths = dynamicDeps;
+
               postInstall = ''
-                wrapProgram $out/bin/${name} --prefix LD_LIBRARY_PATH : ${dynamicDeps}
                 mkdir -p $out/share/icons/hicolor/256x256/apps
                 cp ${./res/icon.png} $out/share/icons/hicolor/256x256/apps/${name}.png
               '';
+
               desktopItems = [
                 (pkgs.makeDesktopItem {
                   inherit name;
@@ -124,7 +125,6 @@
               installPhase = ''
                 cp -r $src $out
                 chmod -R +w $out
-                mv $out/bin/{.${name}-wrapped,${name}}
                 ${pkgs.patchelf}/bin/patchelf $out/bin/${name} \
                   --set-interpreter "/lib64/ld-linux-x86-64.so.2" \
                   --set-rpath ""
@@ -157,8 +157,9 @@
                 pkgsCross.mingwW64.stdenv.cc
                 imagemagick
               ];
-              buildInputs = [ pkgs.pkgsCross.mingwW64.windows.pthreads ];
-              doCheck = false;
+              buildInputs = [
+                pkgs.pkgsCross.mingwW64.windows.pthreads
+              ];
 
               CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
 
@@ -181,22 +182,22 @@
           };
 
           devShells.default = pkgs.mkShell {
-            inputsFrom = [ packages.default ];
+            inputsFrom = builtins.attrValues packages;
 
             nativeBuildInputs = with pkgs; [
-              pkgsCross.mingwW64.stdenv.cc
-              imagemagick
-
               rust-analyzer-nightly
               pkgs.fenix.default.rustfmt-preview
               cargo-nextest
 
+              # used in CI to make release artifacts
               p7zip
             ];
 
-            CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUSTFLAGS = "-L native=${pkgs.pkgsCross.mingwW64.windows.pthreads}/lib";
-
-            LD_LIBRARY_PATH = dynamicDeps;
+            # make `cargo run` work
+            LD_LIBRARY_PATH = with pkgs; lib.makeLibraryPath [
+              openssl
+              dynamicDeps
+            ];
 
             RUSTDOCFLAGS = "-D warnings";
             RUST_BACKTRACE = "full";

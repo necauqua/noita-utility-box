@@ -1,62 +1,83 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "**/Cargo.*"
-      - "**.rs"
-  pull_request:
+  push: &push
     branches:
       - main
     paths:
       - "flake.*"
       - "**/Cargo.*"
       - "**.rs"
+  pull_request: *push
   merge_group:
-    types: [checks_requested]
+    types:
+      - checks_requested
 
 jobs:
-  checks:
+  fmt:
     if: ${{ ! startsWith(github.event.head_commit.message, 'release:') }}
-    name: Checks
+    name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a
-      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: &nix-install DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a
+      - uses: &nix-cache DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
+      - uses: &checkout actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Check (fmt)
-        run: nix develop --command -- cargo fmt --check
+        run: nix develop --accept-flake-config --command -- cargo fmt --check
+
+  clippy:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'release:') }}
+    name: Clippy (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: ["linux", "x86_64-pc-windows-gnu"]
+    steps:
+      - uses: *nix-install
+      - uses: *nix-cache
+      - uses: *checkout
 
       - name: Check (clippy)
-        run: nix develop --command -- cargo clippy --no-deps --all-features --workspace -- -D warnings
+        run: nix develop --accept-flake-config --command -- cargo clippy --no-deps --all-features --workspace ${{ matrix.target != 'linux' && format('--target {0}', matrix.target) || '' }} -- -D warnings
 
-      - name: Check (clippy, windows)
-        run: nix develop --command -- cargo clippy --no-deps --all-features --workspace --target x86_64-pc-windows-gnu -- -D warnings
+  docs:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'release:') }}
+    name: Docs (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: ["linux", "x86_64-pc-windows-gnu"]
+    steps:
+      - uses: *nix-install
+      - uses: *nix-cache
+      - uses: *checkout
 
       - name: Check (docs)
-        run: nix develop --command -- cargo doc --no-deps --all-features
+        run: nix develop --accept-flake-config --command -- cargo doc --no-deps --all-features --workspace ${{ matrix.target != 'linux' && format('--target {0}', matrix.target) || '' }}
 
-      - name: Check (docs, windows)
-        run: nix develop --command -- cargo doc --no-deps --all-features --workspace --target x86_64-pc-windows-gnu
-
-  build:
-    name: Test and Build
-    needs:
-      - checks
+  test:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'release:') }}
+    name: Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a
-      - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: *nix-install
+      - uses: *nix-cache
+      - uses: *checkout
 
       - name: Test
-        run: nix develop --command -- cargo test --all-features
+        run: nix develop --accept-flake-config --command -- cargo test --all-features
         timeout-minutes: 15
 
-      # the default package does run the tests
+  build:
+    name: Build
+    needs: [fmt, clippy, docs, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: *nix-install
+      - uses: *nix-cache
+      - uses: *checkout
+
       - name: Build
         run: nix build --accept-flake-config . .#windows .#linux .#deb
 

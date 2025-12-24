@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: Build and Release
+    name: Test, Build and Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,16 +16,21 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
+      - name: Test
+        run: nix develop --accept-flake-config --command -- cargo test --all-features
+        timeout-minutes: 15
+
       - name: Build
         id: build
         run: |
           echo "CI_RELEASE_VERSION=\"${GITHUB_REF_NAME}\"" > env-input.toml
           nix build --accept-flake-config . .#windows .#linux .#deb --override-input build-env "file+file://$PWD/env-input.toml"
+        timeout-minutes: 15
 
       - name: Finalize artifacts
         run: |
           ./.github/workflows/finalize-artifacts.sh
-          nix develop --command -- 7z a noita-utility-box-windows noita-utility-box.exe
+          nix develop --accept-flake-config --command -- 7z a noita-utility-box-windows noita-utility-box.exe
 
       - name: Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
