@@ -23,7 +23,7 @@ release semver-part: check
         exit 1
     fi
 
-    version=$(semver {{semver-part}})
+    version=$(semver {{semver-part}} | sed s/^v//)
 
     # Extract the unreleased changelog section to be the tag annotation
     annotation="Release v$version $(echo; sed -n '/## \[Unreleased\]/,/## \[/{/## \[/!p;}' CHANGELOG.md)"
