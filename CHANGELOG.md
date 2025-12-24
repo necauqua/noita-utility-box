@@ -8,6 +8,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+## [v0.6.0] 12025-12-24
+
 ### Added
   - Live Stats compatibility with the [negative-streak](https://github.com/necauqua/negative-streak) mod.
 
@@ -131,7 +133,8 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Added
   - The first release
 
-[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.5.3...HEAD
+[unreleased]: https://github.com/necauqua/noita-utility-box/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.6.0
 [v0.5.3]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.3
 [v0.5.2]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.2
 [v0.5.1]: https://github.com/necauqua/noita-utility-box/releases/tag/v0.5.1
