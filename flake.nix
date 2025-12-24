@@ -153,11 +153,11 @@
             };
 
             windows = buildPackage {
-              depsBuildBuild = with pkgs.pkgsCross.mingwW64; [
-                stdenv.cc
-                windows.pthreads
+              nativeBuildInputs = with pkgs; [
+                pkgsCross.mingwW64.stdenv.cc
+                imagemagick
               ];
-              nativeBuildInputs = [ pkgs.imagemagick ];
+              buildInputs = [ pkgs.pkgsCross.mingwW64.windows.pthreads ];
               doCheck = false;
 
               CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
