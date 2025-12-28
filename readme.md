@@ -100,15 +100,14 @@ nix build .#windows
 nix build .#linux .#deb .#windows
 ```
 
-On NixOS the flake app is installable with
-```bash
-nix profile install github:necauqua/noita-utility-box
-```
-to get a bleeding edge version (from latest `main` commit) or
+On NixOS you can install the latest release via the flake:
 ```bash
 nix profile install github:necauqua/noita-utility-box/release
 ```
-for the latest release.
+Or get the bleeding edge version built from last commit in main branch:
+```bash
+nix profile install github:necauqua/noita-utility-box
+```
 
 If have `just` installed, there's a convenient `just check` shortcut that will
 check for formatting and clippy errors to save on waiting for CI to catch
