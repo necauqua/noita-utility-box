@@ -547,10 +547,15 @@ fn read_inv_spells(noita: &mut Noita, player: &Entity) -> Result<Vec<String>> {
         .read(noita.proc())?
         .read_storage(noita.proc())?
     {
-        let action_id = iacs.get_checked(&child)?.action_id.read(noita.proc())?;
-        let item = ics.get_checked(&child)?;
-        let charges = item.uses_remaining;
-        let slot = item.inventory_slot.x;
+        let Some(item_action_comp) = iacs.get(&child)? else {
+            continue;
+        };
+        let Some(item_comp) = ics.get(&child)? else {
+            continue;
+        };
+        let action_id = item_action_comp.action_id.read(noita.proc())?;
+        let charges = item_comp.uses_remaining;
+        let slot = item_comp.inventory_slot.x;
         let empty_slots = slot - last_slot;
         if empty_slots > 0 {
             for _ in 0..empty_slots {
@@ -967,10 +972,15 @@ impl Wand {
 
         let mut last_slot = 0;
         for child in childs {
-            let item_comp = ics.get_checked(&child)?;
+            let Some(item_comp) = ics.get(&child)? else {
+                continue;
+            };
+            let Some(item_action_comp) = iacs.get(&child)? else {
+                continue;
+            };
             let spell = format!(
                 "{}_#{}",
-                iacs.get_checked(&child)?.action_id.read(noita.proc())?,
+                item_action_comp.action_id.read(noita.proc())?,
                 item_comp.uses_remaining
             );
 

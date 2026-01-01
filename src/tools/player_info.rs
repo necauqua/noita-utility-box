@@ -285,7 +285,7 @@ impl Wand {
         let sprite = match &*sprite_file {
             "" => None,
             s => {
-                // just cheat, for wands this seems ok
+                // just cheat, for wands this seems ok (except the chainsaw wand lmao)
                 let s = s.replace("_sprite.xml", ".png").replace(".xml", ".png");
                 Some((format!("bytes://{s}"), noita.get_file(&s)?))
             }
@@ -297,9 +297,12 @@ impl Wand {
 
         if !entity.children.is_null() {
             for entity in entity.children.read(p)?.read_storage(p)? {
-                let item = item_store.get_checked(&entity)?;
-                let spell = spell_store.get_checked(&entity)?;
-
+                let Some(item) = item_store.get(&entity)? else {
+                    continue;
+                };
+                let Some(spell) = spell_store.get(&entity)? else {
+                    continue;
+                };
                 spells.push(spell.action_id.read(p)?);
                 always_cast_count += item.permanently_attached.as_bool() as i32;
             }

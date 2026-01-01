@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Fixed
+  - Ignore invalid spell entities instead of fully erroring out the Streamer Wands.
+
 ## [v0.6.0] 12025-12-24
 
 ### Added
