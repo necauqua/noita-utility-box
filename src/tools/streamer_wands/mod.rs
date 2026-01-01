@@ -547,13 +547,13 @@ fn read_inv_spells(noita: &mut Noita, player: &Entity) -> Result<Vec<String>> {
         .read(noita.proc())?
         .read_storage(noita.proc())?
     {
-        let Some(item_action_comp) = iacs.get(&child)? else {
-            continue;
-        };
         let Some(item_comp) = ics.get(&child)? else {
             continue;
         };
-        let action_id = item_action_comp.action_id.read(noita.proc())?;
+        let action_id = iacs
+            .get(&child)?
+            .map(|c| c.action_id.read(noita.proc()))
+            .transpose()?;
         let charges = item_comp.uses_remaining;
         let slot = item_comp.inventory_slot.x;
         let empty_slots = slot - last_slot;
@@ -563,10 +563,10 @@ fn read_inv_spells(noita: &mut Noita, player: &Entity) -> Result<Vec<String>> {
                 last_slot += 1;
             }
         }
-        if action_id.is_empty() {
-            inventory.push("sampo_#-1".into());
-        } else {
+        if let Some(action_id) = action_id {
             inventory.push(format!("{action_id}_#{charges}"));
+        } else {
+            inventory.push("sampo_#-1".into());
         }
         last_slot += 1;
     }
