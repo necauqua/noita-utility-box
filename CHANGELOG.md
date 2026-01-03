@@ -11,6 +11,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ### Fixed
   - Ignore invalid spell entities instead of fully erroring out the Streamer Wands.
   - Fix holding sampo in spell inventory breaking Streamer Wands.
+  - Fix titles and sprites of named wands in Streamer Wands.
 
 ## [v0.6.0] 12025-12-24
 

@@ -901,9 +901,17 @@ impl WandStats {
         let item_comp = ics.get_checked(wand)?;
 
         Ok(WandStats {
-            sprite: ability_comp.sprite_file.read(noita.proc())?,
+            sprite: if item_comp.ui_sprite.is_empty() {
+                ability_comp.sprite_file.read(noita.proc())?
+            } else {
+                item_comp.ui_sprite.read(noita.proc())?
+            },
             ui_name: if item_comp.always_use_item_name_in_ui.as_bool() {
-                let ui_name = ability_comp.ui_name.read(noita.proc())?;
+                let ui_name = if item_comp.item_name.is_empty() {
+                    ability_comp.ui_name.read(noita.proc())?
+                } else {
+                    item_comp.item_name.read(noita.proc())?
+                };
                 let ui_name = ui_name.trim_start_matches('$');
                 tool.cached_translations
                     .translate(ui_name, true)
