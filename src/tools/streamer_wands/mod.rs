@@ -246,7 +246,7 @@ impl Tool for StreamerWands {
             ui.end_row();
         });
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.style_mut().spacing.item_spacing.x = 0.0;
             ui.label("Read the token and host from streamer-wands.zip: ");
             if ui

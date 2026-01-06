@@ -9,6 +9,7 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Fixed
+  - The browse streamer-wands.zip button and text in Streamer Wands no longet gets clipped and not fully visible.
   - Ignore invalid spell entities instead of fully erroring out the Streamer Wands.
   - Fix holding sampo in spell inventory breaking Streamer Wands.
   - Fix titles and sprites of named wands in Streamer Wands.
