@@ -245,11 +245,11 @@ fn read_shifts() -> Result<()> {
         .step_by(2)
         .zip(changed_materials.iter().skip(1).step_by(2))
     {
-        if let Some((from, to)) = res.last_mut() {
-            if to == b {
-                from.push(a.clone());
-                continue;
-            }
+        if let Some((from, to)) = res.last_mut()
+            && to == b
+        {
+            from.push(a.clone());
+            continue;
         }
         res.push((vec![a.clone()], b.clone()));
     }
@@ -261,6 +261,20 @@ fn read_shifts() -> Result<()> {
     // let mut lua_globals = state.lua_globals.read(noita.proc())?;
     // lua_globals.retain(|k, _| !k.starts_with("TEMPLE_ACTIVE_") && !k.starts_with("PERK_PICKED_"));
     // println!("{lua_globals:#?}");
+
+    Ok(())
+}
+
+#[test]
+#[ignore]
+fn read_death_reason() -> Result<()> {
+    let noita = common::setup()?;
+
+    let p = noita.read_config_player_stats()?;
+    let killed_by = p.stats.killed_by.read(noita.proc())?;
+    let killed_by_extra = p.stats.killed_by_extra.read(noita.proc())?;
+
+    println!("death reason: {killed_by} ({killed_by_extra})");
 
     Ok(())
 }
@@ -339,10 +353,10 @@ fn read_entities() -> Result<()> {
             }
             let buf = buf.read(noita.proc())?;
             let idx = buf.indices.read_at(e.comp_idx, noita.proc())?;
-            if let Some(idx) = idx {
-                if idx != buf.default_index {
-                    cnames.push(idx_to_name[&(i as _)].clone());
-                }
+            if let Some(idx) = idx
+                && idx != buf.default_index
+            {
+                cnames.push(idx_to_name[&(i as _)].clone());
             }
         }
         if let Some(lua_c) = lua_comp_store.get(&e)? {

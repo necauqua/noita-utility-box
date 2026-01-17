@@ -9,10 +9,11 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 ## [Unreleased]
 
 ### Fixed
-  - The browse streamer-wands.zip button and text in Streamer Wands no longet gets clipped and not fully visible.
-  - Ignore invalid spell entities instead of fully erroring out the Streamer Wands.
-  - Fix holding sampo in spell inventory breaking Streamer Wands.
-  - Fix titles and sprites of named wands in Streamer Wands.
+  - (Streamer Wands) The browse streamer-wands.zip button and text no longer gets clipped and not fully visible.
+  - (Streamer Wands) Ignore invalid spell entities instead of fully erroring out.
+  - (Streamer Wands) Fix holding sampo in spell inventory breaking everything.
+  - (Streamer Wands) Fix titles and sprites of named wands.
+  - (Streamer Wands) Fix not sending flask materials properly if the NUB window was never focused after a Noita restart.
 
 ## [v0.6.0] 12025-12-24
 

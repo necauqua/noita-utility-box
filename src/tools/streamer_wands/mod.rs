@@ -124,11 +124,31 @@ impl StreamerWands {
             WebsocketState::Connecting(handle)
         }
     }
+
+    fn refresh_data(&mut self, noita: &mut Noita, force: bool) -> Result<()> {
+        if force || self.cached_translations.is_empty() {
+            self.cached_translations = Arc::new(
+                noita
+                    .translations()
+                    .context("Failed to read language data")?,
+            );
+        }
+        if force || self.cached_cell_data.is_empty() {
+            self.cached_cell_data = noita.read_cell_data().context("Failed to read cell data")?;
+        }
+        Ok(())
+    }
 }
 
 #[typetag::serde]
 impl Tool for StreamerWands {
     fn tick(&mut self, _ctx: &Context, state: &mut AppState) {
+        if let Some(noita) = &mut state.noita
+            && let Err(e) = self.refresh_data(noita, false)
+        {
+            tracing::error!(%e, "failed to refresh cached data");
+        }
+
         self.websocket = match std::mem::replace(&mut self.websocket, WebsocketState::NotConnected)
         {
             WebsocketState::NotConnected if self.state.was_connected && state.noita.is_some() => {
@@ -204,18 +224,7 @@ impl Tool for StreamerWands {
 
     fn ui(&mut self, ui: &mut Ui, state: &mut AppState) -> Result {
         if let Some(noita) = &mut state.noita {
-            let refresh = ui.button("Refresh").clicked();
-            if refresh || self.cached_translations.is_empty() {
-                self.cached_translations = Arc::new(
-                    noita
-                        .translations()
-                        .context("Failed to read language data")?,
-                );
-            }
-            if refresh || self.cached_cell_data.is_empty() {
-                self.cached_cell_data =
-                    noita.read_cell_data().context("Failed to read cell data")?;
-            }
+            self.refresh_data(noita, ui.button("Refresh").clicked())?;
         } else {
             ui.label("Not connected to Noita");
         }
@@ -505,9 +514,10 @@ fn read_inv_items(
                         .get_material_ui_name(i as _)
                         .unwrap_or(None)
                         .unwrap_or_default();
+                    let mat_key = mat_key.trim_start_matches('$');
                     let mat_name = tool
                         .cached_translations
-                        .translate(mat_key.trim_start_matches('$'), true)
+                        .translate(mat_key, true)
                         .unwrap_or_else(|| mat_key.to_owned());
                     write!(&mut amt, "@{mat_name} ({mat_id})#{mat}").unwrap();
                 }
