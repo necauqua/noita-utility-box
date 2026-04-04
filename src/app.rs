@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 
 use crate::{
-    tools::{TOOLS, Tool, ToolError, ToolInfo, settings::SettingsData},
+    tools::{TOOLS, Tool, ToolError, ToolInfo, UnexpectedError, settings::SettingsData},
     update_check::UpdateChecker,
     util::{Tickable, UpdatableApp, persist},
 };
@@ -194,6 +194,12 @@ impl egui_tiles::Behavior<Pane> for AppState {
                     Ok(()) => {}
                     Err(ToolError::ImmediateRetry(text)) => {
                         ui.label(text);
+                    }
+                    Err(ToolError::Unexpected(UnexpectedError::Io(e), _))
+                        // (3 is libc::ESRCH, has no ErrorKind variant)
+                        if e.raw_os_error() == Some(3) =>
+                    {
+                        self.noita = None;
                     }
                     Err(e) => {
                         pane.error = Some(e);
