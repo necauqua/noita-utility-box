@@ -13,6 +13,7 @@ use types::{
     cell_factory::{CellData, CellFactory},
     components::{Component, ComponentName, WorldStateComponent},
     platform::{FileDevice, PlatformWin},
+    profiler::{ProfilerData, SimpleProfilerGlobal},
 };
 
 use crate::{
@@ -53,6 +54,7 @@ pub struct NoitaGlobals {
     pub platform: Option<Ptr<PlatformWin>>,
     pub persistent_flag_manager: Option<Ptr<Ptr<PersistentFlagManager>>>,
     pub mod_context: Option<Ptr<ModContext>>,
+    pub simple_profiler: Option<Ptr<Ptr<SimpleProfilerGlobal>>>,
 }
 
 macro_rules! not_found {
@@ -420,6 +422,24 @@ impl Noita {
 
     pub fn read_mod_context(&self) -> io::Result<ModContext> {
         read_ptr!(self.mod_context)
+    }
+
+    /// The profiler of the game, or nothing while the game did not make it.
+    pub fn read_simple_profiler(&self) -> io::Result<Option<SimpleProfilerGlobal>> {
+        let ptr = read_ptr!(self.simple_profiler)?;
+        if ptr.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(ptr.read(&self.proc)?))
+    }
+
+    /// The name and the data of each scope of the profiler of the game, in no
+    /// particular order. Nothing while the game did not make the profiler.
+    pub fn read_profiler_scopes(&self) -> io::Result<Vec<(String, Ptr<ProfilerData>)>> {
+        let Some(profiler) = self.read_simple_profiler()? else {
+            return Ok(Vec::new());
+        };
+        Ok(profiler.data.read(&self.proc)?.into_iter().collect())
     }
 }
 

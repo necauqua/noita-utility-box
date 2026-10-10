@@ -42,6 +42,7 @@ fn test() -> Result<()> {
         platform,
         persistent_flag_manager,
         mod_context,
+        simple_profiler,
     } = KnownBuild::last().map();
 
     // separate asserts so we know which one failed (maybe use insta?)
@@ -57,6 +58,7 @@ fn test() -> Result<()> {
     assert_eq!(globals.platform, platform);
     assert_eq!(globals.persistent_flag_manager, persistent_flag_manager);
     assert_eq!(globals.mod_context, mod_context);
+    assert_eq!(globals.simple_profiler, simple_profiler);
 
     Ok(())
 }

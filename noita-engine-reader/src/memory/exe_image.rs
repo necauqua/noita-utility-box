@@ -86,6 +86,12 @@ impl<'i> PeSection<'i> {
 
         found
     }
+
+    /// The addresses of all the occurrences of `needle`, in order.
+    pub fn scan_all<'n>(&self, needle: &'n [u8]) -> impl Iterator<Item = usize> + use<'i, 'n> {
+        let offset = self.base + self.range.start;
+        memmem::find_iter(self.section, needle).map(move |pos| offset + pos)
+    }
 }
 
 #[derive(Debug, Clone)]

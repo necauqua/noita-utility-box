@@ -37,6 +37,32 @@ fn read_hp() -> Result<()> {
 
 #[test]
 #[ignore]
+fn read_profiler_scopes() -> Result<()> {
+    let noita = common::setup()?;
+    let mut scopes = noita
+        .read_profiler_scopes()?
+        .into_iter()
+        .map(|(name, data)| Ok((name, data.read(noita.proc())?)))
+        .collect::<Result<Vec<_>>>()?;
+    scopes.sort_by(|a, b| b.1.total_ms.total_cmp(&a.1.total_ms));
+
+    for (name, data) in &scopes {
+        println!(
+            "{name:40} total {:12.3} ms, {:8} samples, last {:8.3} ms",
+            data.total_ms, data.count, data.last_ms,
+        );
+    }
+    let other = scopes
+        .iter()
+        .filter(|(name, _)| !name.starts_with("class "))
+        .map(|(name, _)| name)
+        .collect::<Vec<_>>();
+    println!("{} scopes, not `class X`: {other:?}", scopes.len());
+    Ok(())
+}
+
+#[test]
+#[ignore]
 fn read_world_state() -> Result<()> {
     let mut noita = common::setup()?;
 

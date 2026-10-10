@@ -19,6 +19,7 @@ use zerocopy::{FromBytes, IntoBytes};
 pub mod cell_factory;
 pub mod components;
 pub mod platform;
+pub mod profiler;
 pub mod spells;
 
 #[derive(FromBytes, IntoBytes, Clone, Copy)]

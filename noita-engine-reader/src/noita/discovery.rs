@@ -161,6 +161,23 @@ fn find_persistent_flag_manager_pointer(image: &ExeImage) -> Option<u32> {
         .map(|instr| instr.memory_displacement32())
 }
 
+/// We look for `GetSimpleProfilerGlobal` (as I call it), which starts with
+/// `MOV EAX, [instance]`, `TEST EAX, EAX`, `JNZ rel8` and then
+/// `PUSH 0x2048` (the size of a new `SimpleProfilerGlobal`), and return the
+/// address of the instance pointer.
+fn find_simple_profiler_pointer(image: &ExeImage) -> Option<u32> {
+    image
+        .text()
+        .scan_all(&[0x68, 0x48, 0x20, 0x00, 0x00])
+        .find_map(|push| {
+            let start = push.checked_sub(image.base() + 9)?;
+            match image[start..start + 9] {
+                [0xa1, a, b, c, d, 0x85, 0xc0, 0x75, _] => Some(u32::from_le_bytes([a, b, c, d])),
+                _ => None,
+            }
+        })
+}
+
 /// It's actually almost same as the PE timestamp I've been using, but
 /// they might have some more human-readable stuff here.
 pub fn find_noita_build(image: &ExeImage) -> Option<Cow<'_, str>> {
@@ -198,6 +215,7 @@ pub fn run(image: &ExeImage) -> NoitaGlobals {
         mod_context: image
             .find_static_global(c".?AUModContext@@")
             .map(|p| p.into()),
+        simple_profiler: find_simple_profiler_pointer(image).map(|p| p.into()),
     }
 }
 
@@ -248,6 +266,7 @@ impl KnownBuild {
                 platform: Some(Ptr::of(0x121fba0)),
                 persistent_flag_manager: Some(Ptr::of(0x12053cc)),
                 mod_context: Some(Ptr::of(0x1205e60)),
+                simple_profiler: Some(Ptr::of(0x1222aac)),
             },
             KnownBuild::v2025_01_25_beta | KnownBuild::v2025_01_25 => NoitaGlobals {
                 world_seed: Some(Ptr::of(0x1205004)),
@@ -262,6 +281,7 @@ impl KnownBuild {
                 platform: Some(Ptr::of(0x1221bc0)),
                 persistent_flag_manager: Some(Ptr::of(0x12073f4)),
                 mod_context: Some(Ptr::of(0x1207e80)),
+                simple_profiler: Some(Ptr::of(0x1224ac4)),
             },
         }
     }
