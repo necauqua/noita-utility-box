@@ -52,6 +52,7 @@ tools! {
     material_list::MaterialList;
     settings::Settings;
     streamer_wands::StreamerWands;
+    component_profiler::ComponentProfiler;
 }
 
 #[derive(Debug)]

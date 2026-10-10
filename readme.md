@@ -55,6 +55,14 @@ host from the file for your convenience, you can type them in manually.
 After that, if Noita is running and found you'll be able to click `connect` and
 your wand data will be sent!
 
+#### Component Profiler
+Shows how many milliseconds each component system (for example
+`LuaComponent` or `PhysicsBodyComponent`) takes, from the profiler that is
+built into Noita. For each system it shows the average milliseconds per game
+frame, the peak of the last 30 updates, and the totals that the game keeps
+(the last, smallest and largest update, the number of updates and their sum).
+Click a column title to sort by that column.
+
 #### .. more coming
 There are ideas floating for more tools useful for advanced Noita gameplay,
 they will be added in future releases.

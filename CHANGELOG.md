@@ -8,6 +8,9 @@ Dates in this file are in [Holocene Calendar] because it is amazing, logical, an
 
 ## [Unreleased]
 
+### Added
+  - Component Profiler, a new tool that shows how much time each component system takes, from the profiler that is built into Noita.
+
 ### Fixed
   - (Streamer Wands) The browse streamer-wands.zip button and text no longer gets clipped and not fully visible.
   - (Streamer Wands) Ignore invalid spell entities instead of fully erroring out.
