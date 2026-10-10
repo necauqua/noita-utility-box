@@ -110,11 +110,11 @@ nix build .#linux .#deb .#windows
 
 On NixOS you can install the latest release via the flake:
 ```bash
-nix profile install github:necauqua/noita-utility-box/release
+nix profile add github:necauqua/noita-utility-box/release
 ```
 Or get the bleeding edge version built from last commit in main branch:
 ```bash
-nix profile install github:necauqua/noita-utility-box
+nix profile add github:necauqua/noita-utility-box
 ```
 
 If have `just` installed, there's a convenient `just check` shortcut that will
