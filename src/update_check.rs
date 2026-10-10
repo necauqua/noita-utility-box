@@ -98,7 +98,7 @@ fn show_update_modal(ctx: &Context, releases: &[UpdateInfo], state: &mut AppStat
     let mut close = false;
 
     let response = Modal::new(Id::new("update")).show(ctx, |ui| {
-        let screen_rect = ui.ctx().input(|i| i.screen_rect);
+        let screen_rect = ui.ctx().input(|i| i.content_rect());
         ui.set_max_width(screen_rect.width() * 0.8);
         ui.set_max_height(screen_rect.height() * 0.6);
 

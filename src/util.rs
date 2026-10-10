@@ -169,8 +169,12 @@ where
 }
 
 impl<T: eframe::App> eframe::App for UpdatableApp<T> {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.0.lock().unwrap().update(ctx, frame)
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.0.lock().unwrap().logic(ctx, frame)
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.0.lock().unwrap().ui(ui, frame)
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

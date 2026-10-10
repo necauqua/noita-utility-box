@@ -455,7 +455,7 @@ fn materials_for_wuote() -> Result<()> {
     let cell_data = cf.cell_data.read(noita.proc())?;
 
     let mut map = serde_json::Map::new();
-    for (name, cell_data) in materials.into_iter().zip(cell_data.into_iter()) {
+    for (name, cell_data) in materials.into_iter().zip(cell_data) {
         map.insert(name, serde_json::to_value(cell_data)?);
     }
 

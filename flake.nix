@@ -30,7 +30,7 @@
 
   outputs = { self, nixpkgs, naersk, flake-utils, fenix, build-env }:
     let
-      cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+      cargoToml = fromTOML (builtins.readFile ./Cargo.toml);
       inherit (cargoToml.package) name version description;
     in
     flake-utils.lib.eachDefaultSystem
@@ -62,13 +62,13 @@
               strictDeps = true;
 
               NIX_REV = self.rev or "dirty";
-            } // attrs // builtins.fromTOML (builtins.readFile "${build-env}")
+            } // attrs // fromTOML (builtins.readFile "${build-env}")
           );
 
           wineWrap = name: cmd: pkgs.writeShellScript "${name}-in-wine" ''
             export WINEPREFIX="$(mktemp -dt ${name}-wineprefix-XXXXXX)"
             trap "rm -rf \"$WINEPREFIX\"" EXIT
-            exec ${pkgs.wineWowPackages.staging}/bin/wine ${cmd}
+            exec ${pkgs.wineWow64Packages.staging}/bin/wine ${cmd}
           '';
 
           dynamicDeps = with pkgs; lib.makeLibraryPath [
@@ -92,10 +92,10 @@
                 gcc.cc.lib
                 openssl.out
 
-                xorg.libX11
-                xorg.libXcursor
-                xorg.libXi
-                xorg.libXrandr
+                libX11
+                libXcursor
+                libXi
+                libXrandr
               ];
 
               appendRunpaths = dynamicDeps;

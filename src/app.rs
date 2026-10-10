@@ -248,13 +248,13 @@ impl Tickable for NoitaUtilityBox {
 }
 
 impl eframe::App for NoitaUtilityBox {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.update_checker.check(ctx, &mut self.state);
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.update_checker.check(ui.ctx(), &mut self.state);
 
         egui::CentralPanel::default()
             // remove margin
-            .frame(Frame::new().fill(ctx.style().visuals.panel_fill))
-            .show(ctx, |ui| {
+            .frame(Frame::new().fill(ui.style().visuals.panel_fill))
+            .show(ui, |ui| {
                 self.tree.ui(&mut self.state, ui);
 
                 if let Some((tile_id, tool)) = self.state.tool_request.take() {

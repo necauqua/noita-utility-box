@@ -265,7 +265,7 @@ impl Tool for OrbRadar {
             .unwrap();
 
             let orbs_to_list =
-                (rect.height() / ui.fonts(|f| f.row_height(&player_infos_font))) as usize / 2;
+                (rect.height() / ui.fonts_mut(|f| f.row_height(&player_infos_font))) as usize / 2;
 
             for orb in displayed_orbs.iter().take(orbs_to_list) {
                 // NOTE: EGUI does not support rendering UTF-8 emojis... Sadge

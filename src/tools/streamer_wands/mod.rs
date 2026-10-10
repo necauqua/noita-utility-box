@@ -864,7 +864,7 @@ impl PlayerInfo {
             orbs: noita
                 .get_world_state()?
                 .map_or(0, |ws| ws.orbs_found_thisrun.len()),
-            pos: Some((x, y)).filter(|_| tool.state.features.pos),
+            pos: tool.state.features.pos.then_some((x, y)),
             shifts_total,
             shifts_list,
             shifts_timer,
@@ -1058,11 +1058,8 @@ impl FungalShift {
 
         let mut result = vec![];
 
-        'outer: loop {
-            // peek heh
-            let Some([_, to]) = iter.clone().next() else {
-                break;
-            };
+        // peek heh
+        'outer: while let Some([_, to]) = iter.clone().next() {
             for group in SHIFT_GROUPS {
                 let group = group.iter().filter(|next_to| next_to != &to);
                 if iter
