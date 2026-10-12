@@ -149,6 +149,11 @@ impl Tool for StreamerWands {
             tracing::error!(%e, "failed to refresh cached data");
         }
 
+        if self.username.is_none()
+        {
+            self.username = get_username_from_token(&self.state.token);
+        }
+
         self.websocket = match std::mem::replace(&mut self.websocket, WebsocketState::NotConnected)
         {
             WebsocketState::NotConnected if self.state.was_connected && state.noita.is_some() => {

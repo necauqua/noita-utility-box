@@ -91,6 +91,58 @@ impl Tool for LiveStats {
             return;
         };
 
+        match &mut self.obs_ws {
+            ObsState::NotConnected => {
+                if self.was_connected {
+                    self.connect();
+                }
+                return;
+            },
+            ObsState::Connecting(p) => {
+                match p.poll_take() {
+                    None => {
+                        return;
+                    }
+                    Some(Err(e)) => {
+                        self.obs_ws = ObsState::Error(format!("{e:#}"));
+                        return;
+                    }
+                    Some(Ok(client)) => {
+                        self.obs_ws = match client.events() {
+                            Ok(events) => {
+                                let ctx = ctx.clone();
+                                let end_promise =
+                                    Promise::spawn(async move {
+                                        pin_mut!(events);
+                                        while let Some(event) = events.next().await {
+                                            if let Event::ServerStopping = event {
+                                                ctx.request_repaint();
+                                                break;
+                                            }
+                                        }
+                                    });
+                                self.was_connected = true;
+                                ObsState::Connected(Arc::new(client), end_promise)
+                            }
+                            Err(e) => ObsState::Error(format!("{e:#}")),
+                        }
+                    }
+                }
+                // Lazy: We'll do something next tick.
+                return;
+            },
+            ObsState::Connected(_client, end_promise) => {
+                if end_promise.poll().is_some() {
+                    self.disconnect();
+                    return;
+                }
+            }
+            ObsState::Error(_e) => {
+                // TODO: Auto retry here.
+                return;
+            }
+        };
+
         let new_stats = noita
             .read_stats()
             .context("Reading global stats")
@@ -250,41 +302,13 @@ impl Tool for LiveStats {
                     self.connect();
                 }
             }
-            ObsState::Connecting(p) => match p.poll_take() {
-                None => {
-                    ui.horizontal(|ui| {
-                        ui.spinner();
-                        ui.label("Connecting to OBS...");
-                    });
-                }
-                Some(Err(e)) => {
-                    self.obs_ws = ObsState::Error(format!("{e:#}"));
-                }
-                Some(Ok(client)) => {
-                    self.obs_ws = match client.events() {
-                        Ok(events) => {
-                            let ctx = ui.ctx().clone();
-                            let end_promise = Promise::spawn(async move {
-                                pin_mut!(events);
-                                while let Some(event) = events.next().await {
-                                    if let Event::ServerStopping = event {
-                                        ctx.request_repaint();
-                                        break;
-                                    }
-                                }
-                            });
-                            self.was_connected = true;
-                            ObsState::Connected(Arc::new(client), end_promise)
-                        }
-                        Err(e) => ObsState::Error(format!("{e:#}")),
-                    }
-                }
+            ObsState::Connecting(_p) => {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Connecting to OBS...");
+                });
             },
-            ObsState::Connected(client, end_promise) => {
-                if end_promise.poll().is_some() {
-                    self.disconnect();
-                    return Ok(());
-                }
+            ObsState::Connected(client, _end_promise) => {
                 // stop referencing self.obs_ws via this client through the big match
                 let client = (*client).clone();
 
